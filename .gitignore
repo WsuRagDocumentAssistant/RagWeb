@@ -1,0 +1,44 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+dist-ssr/
+
+# env files
+.env
+.env.local
+.env.*.local
+
+# logs
+*.log
+npm-debug.log*
+
+# editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# vite
+*.local
+
+# 환경변수
+.env
+.env.*
+
+# VS Code
+.vscode/
+
+# 로그
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# personal config files
+.claude/

@@ -1,0 +1,21 @@
+.messages-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 0;
+}
+
+.messages-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px;
+  text-align: center;
+}
+
+.messages-empty-icon { font-size: 48px; line-height: 1; }
+.messages-empty-title { font-size: 20px; font-weight: 700; color: #e2e2f0; }
+.messages-empty-desc { font-size: 14px; color: #555570; line-height: 1.7; }
+.messages-empty-desc span { color: #9b9bff; }

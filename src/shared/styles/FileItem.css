@@ -1,0 +1,63 @@
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #2a2a3e;
+  background-color: #1e1e2e;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.file-item:hover { border-color: #4f46e540; }
+.file-item.selected { border-color: #4f46e5; background-color: #1e1e3e; }
+.file-item.no-action { cursor: default; }
+
+.file-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background-color: #12121e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.file-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #e2e2f0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 3px;
+}
+
+.file-size { font-size: 11px; color: #555570; }
+
+.status-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.file-error-msg {
+  font-size: 11px;
+  color: #ef4444;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

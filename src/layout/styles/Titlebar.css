@@ -1,0 +1,41 @@
+.titlebar {
+  display: flex;
+  align-items: center;
+  height: 52px;
+  padding: 0 16px;
+  background-color: #12121e;
+  border-bottom: 1px solid #2a2a3e;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.titlebar-menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: none;
+  background: none;
+  color: #555570;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.titlebar-menu-btn:hover { color: #e2e2f0; background: #2a2a3e; }
+
+.titlebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.titlebar-icon { color: #9b9bff; }
+
+.titlebar-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #e2e2f0;
+}
+
+.titlebar-spacer { flex: 1; }

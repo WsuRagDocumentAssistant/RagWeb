@@ -1,0 +1,110 @@
+.chat-session-sidebar {
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 12px;
+  background-color: #12121e;
+  border-right: 1px solid #2a2a3e;
+  flex-shrink: 0;
+  overflow-y: auto;
+  transition: width 0.15s;
+}
+
+.chat-session-sidebar.collapsed {
+  width: 56px;
+  align-items: center;
+  padding: 16px 8px;
+}
+
+.session-sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-session-sidebar.collapsed .session-sidebar-header {
+  justify-content: center;
+}
+
+.new-session-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+  padding: 9px;
+  border-radius: 8px;
+  border: 1px solid #2a2a3e;
+  background-color: #1e1e2e;
+  color: #e2e2f0;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.new-session-btn:hover { border-color: #4f46e580; }
+
+.collapse-btn,
+.collapsed-new-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid #2a2a3e;
+  background-color: #1e1e2e;
+  color: #555570;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s, border-color 0.15s;
+}
+.collapse-btn:hover,
+.collapsed-new-btn:hover { color: #e2e2f0; border-color: #4f46e580; }
+
+.session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.session-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #555570;
+  transition: color 0.15s, background-color 0.15s;
+}
+.session-item:hover { color: #e2e2f0; background-color: #1e1e2e; }
+.session-item.active { color: #9b9bff; background-color: #1e1e3e; }
+
+.session-icon { flex-shrink: 0; }
+
+.session-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-delete-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border: none;
+  background: none;
+  color: inherit;
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 0.15s, color 0.15s;
+}
+.session-item:hover .session-delete-btn { opacity: 1; }
+.session-delete-btn:hover { color: #ef4444; }

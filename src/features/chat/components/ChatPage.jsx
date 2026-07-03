@@ -3,13 +3,17 @@ import { UploadCloud } from "lucide-react";
 import { useAppState } from "@/core/AppState";
 import ChatInput from "./ChatInput";
 import ChatMessages from "./ChatMessages";
+import ChatSessionSidebar from "./ChatSessionSidebar";
 import "../styles/ChatPage.css";
 
 export default function ChatPage() {
-  const messages = useAppState((s) => s.messages);
+  const sessions = useAppState((s) => s.sessions);
+  const activeSessionId = useAppState((s) => s.activeSessionId);
   const chatLoading = useAppState((s) => s.chatLoading);
   const sendMessage = useAppState((s) => s.sendMessage);
   const uploadFile = useAppState((s) => s.uploadFile);
+
+  const messages = sessions.find((s) => s.id === activeSessionId)?.messages ?? [];
 
   const [isDragging, setIsDragging] = useState(false);
   const dragCounter = useRef(0);
@@ -40,23 +44,26 @@ export default function ChatPage() {
   };
 
   return (
-    <div
-      className="chat-panel"
-      onDragEnter={handleDragEnter}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-    >
-      {isDragging && (
-        <div className="chat-dropzone-overlay">
-          <UploadCloud size={32} />
-          <p>여기에 파일을 놓아 업로드</p>
-        </div>
-      )}
+    <>
+      <ChatSessionSidebar />
+      <div
+        className="chat-panel"
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {isDragging && (
+          <div className="chat-dropzone-overlay">
+            <UploadCloud size={32} />
+            <p>여기에 파일을 놓아 업로드</p>
+          </div>
+        )}
 
-      <ChatMessages messages={messages} />
+        <ChatMessages messages={messages} />
 
-      <ChatInput onSend={sendMessage} onUpload={uploadFile} isLoading={chatLoading} />
-    </div>
+        <ChatInput onSend={sendMessage} onUpload={uploadFile} isLoading={chatLoading} />
+      </div>
+    </>
   );
 }

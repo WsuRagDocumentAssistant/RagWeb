@@ -19,6 +19,14 @@ export interface Message {
   error?: string;
 }
 
+export interface ChatSession {
+  id: string;
+  backendSessionId: string | null;
+  title: string;
+  messages: Message[];
+  createdAt: number;
+}
+
 export interface EmbeddingFile {
   id: string;
   name: string;
@@ -40,13 +48,15 @@ export interface AuthUser {
 // ─── 슬라이스 타입 ────────────────────────────────────────────────────────────
 
 interface ChatSlice {
-  messages: Message[];
+  sessions: ChatSession[];
+  activeSessionId: string | null;
   chatLoading: boolean;
   chatError: string | null;
-  sessionId: string | null;
   provider: AIProvider;
   sendMessage: (text: string) => Promise<void>;
-  clearMessages: () => void;
+  createSession: () => void;
+  selectSession: (id: string) => void;
+  deleteSession: (id: string) => void;
   setProvider: (p: AIProvider) => void;
   setChatError: (e: string | null) => void;
 }
@@ -83,50 +93,148 @@ type AppStore = ChatSlice & FileSlice & AuthSlice;
 const genId = (prefix: string) =>
   `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
+const SESSIONS_KEY = "chat_sessions";
+const ACTIVE_SESSION_KEY = "chat_active_session";
+
+const makeSession = (): ChatSession => ({
+  id: genId("session"),
+  backendSessionId: null,
+  title: "새 대화",
+  messages: [],
+  createdAt: Date.now(),
+});
+
+const deriveTitle = (text: string) => (text.length > 20 ? `${text.slice(0, 20)}…` : text);
+
+const loadSessions = (): ChatSession[] => {
+  try {
+    const raw = localStorage.getItem(SESSIONS_KEY);
+    return raw ? (JSON.parse(raw) as ChatSession[]) : [];
+  } catch {
+    return [];
+  }
+};
+
+const persistSessions = (sessions: ChatSession[]) => {
+  localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
+};
+
+const persistActiveSessionId = (id: string | null) => {
+  if (id) localStorage.setItem(ACTIVE_SESSION_KEY, id);
+  else localStorage.removeItem(ACTIVE_SESSION_KEY);
+};
+
+const storedSessions = loadSessions();
+const initialSessions = storedSessions.length > 0 ? storedSessions : [makeSession()];
+const initialActiveSessionId = (() => {
+  const stored = localStorage.getItem(ACTIVE_SESSION_KEY);
+  if (stored && initialSessions.some((s) => s.id === stored)) return stored;
+  return initialSessions[0]?.id ?? null;
+})();
+
 // ─── AppState ─────────────────────────────────────────────────────────────────
 
 export const useAppState = create<AppStore>((set, get) => ({
   // ── Chat ──────────────────────────────────────────────────────────────────
-  messages: [],
+  sessions: initialSessions,
+  activeSessionId: initialActiveSessionId,
   chatLoading: false,
   chatError: null,
-  sessionId: null,
   provider: "claude",
 
   sendMessage: async (text) => {
-    const { sessionId, provider } = get();
+    let { activeSessionId, sessions, provider } = get();
 
+    if (!activeSessionId || !sessions.some((s) => s.id === activeSessionId)) {
+      const session = makeSession();
+      sessions = [session, ...sessions];
+      activeSessionId = session.id;
+      set({ sessions, activeSessionId });
+      persistActiveSessionId(activeSessionId);
+    }
+
+    const sessionId = activeSessionId;
     const userMsg: Message = { id: genId("u"), role: "user", content: text, createdAt: Date.now() };
     const asstMsg: Message = { id: genId("a"), role: "assistant", content: "", createdAt: Date.now(), isStreaming: true };
 
-    set((s) => ({ messages: [...s.messages, userMsg, asstMsg], chatLoading: true, chatError: null }));
+    set((s) => ({
+      sessions: s.sessions.map((sess) =>
+        sess.id === sessionId
+          ? {
+              ...sess,
+              title: sess.messages.length === 0 ? deriveTitle(text) : sess.title,
+              messages: [...sess.messages, userMsg, asstMsg],
+            }
+          : sess,
+      ),
+      chatLoading: true,
+      chatError: null,
+    }));
+    persistSessions(get().sessions);
 
     try {
+      const activeSession = get().sessions.find((sess) => sess.id === sessionId);
       const data = await chatService.sendMessage({
         message: text,
         provider,
-        sessionId: sessionId ?? undefined,
+        sessionId: activeSession?.backendSessionId ?? undefined,
       });
       set((s) => ({
-        messages: s.messages.map((m) =>
-          m.id === asstMsg.id ? { ...m, content: data.reply, isStreaming: false } : m,
+        sessions: s.sessions.map((sess) =>
+          sess.id === sessionId
+            ? {
+                ...sess,
+                backendSessionId: data.sessionId ?? sess.backendSessionId,
+                messages: sess.messages.map((m) =>
+                  m.id === asstMsg.id ? { ...m, content: data.reply, isStreaming: false } : m,
+                ),
+              }
+            : sess,
         ),
         chatLoading: false,
-        sessionId: data.sessionId ?? s.sessionId,
       }));
     } catch (err) {
       const msg = err instanceof Error ? err.message : "알 수 없는 오류";
       set((s) => ({
-        messages: s.messages.map((m) =>
-          m.id === asstMsg.id ? { ...m, isStreaming: false, error: msg } : m,
+        sessions: s.sessions.map((sess) =>
+          sess.id === sessionId
+            ? {
+                ...sess,
+                messages: sess.messages.map((m) =>
+                  m.id === asstMsg.id ? { ...m, isStreaming: false, error: msg } : m,
+                ),
+              }
+            : sess,
         ),
         chatLoading: false,
         chatError: msg,
       }));
     }
+    persistSessions(get().sessions);
   },
 
-  clearMessages: () => set({ messages: [], sessionId: null, chatError: null }),
+  createSession: () => {
+    const session = makeSession();
+    set((s) => ({ sessions: [session, ...s.sessions], activeSessionId: session.id }));
+    persistSessions(get().sessions);
+    persistActiveSessionId(session.id);
+  },
+
+  selectSession: (id) => {
+    set({ activeSessionId: id });
+    persistActiveSessionId(id);
+  },
+
+  deleteSession: (id) => {
+    set((s) => {
+      const remaining = s.sessions.filter((sess) => sess.id !== id);
+      const activeSessionId = s.activeSessionId === id ? (remaining[0]?.id ?? null) : s.activeSessionId;
+      return { sessions: remaining, activeSessionId };
+    });
+    persistSessions(get().sessions);
+    persistActiveSessionId(get().activeSessionId);
+  },
+
   setProvider: (provider) => set({ provider }),
   setChatError: (chatError) => set({ chatError }),
 

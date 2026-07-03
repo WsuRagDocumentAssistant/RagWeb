@@ -1,14 +1,13 @@
 import { create } from "zustand";
-import { createApiUrl } from "@/config/ApiService";
 import * as chatService from "@/features/chat/services/ChatService";
 import * as fileService from "@/features/files/services/FileService";
+import * as authService from "@/features/auth/services/AuthService";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 
 export type AIProvider = "claude" | "gpt" | "gemini" | "local";
 export type MessageRole = "user" | "assistant";
 export type EmbeddingFileStatus = "uploading" | "processing" | "ready" | "error";
-export type ActiveTab = "chat" | "files";
 
 export interface Message {
   id: string;
@@ -30,9 +29,11 @@ export interface EmbeddingFile {
 }
 
 export interface AuthUser {
-  id: string;
+  id: number;
   email: string;
-  username: string;
+  name?: string;
+  provider: string;
+  created_at: string;
 }
 
 // ─── 슬라이스 타입 ────────────────────────────────────────────────────────────
@@ -71,14 +72,13 @@ interface AuthSlice {
   authError: string | null;
   initializeAuth: () => void;
   login: (email: string, password: string) => Promise<void>;
+  loginWithSSO: (ssoToken: string) => Promise<void>;
   logout: () => void;
   setAuthError: (e: string | null) => void;
 }
 
 interface UISlice {
-  activeTab: ActiveTab;
   sidebarOpen: boolean;
-  setActiveTab: (tab: ActiveTab) => void;
   toggleSidebar: () => void;
   closeSidebar: () => void;
 }
@@ -230,25 +230,30 @@ export const useAppState = create<AppStore>((set, get) => ({
   login: async (email, password) => {
     set({ authLoading: true, authError: null });
     try {
-      const res = await fetch(createApiUrl("USER", "LOGIN"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      if (!res.ok) {
-        const b = await res.json().catch(() => ({})) as { message?: string };
-        throw new Error(b.message ?? `로그인 실패 (${res.status})`);
-      }
-      const data = await res.json() as { token: string; user: AuthUser };
-      localStorage.setItem("auth_token", data.token);
+      const data = await authService.login(email, password) as { access_token: string; user: AuthUser };
+      localStorage.setItem("auth_token", data.access_token);
       localStorage.setItem("auth_user", JSON.stringify(data.user));
-      set({ user: data.user, token: data.token, authLoading: false });
+      set({ user: data.user, token: data.access_token, authLoading: false });
     } catch (err) {
       set({ authLoading: false, authError: err instanceof Error ? err.message : "로그인 실패" });
     }
   },
 
+  loginWithSSO: async (ssoToken) => {
+    set({ authLoading: true, authError: null });
+    try {
+      const data = await authService.ssoLogin(ssoToken) as { access_token: string; user: AuthUser };
+      localStorage.setItem("auth_token", data.access_token);
+      localStorage.setItem("auth_user", JSON.stringify(data.user));
+      set({ user: data.user, token: data.access_token, authLoading: false });
+    } catch (err) {
+      set({ authLoading: false, authError: err instanceof Error ? err.message : "SSO 로그인 실패" });
+    }
+  },
+
   logout: () => {
+    const token = get().token;
+    authService.logout(token ?? undefined).catch(() => {});
     localStorage.removeItem("auth_token");
     localStorage.removeItem("auth_user");
     set({ user: null, token: null, authError: null });
@@ -257,9 +262,7 @@ export const useAppState = create<AppStore>((set, get) => ({
   setAuthError: (authError) => set({ authError }),
 
   // ── UI ────────────────────────────────────────────────────────────────────
-  activeTab: "chat",
   sidebarOpen: false,
-  setActiveTab: (activeTab) => set({ activeTab, sidebarOpen: false }),
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
   closeSidebar: () => set({ sidebarOpen: false }),
 }));

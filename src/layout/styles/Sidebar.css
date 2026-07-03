@@ -42,6 +42,7 @@
   font-weight: 500;
   cursor: pointer;
   text-align: left;
+  text-decoration: none;
   transition: color 0.15s, background 0.15s;
 }
 .sidebar-tab:hover { color: #e2e2f0; background: #1e1e2e; }

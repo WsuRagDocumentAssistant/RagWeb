@@ -1,30 +1,31 @@
 import React from "react";
+import { NavLink } from "react-router-dom";
 import { MessageSquare, Files } from "lucide-react";
 import { useAppState } from "@/core/AppState";
 import "../styles/Sidebar.css";
 
 const TABS = [
-  { id: "chat", label: "채팅", icon: MessageSquare },
-  { id: "files", label: "임베딩 파일", icon: Files },
+  { to: "/chat", label: "채팅", icon: MessageSquare },
+  { to: "/files", label: "임베딩 파일", icon: Files },
 ];
 
 export default function Sidebar() {
-  const activeTab = useAppState((s) => s.activeTab);
-  const setActiveTab = useAppState((s) => s.setActiveTab);
   const sidebarOpen = useAppState((s) => s.sidebarOpen);
+  const closeSidebar = useAppState((s) => s.closeSidebar);
 
   return (
     <aside className={["sidebar", sidebarOpen && "open"].filter(Boolean).join(" ")}>
       <nav className="sidebar-nav">
-        {TABS.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            className={["sidebar-tab", activeTab === id && "active"].filter(Boolean).join(" ")}
-            onClick={() => setActiveTab(id)}
+        {TABS.map(({ to, label, icon: Icon }) => (
+          <NavLink
+            key={to}
+            to={to}
+            onClick={closeSidebar}
+            className={({ isActive }) => ["sidebar-tab", isActive && "active"].filter(Boolean).join(" ")}
           >
             <Icon size={16} />
             <span>{label}</span>
-          </button>
+          </NavLink>
         ))}
       </nav>
     </aside>

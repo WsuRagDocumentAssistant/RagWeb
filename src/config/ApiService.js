@@ -5,9 +5,9 @@ export const API_ENDPOINTS = {
     LOGIN: "/users/login",
     REGISTER: "/users/create/user",
     LOGOUT: "/users/logout",
+    SSO_LOGIN: "/users/sso/login", // POST { sso_token } → { access_token, user }
   },
   RAG: {
-    HEALTH: "/health",
     CHAT: "/chat",
     UPLOAD_FILE: "/file/upload",
     LIST_FILES: "/file/list",

@@ -1,0 +1,24 @@
+import { createBrowserRouter, Navigate } from "react-router-dom";
+import { RootLayout, ProtectedRoute } from "@/layout";
+import { LoginPage } from "@/features/auth";
+import { ChatPage } from "@/features/chat";
+import { FilesPage } from "@/features/files";
+
+export const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <RootLayout />,
+    children: [
+      { index: true, element: <Navigate to="/chat" replace /> },
+      { path: "login", element: <LoginPage /> },
+      {
+        element: <ProtectedRoute />,
+        children: [
+          { path: "chat", element: <ChatPage /> },
+          { path: "files", element: <FilesPage /> },
+        ],
+      },
+      { path: "*", element: <Navigate to="/chat" replace /> },
+    ],
+  },
+]);

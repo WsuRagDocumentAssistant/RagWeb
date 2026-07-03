@@ -11,8 +11,12 @@ export default function ChatSessionSidebar() {
   const createSession = useAppState((s) => s.createSession);
   const selectSession = useAppState((s) => s.selectSession);
   const deleteSession = useAppState((s) => s.deleteSession);
+  const user = useAppState((s) => s.user);
 
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSED_KEY) === "1");
+
+  const displayName = user?.name || user?.email || "사용자";
+  const initial = displayName.charAt(0).toUpperCase();
 
   const toggleCollapsed = () => {
     setCollapsed((prev) => {
@@ -61,6 +65,16 @@ export default function ChatSessionSidebar() {
           ))}
         </div>
       )}
+
+      <button className="user-info-btn" title={displayName}>
+        <span className="user-avatar">{initial}</span>
+        {!collapsed && (
+          <span className="user-info-text">
+            <span className="user-name">{displayName}</span>
+            {user?.email && user?.name && <span className="user-email">{user.email}</span>}
+          </span>
+        )}
+      </button>
     </aside>
   );
 }

@@ -22,16 +22,16 @@ export default function FileNotifications() {
 
   return (
     <div className="file-notifications" ref={panelRef}>
-      <button className="titlebar-menu-btn" onClick={() => setOpen((v) => !v)} title="파일 업로드 내역">
+      <button className="titlebar-menu-btn" onClick={() => setOpen((v) => !v)} title="알림">
         <Bell size={18} />
         {pendingCount > 0 && <span className="notif-badge">{pendingCount}</span>}
       </button>
 
       {open && (
         <div className="file-notifications-panel">
-          <h3 className="file-notifications-title">업로드한 파일</h3>
+          <h3 className="file-notifications-title">알림</h3>
           {files.length === 0 ? (
-            <p className="file-notifications-empty">업로드된 파일이 없습니다.</p>
+            <p className="file-notifications-empty">알림이 없습니다.</p>
           ) : (
             <div className="file-notifications-list">
               {files.map((file) => <FileItem key={file.id} file={file} />)}

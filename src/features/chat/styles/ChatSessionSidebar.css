@@ -67,6 +67,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  flex: 1;
 }
 
 .session-item {
@@ -108,3 +109,62 @@
 }
 .session-item:hover .session-delete-btn { opacity: 1; }
 .session-delete-btn:hover { color: #ef4444; }
+
+.user-info-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: auto;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #2a2a3e;
+  background-color: #1e1e2e;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.user-info-btn:hover { border-color: #4f46e580; }
+
+.chat-session-sidebar.collapsed .user-info-btn {
+  justify-content: center;
+  padding: 8px 0;
+  width: 34px;
+}
+
+.user-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: #4f46e5;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.user-info-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  text-align: left;
+}
+
+.user-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e2e2f0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-email {
+  font-size: 11px;
+  color: #555570;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

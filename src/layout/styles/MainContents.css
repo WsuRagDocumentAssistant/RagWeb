@@ -5,16 +5,10 @@
 }
 
 .chat-panel {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   padding: 0 16px 16px;
-}
-
-.files-panel {
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
 }

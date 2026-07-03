@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { toast } from "sonner";
 import * as chatService from "@/features/chat/services/ChatService";
 import * as fileService from "@/features/files/services/FileService";
 import * as authService from "@/features/auth/services/AuthService";
@@ -44,12 +45,9 @@ interface ChatSlice {
   chatError: string | null;
   sessionId: string | null;
   provider: AIProvider;
-  selectedFileIds: string[];
   sendMessage: (text: string) => Promise<void>;
   clearMessages: () => void;
   setProvider: (p: AIProvider) => void;
-  toggleFileSelection: (id: string) => void;
-  clearFileSelection: () => void;
   setChatError: (e: string | null) => void;
 }
 
@@ -72,18 +70,13 @@ interface AuthSlice {
   authError: string | null;
   initializeAuth: () => void;
   login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, name: string) => Promise<void>;
   loginWithSSO: (ssoToken: string) => Promise<void>;
   logout: () => void;
   setAuthError: (e: string | null) => void;
 }
 
-interface UISlice {
-  sidebarOpen: boolean;
-  toggleSidebar: () => void;
-  closeSidebar: () => void;
-}
-
-type AppStore = ChatSlice & FileSlice & AuthSlice & UISlice;
+type AppStore = ChatSlice & FileSlice & AuthSlice;
 
 // ─── 헬퍼 ─────────────────────────────────────────────────────────────────────
 
@@ -99,10 +92,9 @@ export const useAppState = create<AppStore>((set, get) => ({
   chatError: null,
   sessionId: null,
   provider: "claude",
-  selectedFileIds: [],
 
   sendMessage: async (text) => {
-    const { sessionId, provider, selectedFileIds } = get();
+    const { sessionId, provider } = get();
 
     const userMsg: Message = { id: genId("u"), role: "user", content: text, createdAt: Date.now() };
     const asstMsg: Message = { id: genId("a"), role: "assistant", content: "", createdAt: Date.now(), isStreaming: true };
@@ -114,7 +106,6 @@ export const useAppState = create<AppStore>((set, get) => ({
         message: text,
         provider,
         sessionId: sessionId ?? undefined,
-        fileIds: selectedFileIds.length > 0 ? selectedFileIds : undefined,
       });
       set((s) => ({
         messages: s.messages.map((m) =>
@@ -137,13 +128,6 @@ export const useAppState = create<AppStore>((set, get) => ({
 
   clearMessages: () => set({ messages: [], sessionId: null, chatError: null }),
   setProvider: (provider) => set({ provider }),
-  toggleFileSelection: (id) =>
-    set((s) => ({
-      selectedFileIds: s.selectedFileIds.includes(id)
-        ? s.selectedFileIds.filter((x) => x !== id)
-        : [...s.selectedFileIds, id],
-    })),
-  clearFileSelection: () => set({ selectedFileIds: [] }),
   setChatError: (chatError) => set({ chatError }),
 
   // ── File ──────────────────────────────────────────────────────────────────
@@ -163,6 +147,7 @@ export const useAppState = create<AppStore>((set, get) => ({
 
   uploadFile: async (file: File) => {
     const tempId = genId("tmp");
+    const toastId = toast.loading(`${file.name} 업로드 중...`);
     set((s) => ({
       files: [
         { id: tempId, name: file.name, size: file.size, mimeType: file.type, status: "uploading", uploadedAt: Date.now() },
@@ -183,6 +168,7 @@ export const useAppState = create<AppStore>((set, get) => ({
         fileLoading: false,
         uploadProgress: 0,
       }));
+      toast.success(`${file.name} 업로드 완료`, { id: toastId });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "업로드 실패";
       set((s) => ({
@@ -193,6 +179,7 @@ export const useAppState = create<AppStore>((set, get) => ({
         uploadProgress: 0,
         fileError: msg,
       }));
+      toast.error(`${file.name} 업로드 실패: ${msg}`, { id: toastId });
     }
   },
 
@@ -239,6 +226,17 @@ export const useAppState = create<AppStore>((set, get) => ({
     }
   },
 
+  register: async (email, password, name) => {
+    set({ authLoading: true, authError: null });
+    try {
+      await authService.register(email, password, name);
+      set({ authLoading: false });
+    } catch (err) {
+      set({ authLoading: false, authError: err instanceof Error ? err.message : "회원가입 실패" });
+      throw err;
+    }
+  },
+
   loginWithSSO: async (ssoToken) => {
     set({ authLoading: true, authError: null });
     try {
@@ -260,9 +258,4 @@ export const useAppState = create<AppStore>((set, get) => ({
   },
 
   setAuthError: (authError) => set({ authError }),
-
-  // ── UI ────────────────────────────────────────────────────────────────────
-  sidebarOpen: false,
-  toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
-  closeSidebar: () => set({ sidebarOpen: false }),
 }));

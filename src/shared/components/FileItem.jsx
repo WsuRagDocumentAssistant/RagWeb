@@ -1,5 +1,5 @@
 import React from "react";
-import { Loader2, CheckCircle2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { formatBytes } from "../utils/format";
 import "../styles/FileItem.css";
 
@@ -10,16 +10,12 @@ const STATUS = {
   error:      { label: "오류",     color: "#ef4444" },
 };
 
-export default function FileItem({ file, isSelected, onToggle }) {
-  const isReady = file.status === "ready";
-  const isBusy  = file.status === "uploading" || file.status === "processing";
+export default function FileItem({ file }) {
+  const isBusy = file.status === "uploading" || file.status === "processing";
   const s = STATUS[file.status] ?? { label: file.status ?? "알 수 없음", color: "#555570" };
 
   return (
-    <div
-      className={["file-item", isSelected && "selected", !isReady && "no-action"].filter(Boolean).join(" ")}
-      onClick={() => isReady && onToggle(file.id)}
-    >
+    <div className="file-item">
       <div className="file-icon">📄</div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -33,10 +29,6 @@ export default function FileItem({ file, isSelected, onToggle }) {
         </div>
         {file.errorMessage && <div className="file-error-msg">{file.errorMessage}</div>}
       </div>
-
-      {isReady && (
-        <CheckCircle2 size={18} style={{ color: isSelected ? "#9b9bff" : "#2a2a3e", flexShrink: 0 }} />
-      )}
     </div>
   );
 }

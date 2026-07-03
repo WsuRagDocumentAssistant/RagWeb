@@ -1,0 +1,58 @@
+.file-notifications {
+  position: relative;
+}
+
+.notif-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: 8px;
+  background-color: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+}
+
+.file-notifications-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 320px;
+  max-height: 420px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  border: 1px solid #2a2a3e;
+  background-color: #1e1e2e;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 20;
+  overflow: hidden;
+}
+
+.file-notifications-title {
+  padding: 12px 14px;
+  border-bottom: 1px solid #2a2a3e;
+  font-size: 13px;
+  font-weight: 700;
+  color: #e2e2f0;
+}
+
+.file-notifications-empty {
+  padding: 24px 14px;
+  text-align: center;
+  font-size: 13px;
+  color: #555570;
+}
+
+.file-notifications-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  overflow-y: auto;
+}

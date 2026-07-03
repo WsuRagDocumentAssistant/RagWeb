@@ -6,12 +6,7 @@
   border-radius: 12px;
   border: 1px solid #2a2a3e;
   background-color: #1e1e2e;
-  cursor: pointer;
-  transition: border-color 0.15s, background-color 0.15s;
 }
-.file-item:hover { border-color: #4f46e540; }
-.file-item.selected { border-color: #4f46e5; background-color: #1e1e3e; }
-.file-item.no-action { cursor: default; }
 
 .file-icon {
   width: 40px;

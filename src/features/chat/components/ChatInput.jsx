@@ -1,17 +1,18 @@
 import React, { useState, useRef } from "react";
-import { ArrowUp, Loader2 } from "lucide-react";
+import { ArrowUp, Loader2, Plus } from "lucide-react";
 import "../styles/ChatInput.css";
 
-export default function ChatInput({ onSend, isLoading, selectedFileCount }) {
+export default function ChatInput({ onSend, onUpload, isLoading }) {
   const [text, setText] = useState("");
-  const ref = useRef(null);
+  const textareaRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const handleSend = () => {
     const trimmed = text.trim();
     if (!trimmed || isLoading) return;
     onSend(trimmed);
     setText("");
-    if (ref.current) ref.current.style.height = "auto";
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
   };
 
   const handleKeyDown = (e) => {
@@ -24,16 +25,23 @@ export default function ChatInput({ onSend, isLoading, selectedFileCount }) {
     e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
   };
 
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) onUpload(file);
+    e.target.value = "";
+  };
+
   const canSend = text.trim().length > 0 && !isLoading;
 
   return (
     <div className="chat-input-wrap">
-      {selectedFileCount > 0 && (
-        <div className="file-chip">📎 파일 {selectedFileCount}개 연결됨</div>
-      )}
       <div className="input-row">
+        <input ref={fileInputRef} type="file" style={{ display: "none" }} onChange={handleFileChange} />
+        <button className="attach-btn" onClick={() => fileInputRef.current?.click()} title="파일 첨부">
+          <Plus size={18} />
+        </button>
         <textarea
-          ref={ref}
+          ref={textareaRef}
           className="chat-textarea"
           value={text}
           onChange={handleInput}

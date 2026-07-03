@@ -23,6 +23,21 @@ export async function login(email, password) {
 }
 
 /**
+ * @param {string} email
+ * @param {string} password
+ * @param {string} name
+ * @returns {Promise<any>}
+ */
+export async function register(email, password, name) {
+  const res = await fetch(createApiUrl("USER", "REGISTER"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password, name }),
+  });
+  return parseResponse(res);
+}
+
+/**
  * 학교 SSO에서 발급받은 sso_token을 서버에 검증 요청
  * @param {string} ssoToken
  * @returns {Promise<{ access_token: string, user: any }>}

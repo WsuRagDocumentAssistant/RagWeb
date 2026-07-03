@@ -16,7 +16,7 @@ export default function ChatMessages({ messages }) {
         <h2 className="messages-empty-title">AI RAG Assistant</h2>
         <p className="messages-empty-desc">
           파일을 업로드하고 AI에게 질문해보세요.<br />
-          좌측 사이드바의 <span>임베딩 파일</span> 메뉴에서 파일을 추가할 수 있습니다.
+          <span>+ 버튼</span>을 누르거나 파일을 이 화면에 드래그해서 추가할 수 있습니다.
         </p>
       </div>
     );

@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { useAppState } from "@/core/AppState";
 import Titlebar from "./Titlebar";
+import { ChatSessionSidebar } from "@/features/chat";
 import "../styles/MainLayout.css";
 import "../styles/MainContents.css";
 
@@ -18,9 +19,12 @@ export default function ProtectedRoute() {
   return (
     <div className="app-shell">
       <Titlebar />
-      <main className="main-contents">
-        <Outlet />
-      </main>
+      <div className="app-body">
+        <ChatSessionSidebar />
+        <main className="main-contents">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

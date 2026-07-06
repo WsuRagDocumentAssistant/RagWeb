@@ -3,7 +3,6 @@ import { UploadCloud } from "lucide-react";
 import { useAppState } from "@/core/AppState";
 import ChatInput from "./ChatInput";
 import ChatMessages from "./ChatMessages";
-import ChatSessionSidebar from "./ChatSessionSidebar";
 import "../styles/ChatPage.css";
 
 export default function ChatPage() {
@@ -44,26 +43,23 @@ export default function ChatPage() {
   };
 
   return (
-    <>
-      <ChatSessionSidebar />
-      <div
-        className="chat-panel"
-        onDragEnter={handleDragEnter}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        {isDragging && (
-          <div className="chat-dropzone-overlay">
-            <UploadCloud size={32} />
-            <p>여기에 파일을 놓아 업로드</p>
-          </div>
-        )}
+    <div
+      className="chat-panel"
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {isDragging && (
+        <div className="chat-dropzone-overlay">
+          <UploadCloud size={32} />
+          <p>여기에 파일을 놓아 업로드</p>
+        </div>
+      )}
 
-        <ChatMessages messages={messages} />
+      <ChatMessages messages={messages} />
 
-        <ChatInput onSend={sendMessage} onUpload={uploadFile} isLoading={chatLoading} />
-      </div>
-    </>
+      <ChatInput onSend={sendMessage} onUpload={uploadFile} isLoading={chatLoading} />
+    </div>
   );
 }

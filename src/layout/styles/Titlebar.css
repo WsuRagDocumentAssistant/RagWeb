@@ -39,3 +39,9 @@
 }
 
 .titlebar-spacer { flex: 1; }
+
+.mobile-only { display: none; }
+
+@media (max-width: 640px) {
+  .mobile-only { display: flex; }
+}

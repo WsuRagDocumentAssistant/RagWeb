@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Plus, Trash2, MessageSquare, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { Plus, Trash2, MessageSquare, FolderCog, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAppState } from "@/core/AppState";
 import "../styles/ChatSessionSidebar.css";
 
@@ -12,8 +13,15 @@ export default function ChatSessionSidebar() {
   const selectSession = useAppState((s) => s.selectSession);
   const deleteSession = useAppState((s) => s.deleteSession);
   const user = useAppState((s) => s.user);
+  const sidebarOpen = useAppState((s) => s.sidebarOpen);
+  const closeSidebar = useAppState((s) => s.closeSidebar);
+
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isFilesPage = location.pathname === "/files";
 
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSED_KEY) === "1");
+  const isCollapsed = collapsed && !sidebarOpen;
 
   const displayName = user?.name || user?.email || "사용자";
   const initial = displayName.charAt(0).toUpperCase();
@@ -26,55 +34,84 @@ export default function ChatSessionSidebar() {
     });
   };
 
+  const handleNewChat = () => {
+    createSession();
+    navigate("/chat");
+    closeSidebar();
+  };
+
+  const handleSelectSession = (id) => {
+    selectSession(id);
+    navigate("/chat");
+    closeSidebar();
+  };
+
+  const handleNavigateFiles = () => {
+    navigate("/files");
+    closeSidebar();
+  };
+
   return (
-    <aside className={["chat-session-sidebar", collapsed && "collapsed"].filter(Boolean).join(" ")}>
-      <div className="session-sidebar-header">
-        {!collapsed && (
-          <button className="new-session-btn" onClick={createSession}>
+    <>
+      {sidebarOpen && <div className="sidebar-backdrop" onClick={closeSidebar} />}
+      <aside className={["chat-session-sidebar", isCollapsed && "collapsed", sidebarOpen && "mobile-open"].filter(Boolean).join(" ")}>
+        <div className="session-sidebar-header">
+          <button className="collapse-btn" onClick={toggleCollapsed} title={collapsed ? "펼치기" : "접기"}>
+            {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+          </button>
+          <button
+            className={["files-nav-btn", isFilesPage && "active"].filter(Boolean).join(" ")}
+            onClick={handleNavigateFiles}
+            title="파일 관리"
+          >
+            <FolderCog size={16} />
+            {!isCollapsed && "파일 관리"}
+          </button>
+        </div>
+
+        {isCollapsed ? (
+          <button className="collapsed-new-btn" onClick={handleNewChat} title="새 대화">
+            <Plus size={16} />
+          </button>
+        ) : (
+          <button className="new-session-btn" onClick={handleNewChat}>
             <Plus size={16} />
             새 대화
           </button>
         )}
-        <button className="collapse-btn" onClick={toggleCollapsed} title={collapsed ? "펼치기" : "접기"}>
-          {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
-        </button>
-      </div>
 
-      {collapsed ? (
-        <button className="collapsed-new-btn" onClick={createSession} title="새 대화">
-          <Plus size={16} />
-        </button>
-      ) : (
-        <div className="session-list">
-          {sessions.map((session) => (
-            <div
-              key={session.id}
-              className={["session-item", session.id === activeSessionId && "active"].filter(Boolean).join(" ")}
-              onClick={() => selectSession(session.id)}
-            >
-              <MessageSquare size={14} className="session-icon" />
-              <span className="session-title">{session.title}</span>
-              <button
-                className="session-delete-btn"
-                onClick={(e) => { e.stopPropagation(); deleteSession(session.id); }}
-                title="대화 삭제"
+        {!isCollapsed && (
+          <div className="session-list">
+            {sessions.map((session) => (
+              <div
+                key={session.id}
+                className={["session-item", !isFilesPage && session.id === activeSessionId && "active"].filter(Boolean).join(" ")}
+                onClick={() => handleSelectSession(session.id)}
               >
-                <Trash2 size={13} />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <button className="user-info-btn" title={displayName}>
-        <span className="user-avatar">{initial}</span>
-        {!collapsed && (
-          <span className="user-info-text">
-            <span className="user-name">{displayName}</span>
-            {user?.email && user?.name && <span className="user-email">{user.email}</span>}
-          </span>
+                <MessageSquare size={14} className="session-icon" />
+                <span className="session-title">{session.title}</span>
+                <button
+                  className="session-delete-btn"
+                  onClick={(e) => { e.stopPropagation(); deleteSession(session.id); }}
+                  title="대화 삭제"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
         )}
-      </button>
-    </aside>
+
+        <button className="user-info-btn" title={displayName}>
+          <span className="user-avatar">{initial}</span>
+          {!isCollapsed && (
+            <span className="user-info-text">
+              <span className="user-name">{displayName}</span>
+              {user?.email && user?.name && <span className="user-email">{user.email}</span>}
+            </span>
+          )}
+        </button>
+      </aside>
+    </>
   );
 }

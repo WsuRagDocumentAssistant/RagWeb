@@ -17,6 +17,39 @@
   padding: 16px 8px;
 }
 
+.sidebar-backdrop { display: none; }
+
+@media (max-width: 640px) {
+  .chat-session-sidebar,
+  .chat-session-sidebar.collapsed {
+    position: fixed;
+    top: 52px;
+    bottom: 0;
+    left: 0;
+    z-index: 50;
+    width: 260px;
+    align-items: stretch;
+    padding: 16px 12px;
+    transform: translateX(-100%);
+    transition: transform 0.2s;
+  }
+
+  .chat-session-sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    top: 52px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 40;
+  }
+}
+
 .session-sidebar-header {
   display: flex;
   align-items: center;
@@ -24,7 +57,35 @@
 }
 
 .chat-session-sidebar.collapsed .session-sidebar-header {
+  flex-direction: column;
   justify-content: center;
+}
+
+.files-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+  height: 34px;
+  padding: 0 9px;
+  border-radius: 8px;
+  border: 1px solid #2a2a3e;
+  background-color: #1e1e2e;
+  color: #555570;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.files-nav-btn:hover { color: #e2e2f0; border-color: #4f46e580; }
+.files-nav-btn.active { color: #9b9bff; background-color: #1e1e3e; border-color: #4f46e5; }
+
+.chat-session-sidebar.collapsed .files-nav-btn {
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
 }
 
 .new-session-btn {
@@ -32,8 +93,9 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  flex: 1;
-  padding: 9px;
+  width: 100%;
+  height: 34px;
+  padding: 0 9px;
   border-radius: 8px;
   border: 1px solid #2a2a3e;
   background-color: #1e1e2e;
@@ -42,6 +104,7 @@
   font-weight: 600;
   cursor: pointer;
   transition: border-color 0.15s;
+  flex-shrink: 0;
 }
 .new-session-btn:hover { border-color: #4f46e580; }
 

@@ -86,7 +86,13 @@ interface AuthSlice {
   setAuthError: (e: string | null) => void;
 }
 
-type AppStore = ChatSlice & FileSlice & AuthSlice;
+interface UISlice {
+  sidebarOpen: boolean;
+  toggleSidebar: () => void;
+  closeSidebar: () => void;
+}
+
+type AppStore = ChatSlice & FileSlice & AuthSlice & UISlice;
 
 // ─── 헬퍼 ─────────────────────────────────────────────────────────────────────
 
@@ -366,4 +372,9 @@ export const useAppState = create<AppStore>((set, get) => ({
   },
 
   setAuthError: (authError) => set({ authError }),
+
+  // ── UI ────────────────────────────────────────────────────────────────────
+  sidebarOpen: false,
+  toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
+  closeSidebar: () => set({ sidebarOpen: false }),
 }));

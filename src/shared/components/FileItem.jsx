@@ -6,7 +6,7 @@ import "../styles/FileItem.css";
 const STATUS = {
   uploading: { label: "업로드 중", color: "#d97706" },
   processing: { label: "처리 중",  color: "#4285f4" },
-  ready:      { label: "준비됨",   color: "#22c55e" },
+  ready:      { label: "처리완료", color: "#22c55e" },
   error:      { label: "오류",     color: "#ef4444" },
 };
 

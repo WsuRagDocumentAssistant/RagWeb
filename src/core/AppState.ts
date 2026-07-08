@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import * as chatService from "@/features/chat/services/ChatService";
 import * as fileService from "@/features/files/services/FileService";
 import * as authService from "@/features/auth/services/AuthService";
+import * as dictionaryService from "@/features/dictionary/services/DictionaryService";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 
@@ -43,6 +44,15 @@ export interface AuthUser {
   name?: string;
   provider: string;
   created_at: string;
+}
+
+export interface DictionaryEntry {
+  id: number;
+  term: string;
+  meaning: string;
+  note?: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 // ─── 슬라이스 타입 ────────────────────────────────────────────────────────────
@@ -92,7 +102,23 @@ interface UISlice {
   closeSidebar: () => void;
 }
 
-type AppStore = ChatSlice & FileSlice & AuthSlice & UISlice;
+interface DictionarySlice {
+  dictEntries: DictionaryEntry[];
+  dictLoading: boolean;
+  dictError: string | null;
+  dictSearch: string;
+  dictPanelOpen: boolean;
+  fetchDictEntries: (search?: string) => Promise<void>;
+  createDictEntry: (term: string, meaning: string, note?: string) => Promise<void>;
+  updateDictEntry: (id: number, term: string, meaning: string, note?: string) => Promise<void>;
+  deleteDictEntry: (id: number) => Promise<void>;
+  setDictSearch: (query: string) => void;
+  openDictPanel: () => void;
+  closeDictPanel: () => void;
+  toggleDictPanel: () => void;
+}
+
+type AppStore = ChatSlice & FileSlice & AuthSlice & UISlice & DictionarySlice;
 
 // ─── 헬퍼 ─────────────────────────────────────────────────────────────────────
 
@@ -377,4 +403,63 @@ export const useAppState = create<AppStore>((set, get) => ({
   sidebarOpen: false,
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
   closeSidebar: () => set({ sidebarOpen: false }),
+
+  // ── Dictionary ────────────────────────────────────────────────────────────
+  dictEntries: [],
+  dictLoading: false,
+  dictError: null,
+  dictSearch: "",
+  dictPanelOpen: false,
+
+  fetchDictEntries: async (search) => {
+    set({ dictLoading: true, dictError: null });
+    try {
+      const data = await dictionaryService.listEntries(search) as { entries: DictionaryEntry[] };
+      set({ dictEntries: data.entries ?? [], dictLoading: false });
+    } catch (err) {
+      set({ dictLoading: false, dictError: err instanceof Error ? err.message : "사전 목록 조회 실패" });
+    }
+  },
+
+  createDictEntry: async (term, meaning, note) => {
+    try {
+      const entry = await dictionaryService.createEntry({ term, meaning, note }) as DictionaryEntry;
+      set((s) => ({ dictEntries: [entry, ...s.dictEntries] }));
+      toast.success(`"${term}" 등록 완료`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "등록 실패";
+      set({ dictError: msg });
+      toast.error(msg);
+      throw err;
+    }
+  },
+
+  updateDictEntry: async (id, term, meaning, note) => {
+    try {
+      const entry = await dictionaryService.updateEntry(id, { term, meaning, note }) as DictionaryEntry;
+      set((s) => ({ dictEntries: s.dictEntries.map((e) => (e.id === id ? entry : e)) }));
+      toast.success(`"${term}" 수정 완료`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "수정 실패";
+      set({ dictError: msg });
+      toast.error(msg);
+      throw err;
+    }
+  },
+
+  deleteDictEntry: async (id) => {
+    const prev = get().dictEntries;
+    set((s) => ({ dictEntries: s.dictEntries.filter((e) => e.id !== id) }));
+    try {
+      await dictionaryService.deleteEntry(id);
+    } catch (err) {
+      set({ dictEntries: prev, dictError: err instanceof Error ? err.message : "삭제 실패" });
+      toast.error("삭제 실패");
+    }
+  },
+
+  setDictSearch: (dictSearch) => set({ dictSearch }),
+  openDictPanel: () => set({ dictPanelOpen: true }),
+  closeDictPanel: () => set({ dictPanelOpen: false }),
+  toggleDictPanel: () => set((s) => ({ dictPanelOpen: !s.dictPanelOpen })),
 }));

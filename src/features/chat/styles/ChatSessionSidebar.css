@@ -61,6 +61,15 @@
   justify-content: center;
 }
 
+.sidebar-nav-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.chat-session-sidebar.collapsed .sidebar-nav-buttons {
+  flex-direction: column;
+}
+
 .files-nav-btn {
   display: flex;
   align-items: center;

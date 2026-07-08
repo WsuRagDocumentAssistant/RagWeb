@@ -13,6 +13,12 @@ export const API_ENDPOINTS = {
     LIST_FILES: "/file/list",
     DELETE_FILE: "/file/delete/:fileId",
   },
+  DICTIONARY: {
+    LIST: "/dictionary/list",
+    CREATE: "/dictionary/create",
+    UPDATE: "/dictionary/update/:id",
+    DELETE: "/dictionary/delete/:id",
+  },
 };
 
 /**

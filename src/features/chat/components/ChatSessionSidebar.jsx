@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Plus, Trash2, MessageSquare, FolderCog, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Plus, Trash2, MessageSquare, FolderCog, BookOpen, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAppState } from "@/core/AppState";
 import "../styles/ChatSessionSidebar.css";
 
@@ -19,6 +19,7 @@ export default function ChatSessionSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const isFilesPage = location.pathname === "/files";
+  const isDictionaryPage = location.pathname === "/dictionary";
 
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSED_KEY) === "1");
   const isCollapsed = collapsed && !sidebarOpen;
@@ -51,6 +52,11 @@ export default function ChatSessionSidebar() {
     closeSidebar();
   };
 
+  const handleNavigateDictionary = () => {
+    navigate("/dictionary");
+    closeSidebar();
+  };
+
   return (
     <>
       {sidebarOpen && <div className="sidebar-backdrop" onClick={closeSidebar} />}
@@ -59,6 +65,9 @@ export default function ChatSessionSidebar() {
           <button className="collapse-btn" onClick={toggleCollapsed} title={collapsed ? "펼치기" : "접기"}>
             {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
           </button>
+        </div>
+
+        <div className="sidebar-nav-buttons">
           <button
             className={["files-nav-btn", isFilesPage && "active"].filter(Boolean).join(" ")}
             onClick={handleNavigateFiles}
@@ -66,6 +75,14 @@ export default function ChatSessionSidebar() {
           >
             <FolderCog size={16} />
             {!isCollapsed && "파일 관리"}
+          </button>
+          <button
+            className={["files-nav-btn", isDictionaryPage && "active"].filter(Boolean).join(" ")}
+            onClick={handleNavigateDictionary}
+            title="사전"
+          >
+            <BookOpen size={16} />
+            {!isCollapsed && "사전"}
           </button>
         </div>
 
@@ -85,7 +102,7 @@ export default function ChatSessionSidebar() {
             {sessions.map((session) => (
               <div
                 key={session.id}
-                className={["session-item", !isFilesPage && session.id === activeSessionId && "active"].filter(Boolean).join(" ")}
+                className={["session-item", !isFilesPage && !isDictionaryPage && session.id === activeSessionId && "active"].filter(Boolean).join(" ")}
                 onClick={() => handleSelectSession(session.id)}
               >
                 <MessageSquare size={14} className="session-icon" />

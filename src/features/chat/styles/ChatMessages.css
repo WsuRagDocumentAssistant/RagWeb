@@ -16,6 +16,6 @@
 }
 
 .messages-empty-icon { font-size: 48px; line-height: 1; }
-.messages-empty-title { font-size: 20px; font-weight: 700; color: #e2e2f0; }
-.messages-empty-desc { font-size: 14px; color: #555570; line-height: 1.7; }
-.messages-empty-desc span { color: #9b9bff; }
+.messages-empty-title { font-size: 20px; font-weight: 700; color: #1a1a2e; }
+.messages-empty-desc { font-size: 14px; color: #6b6b80; line-height: 1.7; }
+.messages-empty-desc span { color: #4f46e5; }

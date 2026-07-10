@@ -10,7 +10,7 @@
   height: 15px;
   padding: 0 3px;
   border-radius: 8px;
-  background-color: #ef4444;
+  background-color: #dc2626;
   color: #fff;
   font-size: 10px;
   font-weight: 700;
@@ -27,8 +27,8 @@
   display: flex;
   flex-direction: column;
   border-radius: 12px;
-  border: 1px solid #2a2a3e;
-  background-color: #1e1e2e;
+  border: 1px solid #e2e2ea;
+  background-color: #ffffff;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   z-index: 20;
   overflow: hidden;
@@ -36,17 +36,17 @@
 
 .file-notifications-title {
   padding: 12px 14px;
-  border-bottom: 1px solid #2a2a3e;
+  border-bottom: 1px solid #e2e2ea;
   font-size: 13px;
   font-weight: 700;
-  color: #e2e2f0;
+  color: #1a1a2e;
 }
 
 .file-notifications-empty {
   padding: 24px 14px;
   text-align: center;
   font-size: 13px;
-  color: #555570;
+  color: #6b6b80;
 }
 
 .file-notifications-list {

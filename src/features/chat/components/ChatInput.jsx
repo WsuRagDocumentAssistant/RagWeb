@@ -1,11 +1,22 @@
 import React, { useState, useRef } from "react";
-import { ArrowUp, Loader2, Plus } from "lucide-react";
+import { ArrowUp, Loader2, Plus, ChevronDown } from "lucide-react";
+import { useAppState } from "@/core/AppState";
 import "../styles/ChatInput.css";
+
+const MODEL_LABEL = {
+  claude: "Claude",
+  gpt: "GPT",
+  gemini: "Gemini",
+  local: "로컬 모델",
+};
 
 export default function ChatInput({ onSend, onUpload, isLoading }) {
   const [text, setText] = useState("");
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
+
+  const provider = useAppState((s) => s.provider);
+  const setProvider = useAppState((s) => s.setProvider);
 
   const handleSend = () => {
     const trimmed = text.trim();
@@ -46,12 +57,23 @@ export default function ChatInput({ onSend, onUpload, isLoading }) {
           value={text}
           onChange={handleInput}
           onKeyDown={handleKeyDown}
-          placeholder="메시지를 입력하세요… (Shift+Enter 줄바꿈)"
+          placeholder="텍스트를 입력해주세요"
           rows={1}
         />
         <button className={`send-btn ${canSend ? "active" : "disabled"}`} onClick={handleSend} disabled={!canSend}>
           {isLoading ? <Loader2 size={16} className="animate-spin" /> : <ArrowUp size={16} />}
         </button>
+      </div>
+      <div className="model-select-row">
+        <label className="model-select">
+          모델 선택
+          <select value={provider} onChange={(e) => setProvider(e.target.value)}>
+            {Object.entries(MODEL_LABEL).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+          <ChevronDown size={13} className="model-select-caret" />
+        </label>
       </div>
     </div>
   );

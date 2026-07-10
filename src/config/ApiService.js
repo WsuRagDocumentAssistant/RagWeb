@@ -15,9 +15,6 @@ export const API_ENDPOINTS = {
   },
   DICTIONARY: {
     LIST: "/dictionary/list",
-    CREATE: "/dictionary/create",
-    UPDATE: "/dictionary/update/:id",
-    DELETE: "/dictionary/delete/:id",
   },
 };
 

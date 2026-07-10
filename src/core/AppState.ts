@@ -102,23 +102,25 @@ interface UISlice {
   closeSidebar: () => void;
 }
 
+interface PromptSlice {
+  systemPrompt: string;
+  promptWeight: number;
+  setSystemPrompt: (text: string) => void;
+  setPromptWeight: (weight: number) => void;
+  resetPrompt: () => void;
+}
+
 interface DictionarySlice {
   dictEntries: DictionaryEntry[];
   dictLoading: boolean;
   dictError: string | null;
-  dictSearch: string;
   dictPanelOpen: boolean;
   fetchDictEntries: (search?: string) => Promise<void>;
-  createDictEntry: (term: string, meaning: string, note?: string) => Promise<void>;
-  updateDictEntry: (id: number, term: string, meaning: string, note?: string) => Promise<void>;
-  deleteDictEntry: (id: number) => Promise<void>;
-  setDictSearch: (query: string) => void;
-  openDictPanel: () => void;
   closeDictPanel: () => void;
   toggleDictPanel: () => void;
 }
 
-type AppStore = ChatSlice & FileSlice & AuthSlice & UISlice & DictionarySlice;
+type AppStore = ChatSlice & FileSlice & AuthSlice & UISlice & DictionarySlice & PromptSlice;
 
 // ─── 헬퍼 ─────────────────────────────────────────────────────────────────────
 
@@ -127,6 +129,9 @@ const genId = (prefix: string) =>
 
 const SESSIONS_KEY = "chat_sessions";
 const ACTIVE_SESSION_KEY = "chat_active_session";
+const PROMPT_TEXT_KEY = "system_prompt";
+const PROMPT_WEIGHT_KEY = "prompt_weight";
+const DEFAULT_PROMPT_WEIGHT = 50;
 
 const makeSession = (): ChatSession => ({
   id: genId("session"),
@@ -408,7 +413,6 @@ export const useAppState = create<AppStore>((set, get) => ({
   dictEntries: [],
   dictLoading: false,
   dictError: null,
-  dictSearch: "",
   dictPanelOpen: false,
 
   fetchDictEntries: async (search) => {
@@ -421,45 +425,26 @@ export const useAppState = create<AppStore>((set, get) => ({
     }
   },
 
-  createDictEntry: async (term, meaning, note) => {
-    try {
-      const entry = await dictionaryService.createEntry({ term, meaning, note }) as DictionaryEntry;
-      set((s) => ({ dictEntries: [entry, ...s.dictEntries] }));
-      toast.success(`"${term}" 등록 완료`);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "등록 실패";
-      set({ dictError: msg });
-      toast.error(msg);
-      throw err;
-    }
-  },
-
-  updateDictEntry: async (id, term, meaning, note) => {
-    try {
-      const entry = await dictionaryService.updateEntry(id, { term, meaning, note }) as DictionaryEntry;
-      set((s) => ({ dictEntries: s.dictEntries.map((e) => (e.id === id ? entry : e)) }));
-      toast.success(`"${term}" 수정 완료`);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "수정 실패";
-      set({ dictError: msg });
-      toast.error(msg);
-      throw err;
-    }
-  },
-
-  deleteDictEntry: async (id) => {
-    const prev = get().dictEntries;
-    set((s) => ({ dictEntries: s.dictEntries.filter((e) => e.id !== id) }));
-    try {
-      await dictionaryService.deleteEntry(id);
-    } catch (err) {
-      set({ dictEntries: prev, dictError: err instanceof Error ? err.message : "삭제 실패" });
-      toast.error("삭제 실패");
-    }
-  },
-
-  setDictSearch: (dictSearch) => set({ dictSearch }),
-  openDictPanel: () => set({ dictPanelOpen: true }),
   closeDictPanel: () => set({ dictPanelOpen: false }),
   toggleDictPanel: () => set((s) => ({ dictPanelOpen: !s.dictPanelOpen })),
+
+  // ── Prompt ────────────────────────────────────────────────────────────────
+  systemPrompt: localStorage.getItem(PROMPT_TEXT_KEY) ?? "",
+  promptWeight: Number(localStorage.getItem(PROMPT_WEIGHT_KEY)) || DEFAULT_PROMPT_WEIGHT,
+
+  setSystemPrompt: (systemPrompt) => {
+    localStorage.setItem(PROMPT_TEXT_KEY, systemPrompt);
+    set({ systemPrompt });
+  },
+
+  setPromptWeight: (promptWeight) => {
+    localStorage.setItem(PROMPT_WEIGHT_KEY, String(promptWeight));
+    set({ promptWeight });
+  },
+
+  resetPrompt: () => {
+    localStorage.removeItem(PROMPT_TEXT_KEY);
+    localStorage.removeItem(PROMPT_WEIGHT_KEY);
+    set({ systemPrompt: "", promptWeight: DEFAULT_PROMPT_WEIGHT });
+  },
 }));

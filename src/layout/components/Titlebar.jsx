@@ -2,7 +2,6 @@ import React from "react";
 import { Bot, Menu, LogOut } from "lucide-react";
 import { useAppState } from "@/core/AppState";
 import FileNotifications from "./FileNotifications";
-import { DictionaryPanel } from "@/features/dictionary";
 import "../styles/Titlebar.css";
 
 export default function Titlebar() {
@@ -19,7 +18,6 @@ export default function Titlebar() {
         <span className="titlebar-title">AI RAG Assistant</span>
       </div>
       <div className="titlebar-spacer" />
-      <DictionaryPanel />
       <FileNotifications />
       <button className="titlebar-menu-btn" onClick={logout} title="로그아웃">
         <LogOut size={18} />

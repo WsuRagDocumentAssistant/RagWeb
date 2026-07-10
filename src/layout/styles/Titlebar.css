@@ -3,8 +3,8 @@
   align-items: center;
   height: 52px;
   padding: 0 16px;
-  background-color: #12121e;
-  border-bottom: 1px solid #2a2a3e;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e2e2ea;
   gap: 12px;
   flex-shrink: 0;
 }
@@ -18,11 +18,11 @@
   border-radius: 8px;
   border: none;
   background: none;
-  color: #555570;
+  color: #6b6b80;
   cursor: pointer;
   transition: color 0.15s, background 0.15s;
 }
-.titlebar-menu-btn:hover { color: #e2e2f0; background: #2a2a3e; }
+.titlebar-menu-btn:hover { color: #1a1a2e; background: #e2e2ea; }
 
 .titlebar-brand {
   display: flex;
@@ -30,12 +30,12 @@
   gap: 8px;
 }
 
-.titlebar-icon { color: #9b9bff; }
+.titlebar-icon { color: #4f46e5; }
 
 .titlebar-title {
   font-size: 15px;
   font-weight: 700;
-  color: #e2e2f0;
+  color: #1a1a2e;
 }
 
 .titlebar-spacer { flex: 1; }

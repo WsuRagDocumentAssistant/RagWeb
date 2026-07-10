@@ -1,10 +1,18 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Plus, Trash2, MessageSquare, FolderCog, BookOpen, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Plus, Trash2, MessageSquare, FileText, SlidersHorizontal, Globe, BookOpen, Upload, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAppState } from "@/core/AppState";
+import { DictionaryPanel } from "@/features/dictionary";
 import "../styles/ChatSessionSidebar.css";
 
 const COLLAPSED_KEY = "chat_sidebar_collapsed";
+
+const NAV_ITEMS = [
+  { path: "/documents", label: "문서 보기", icon: FileText },
+  { path: "/prompt", label: "프롬프트 수정", icon: SlidersHorizontal },
+  { path: "/external-api", label: "외부 API 연동", icon: Globe },
+  { path: "/files", label: "파일 임베딩", icon: Upload },
+];
 
 export default function ChatSessionSidebar() {
   const sessions = useAppState((s) => s.sessions);
@@ -15,11 +23,12 @@ export default function ChatSessionSidebar() {
   const user = useAppState((s) => s.user);
   const sidebarOpen = useAppState((s) => s.sidebarOpen);
   const closeSidebar = useAppState((s) => s.closeSidebar);
+  const dictPanelOpen = useAppState((s) => s.dictPanelOpen);
+  const toggleDictPanel = useAppState((s) => s.toggleDictPanel);
 
   const navigate = useNavigate();
   const location = useLocation();
-  const isFilesPage = location.pathname === "/files";
-  const isDictionaryPage = location.pathname === "/dictionary";
+  const isChatPage = location.pathname === "/chat";
 
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSED_KEY) === "1");
   const isCollapsed = collapsed && !sidebarOpen;
@@ -47,13 +56,8 @@ export default function ChatSessionSidebar() {
     closeSidebar();
   };
 
-  const handleNavigateFiles = () => {
-    navigate("/files");
-    closeSidebar();
-  };
-
-  const handleNavigateDictionary = () => {
-    navigate("/dictionary");
+  const handleNavigate = (path) => {
+    navigate(path);
     closeSidebar();
   };
 
@@ -69,40 +73,44 @@ export default function ChatSessionSidebar() {
 
         <div className="sidebar-nav-buttons">
           <button
-            className={["files-nav-btn", isFilesPage && "active"].filter(Boolean).join(" ")}
-            onClick={handleNavigateFiles}
-            title="파일 관리"
+            className={["sidebar-nav-btn", isChatPage && "active"].filter(Boolean).join(" ")}
+            onClick={handleNewChat}
+            title="새 채팅"
           >
-            <FolderCog size={16} />
-            {!isCollapsed && "파일 관리"}
+            <Plus size={16} />
+            {!isCollapsed && "새 채팅"}
           </button>
-          <button
-            className={["files-nav-btn", isDictionaryPage && "active"].filter(Boolean).join(" ")}
-            onClick={handleNavigateDictionary}
-            title="사전"
-          >
-            <BookOpen size={16} />
-            {!isCollapsed && "사전"}
-          </button>
-        </div>
+          {NAV_ITEMS.map(({ path, label, icon: Icon }) => (
+            <button
+              key={path}
+              className={["sidebar-nav-btn", location.pathname === path && "active"].filter(Boolean).join(" ")}
+              onClick={() => handleNavigate(path)}
+              title={label}
+            >
+              <Icon size={16} />
+              {!isCollapsed && label}
+            </button>
+          ))}
 
-        {isCollapsed ? (
-          <button className="collapsed-new-btn" onClick={handleNewChat} title="새 대화">
-            <Plus size={16} />
-          </button>
-        ) : (
-          <button className="new-session-btn" onClick={handleNewChat}>
-            <Plus size={16} />
-            새 대화
-          </button>
-        )}
+          <div className="sidebar-nav-item-wrap">
+            <button
+              className={["sidebar-nav-btn", dictPanelOpen && "active"].filter(Boolean).join(" ")}
+              onClick={toggleDictPanel}
+              title="사전 보기"
+            >
+              <BookOpen size={16} />
+              {!isCollapsed && "사전 보기"}
+            </button>
+            <DictionaryPanel />
+          </div>
+        </div>
 
         {!isCollapsed && (
           <div className="session-list">
             {sessions.map((session) => (
               <div
                 key={session.id}
-                className={["session-item", !isFilesPage && !isDictionaryPage && session.id === activeSessionId && "active"].filter(Boolean).join(" ")}
+                className={["session-item", isChatPage && session.id === activeSessionId && "active"].filter(Boolean).join(" ")}
                 onClick={() => handleSelectSession(session.id)}
               >
                 <MessageSquare size={14} className="session-icon" />

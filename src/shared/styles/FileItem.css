@@ -4,15 +4,15 @@
   gap: 12px;
   padding: 12px;
   border-radius: 12px;
-  border: 1px solid #2a2a3e;
-  background-color: #1e1e2e;
+  border: 1px solid #e2e2ea;
+  background-color: #ffffff;
 }
 
 .file-icon {
   width: 40px;
   height: 40px;
   border-radius: 8px;
-  background-color: #12121e;
+  background-color: #f4f4f8;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -23,7 +23,7 @@
 .file-name {
   font-size: 14px;
   font-weight: 500;
-  color: #e2e2f0;
+  color: #1a1a2e;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -36,7 +36,7 @@
   margin-top: 3px;
 }
 
-.file-size { font-size: 11px; color: #555570; }
+.file-size { font-size: 11px; color: #6b6b80; }
 
 .status-chip {
   display: flex;
@@ -50,7 +50,7 @@
 
 .file-error-msg {
   font-size: 11px;
-  color: #ef4444;
+  color: #dc2626;
   margin-top: 2px;
   overflow: hidden;
   text-overflow: ellipsis;

@@ -3,7 +3,9 @@ import { RootLayout, ProtectedRoute } from "@/layout";
 import { LoginPage } from "@/features/auth";
 import { ChatPage } from "@/features/chat";
 import { FileManagementPage } from "@/features/files";
-import { DictionaryPage } from "@/features/dictionary";
+import { DocumentsPage } from "@/features/documents";
+import { PromptPage } from "@/features/prompt";
+import { ExternalApiPage } from "@/features/external-api";
 
 export const router = createBrowserRouter([
   {
@@ -16,8 +18,10 @@ export const router = createBrowserRouter([
         element: <ProtectedRoute />,
         children: [
           { path: "chat", element: <ChatPage /> },
+          { path: "documents", element: <DocumentsPage /> },
+          { path: "prompt", element: <PromptPage /> },
+          { path: "external-api", element: <ExternalApiPage /> },
           { path: "files", element: <FileManagementPage /> },
-          { path: "dictionary", element: <DictionaryPage /> },
         ],
       },
       { path: "*", element: <Navigate to="/chat" replace /> },

@@ -25,6 +25,20 @@
   border: 1px solid #dc2626;
 }
 
+.bubble-clickable {
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.bubble-clickable:hover {
+  border-color: #4f46e580;
+}
+
+.bubble-selected {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px #eef0ff;
+}
+
 .bubble-row {
   display: flex;
   gap: 10px;

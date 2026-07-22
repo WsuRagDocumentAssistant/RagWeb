@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { useAppState } from "@/core/AppState";
 import "../styles/DictionaryPanel.css";
+
+const DEFAULT_POSITION = { x: 260, y: 90 };
 
 export default function DictionaryPanel() {
   const entries = useAppState((s) => s.dictEntries);
@@ -9,21 +11,32 @@ export default function DictionaryPanel() {
   const closeDictPanel = useAppState((s) => s.closeDictPanel);
   const fetchDictEntries = useAppState((s) => s.fetchDictEntries);
 
-  const panelRef = useRef(null);
   const [query, setQuery] = useState("");
+  const [position, setPosition] = useState(DEFAULT_POSITION);
+  const dragState = useRef(null);
 
   useEffect(() => {
     if (dictPanelOpen) fetchDictEntries();
   }, [dictPanelOpen]);
 
   useEffect(() => {
-    if (!dictPanelOpen) return;
-    const handleClickOutside = (e) => {
-      if (panelRef.current && !panelRef.current.contains(e.target)) closeDictPanel();
+    const handleMouseMove = (e) => {
+      if (!dragState.current) return;
+      const { startX, startY, originX, originY } = dragState.current;
+      setPosition({ x: originX + (e.clientX - startX), y: originY + (e.clientY - startY) });
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [dictPanelOpen]);
+    const handleMouseUp = () => { dragState.current = null; };
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, []);
+
+  const handleDragStart = (e) => {
+    dragState.current = { startX: e.clientX, startY: e.clientY, originX: position.x, originY: position.y };
+  };
 
   if (!dictPanelOpen) return null;
 
@@ -34,8 +47,13 @@ export default function DictionaryPanel() {
   });
 
   return (
-    <div className="dictionary-panel" ref={panelRef}>
-      <h3 className="dictionary-panel-title">동음이의어 사전</h3>
+    <div className="dictionary-panel" style={{ left: position.x, top: position.y }}>
+      <div className="dictionary-panel-title" onMouseDown={handleDragStart}>
+        <span>동음이의어 사전</span>
+        <button className="dictionary-panel-close" onClick={closeDictPanel} title="닫기">
+          <X size={14} />
+        </button>
+      </div>
 
       <div className="dp-toolbar">
         <div className="dp-search">

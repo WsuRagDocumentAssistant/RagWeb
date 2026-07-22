@@ -4,7 +4,7 @@ const getToken = () => localStorage.getItem("auth_token");
 
 /**
  * @param {{ message: string, provider: string, sessionId?: string, fileIds?: string[] }} payload
- * @returns {Promise<{ reply: string, sessionId: string }>}
+ * @returns {Promise<{ reply: string, sessionId: string, sources?: { id: string, name: string }[] }>}
  */
 export async function sendMessage(payload) {
   const token = getToken();

@@ -4,12 +4,18 @@ import * as chatService from "@/features/chat/services/ChatService";
 import * as fileService from "@/features/files/services/FileService";
 import * as authService from "@/features/auth/services/AuthService";
 import * as dictionaryService from "@/features/dictionary/services/DictionaryService";
+import { getDummyChatReply, DUMMY_FILES, DUMMY_DICTIONARY_ENTRIES, DUMMY_SOURCE_FILES } from "@/shared";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 
 export type AIProvider = "claude" | "gpt" | "gemini" | "local";
 export type MessageRole = "user" | "assistant";
 export type EmbeddingFileStatus = "uploading" | "processing" | "ready" | "error";
+
+export interface MessageSource {
+  id: string;
+  name: string;
+}
 
 export interface Message {
   id: string;
@@ -18,6 +24,7 @@ export interface Message {
   createdAt: number;
   isStreaming?: boolean;
   error?: string;
+  sources?: MessageSource[];
 }
 
 export interface ChatSession {
@@ -216,6 +223,12 @@ export const useAppState = create<AppStore>((set, get) => ({
         provider,
         sessionId: activeSession?.backendSessionId ?? undefined,
       });
+      const readyFileSources = get().files
+        .filter((f) => f.status === "ready")
+        .slice(0, 2)
+        .map((f) => ({ id: f.id, name: f.name }));
+      const sources: MessageSource[] = (data.sources as MessageSource[] | undefined)
+        ?? (readyFileSources.length > 0 ? readyFileSources : DUMMY_SOURCE_FILES.slice(0, 1));
       set((s) => ({
         sessions: s.sessions.map((sess) =>
           sess.id === sessionId
@@ -223,7 +236,7 @@ export const useAppState = create<AppStore>((set, get) => ({
                 ...sess,
                 backendSessionId: data.sessionId ?? sess.backendSessionId,
                 messages: sess.messages.map((m) =>
-                  m.id === asstMsg.id ? { ...m, content: data.reply, isStreaming: false } : m,
+                  m.id === asstMsg.id ? { ...m, content: data.reply, isStreaming: false, sources } : m,
                 ),
               }
             : sess,
@@ -231,20 +244,21 @@ export const useAppState = create<AppStore>((set, get) => ({
         chatLoading: false,
       }));
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "알 수 없는 오류";
+      // 서버 연결 실패 시에도 화면을 계속 확인할 수 있도록 더미 답변으로 대체
+      const dummy = getDummyChatReply();
       set((s) => ({
         sessions: s.sessions.map((sess) =>
           sess.id === sessionId
             ? {
                 ...sess,
                 messages: sess.messages.map((m) =>
-                  m.id === asstMsg.id ? { ...m, isStreaming: false, error: msg } : m,
+                  m.id === asstMsg.id ? { ...m, content: dummy.reply, isStreaming: false, sources: dummy.sources } : m,
                 ),
               }
             : sess,
         ),
         chatLoading: false,
-        chatError: msg,
+        chatError: err instanceof Error ? err.message : "알 수 없는 오류",
       }));
     }
     persistSessions(get().sessions);
@@ -286,7 +300,8 @@ export const useAppState = create<AppStore>((set, get) => ({
       const files = await fileService.listFiles();
       set({ files, fileError: null });
     } catch (err) {
-      set({ fileError: err instanceof Error ? err.message : "파일 목록 조회 실패" });
+      // 서버 연결 실패 시 더미 파일 목록으로 대체
+      set({ files: DUMMY_FILES as EmbeddingFile[], fileError: err instanceof Error ? err.message : "파일 목록 조회 실패" });
     }
   },
 
@@ -421,7 +436,8 @@ export const useAppState = create<AppStore>((set, get) => ({
       const data = await dictionaryService.listEntries(search) as { entries: DictionaryEntry[] };
       set({ dictEntries: data.entries ?? [], dictLoading: false });
     } catch (err) {
-      set({ dictLoading: false, dictError: err instanceof Error ? err.message : "사전 목록 조회 실패" });
+      // 서버 연결 실패 시 더미 사전 항목으로 대체
+      set({ dictEntries: DUMMY_DICTIONARY_ENTRIES, dictLoading: false, dictError: err instanceof Error ? err.message : "사전 목록 조회 실패" });
     }
   },
 

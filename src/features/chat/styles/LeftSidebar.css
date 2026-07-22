@@ -7,7 +7,7 @@
   background-color: #ffffff;
   border-right: 1px solid #e2e2ea;
   flex-shrink: 0;
-  overflow-y: auto;
+  overflow: visible;
   transition: width 0.15s;
 }
 
@@ -89,10 +89,6 @@
   padding: 0;
 }
 
-.sidebar-nav-item-wrap {
-  position: relative;
-}
-
 .collapse-btn {
   display: flex;
   align-items: center;
@@ -114,6 +110,8 @@
   flex-direction: column;
   gap: 4px;
   flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .session-item {

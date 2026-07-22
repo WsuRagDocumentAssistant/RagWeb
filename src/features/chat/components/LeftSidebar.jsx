@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Plus, Trash2, MessageSquare, FileText, SlidersHorizontal, Globe, BookOpen, Upload, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAppState } from "@/core/AppState";
 import { DictionaryPanel } from "@/features/dictionary";
-import "../styles/ChatSessionSidebar.css";
+import "../styles/LeftSidebar.css";
 
 const COLLAPSED_KEY = "chat_sidebar_collapsed";
 
@@ -14,7 +14,7 @@ const NAV_ITEMS = [
   { path: "/files", label: "파일 임베딩", icon: Upload },
 ];
 
-export default function ChatSessionSidebar() {
+export default function LeftSidebar() {
   const sessions = useAppState((s) => s.sessions);
   const activeSessionId = useAppState((s) => s.activeSessionId);
   const createSession = useAppState((s) => s.createSession);
@@ -92,18 +92,17 @@ export default function ChatSessionSidebar() {
             </button>
           ))}
 
-          <div className="sidebar-nav-item-wrap">
-            <button
-              className={["sidebar-nav-btn", dictPanelOpen && "active"].filter(Boolean).join(" ")}
-              onClick={toggleDictPanel}
-              title="사전 보기"
-            >
-              <BookOpen size={16} />
-              {!isCollapsed && "사전 보기"}
-            </button>
-            <DictionaryPanel />
-          </div>
+          <button
+            className={["sidebar-nav-btn", dictPanelOpen && "active"].filter(Boolean).join(" ")}
+            onClick={toggleDictPanel}
+            title="사전 보기"
+          >
+            <BookOpen size={16} />
+            {!isCollapsed && "사전 보기"}
+          </button>
         </div>
+
+        <DictionaryPanel />
 
         {!isCollapsed && (
           <div className="session-list">

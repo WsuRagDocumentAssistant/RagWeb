@@ -1,14 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Search, Trash2 } from "lucide-react";
+import { DUMMY_EXTERNAL_APIS } from "@/shared";
 import "../styles/ExternalApiPage.css";
-
-const MOCK_APIS = [
-  { id: "1", url: "Naver.com/api/v1/....", source: "Naver", category: "검색", status: "ready" },
-  { id: "2", url: "Naver.com/api/v1/....", source: "Naver", category: "검색", status: "ready" },
-  { id: "3", url: "Naver.com/api/v1/....", source: "Naver", category: "검색", status: "ready" },
-  { id: "4", url: "정부24.co.kr/api.v1/...", source: "정부24", category: "행정", status: "error" },
-  { id: "5", url: "google.com/api/v1/...", source: "Google", category: "검색", status: "processing" },
-];
 
 const SOURCES = ["전체", "Naver", "정부24", "Google"];
 const CATEGORIES = ["전체", "검색", "행정"];
@@ -20,7 +13,7 @@ function StatusRing({ status }) {
 }
 
 export default function ExternalApiPage() {
-  const [apis, setApis] = useState(MOCK_APIS);
+  const [apis, setApis] = useState(DUMMY_EXTERNAL_APIS);
   const [query, setQuery] = useState("");
   const [source, setSource] = useState("전체");
   const [category, setCategory] = useState("전체");

@@ -2,14 +2,24 @@ import React from "react";
 import { Loader2 } from "lucide-react";
 import "../styles/MessageBubble.css";
 
-export default function MessageBubble({ message }) {
+export default function MessageBubble({ message, isSelected, onSelect }) {
   const isUser = message.role === "user";
   const hasError = !!message.error;
+  const isClickable = !isUser && !message.isStreaming && !hasError && !!onSelect;
 
   return (
     <div className={`bubble-row ${isUser ? "flex-row-reverse" : ""}`}>
       {!isUser && <div className="bubble-avatar">AI</div>}
-      <div className={["bubble", isUser ? "bubble-user" : "bubble-assistant", hasError && "bubble-error"].filter(Boolean).join(" ")}>
+      <div
+        className={[
+          "bubble",
+          isUser ? "bubble-user" : "bubble-assistant",
+          hasError && "bubble-error",
+          isClickable && "bubble-clickable",
+          isSelected && "bubble-selected",
+        ].filter(Boolean).join(" ")}
+        onClick={isClickable ? () => onSelect(message.id) : undefined}
+      >
         {message.isStreaming && message.content === "" ? (
           <Loader2 size={16} className="animate-spin text-[#9b9bff]" />
         ) : hasError ? (

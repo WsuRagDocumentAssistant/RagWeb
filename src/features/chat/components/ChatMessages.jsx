@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { MessageBubble } from "@/shared";
 import "../styles/ChatMessages.css";
 
-export default function ChatMessages({ messages }) {
+export default function ChatMessages({ messages, selectedMessageId, onSelectMessage }) {
   const bottomRef = useRef(null);
 
   useEffect(() => {
@@ -24,7 +24,14 @@ export default function ChatMessages({ messages }) {
 
   return (
     <div className="messages-scroll">
-      {messages.map((msg) => <MessageBubble key={msg.id} message={msg} />)}
+      {messages.map((msg) => (
+        <MessageBubble
+          key={msg.id}
+          message={msg}
+          isSelected={msg.id === selectedMessageId}
+          onSelect={onSelectMessage}
+        />
+      ))}
       <div ref={bottomRef} />
     </div>
   );

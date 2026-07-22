@@ -1,18 +1,13 @@
 import React, { useMemo, useState } from "react";
 import { Search, Download, X } from "lucide-react";
+import { DUMMY_DOCUMENTS } from "@/shared";
 import "../styles/DocumentsPage.css";
-
-const MOCK_DOCUMENTS = [
-  { id: "1", period: "2026.06.01 ~ 2026.08.31", name: "RAG 기반 어쩌구 프로젝트.hwpx", team: "학생 지원팀", category: "SW 지원 문서" },
-  { id: "2", period: "2026.06.01 ~ 2026.08.31", name: "RAG 기반 어쩌구 프로젝트.hwpx", team: "학생 지원팀", category: "SW 지원 문서" },
-  { id: "3", period: "2026.06.01 ~ 2026.08.31", name: "RAG 기반 어쩌구 프로젝트.hwpx", team: "학생 지원팀", category: "SW 지원 문서" },
-];
 
 const TEAMS = ["전체", "학생 지원팀"];
 const CATEGORIES = ["전체", "SW 지원 문서"];
 
 export default function DocumentsPage() {
-  const [documents, setDocuments] = useState(MOCK_DOCUMENTS);
+  const [documents, setDocuments] = useState(DUMMY_DOCUMENTS);
   const [query, setQuery] = useState("");
   const [team, setTeam] = useState("전체");
   const [category, setCategory] = useState("전체");

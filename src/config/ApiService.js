@@ -1,37 +1,73 @@
+import { TaskType } from "./TaskType";
+
 export const SERVER_URL = "https://lowest-similarly-chemical-sam.trycloudflare.com";
 
+// RAG_Router(Gateway)는 단일 엔드포인트만 가진다. 실제 분기는 task_type으로 이루어진다.
+const TASK_ENDPOINT = "/api/task";
+
+// 기능별 호출부는 여기서 자신의 task_type을 조회해서 쓴다.
 export const API_ENDPOINTS = {
   USER: {
-    LOGIN: "/users/login",
-    REGISTER: "/users/create/user",
-    LOGOUT: "/users/logout",
-    SSO_LOGIN: "/users/sso/login", // POST { sso_token } → { access_token, user }
+    LOGIN: TaskType.LOGIN,
+    REGISTER: TaskType.REGISTER,
+    LOGOUT: TaskType.LOGOUT,
+    SSO_LOGIN: TaskType.SSO_LOGIN,
   },
   RAG: {
-    CHAT: "/chat",
-    UPLOAD_FILE: "/file/upload",
-    LIST_FILES: "/file/list",
-    DELETE_FILE: "/file/delete/:fileId",
+    CHAT: TaskType.USER_QUERY,
+    UPLOAD_FILE: TaskType.FILE_UPLOAD,
+    LIST_FILES: TaskType.FILE_LIST,
+    DELETE_FILE: TaskType.FILE_DELETE,
   },
   DICTIONARY: {
-    LIST: "/dictionary/list",
+    LIST: TaskType.DICTIONARY_LIST,
   },
 };
+
+/** @returns {string} Gateway의 단일 통신 엔드포인트 URL */
+export function getTaskUrl() {
+  return `${SERVER_URL}${TASK_ENDPOINT}`;
+}
 
 /**
  * @param {keyof typeof API_ENDPOINTS} serverType
  * @param {string} endpointKey
- * @param {Record<string, string|number>} replacements
  */
-export function createApiUrl(serverType, endpointKey, replacements = {}) {
-  const endpoints = API_ENDPOINTS[serverType?.toUpperCase()];
-  if (!endpoints?.[endpointKey]) {
-    throw new Error(`[createApiUrl] 없는 엔드포인트: ${serverType}.${endpointKey}`);
+export function getTaskType(serverType, endpointKey) {
+  const taskType = API_ENDPOINTS[serverType?.toUpperCase()]?.[endpointKey];
+  if (!taskType) {
+    throw new Error(`[getTaskType] 없는 task_type: ${serverType}.${endpointKey}`);
+  }
+  return taskType;
+}
+
+/**
+ * Gateway에 { task_type, session_id, payload } 봉투로 요청하고,
+ * { task_type, status, result, error_message } 응답에서 result만 반환한다.
+ * status가 error/timeout이거나 HTTP 오류면 error_message로 throw한다.
+ * @param {keyof typeof API_ENDPOINTS} serverType
+ * @param {string} endpointKey
+ * @param {{ sessionId?: string|null, payload?: Record<string, any>, token?: string }} [options]
+ * @returns {Promise<any>}
+ */
+export async function postTask(serverType, endpointKey, options = {}) {
+  const { sessionId, payload, token } = options;
+  const task_type = getTaskType(serverType, endpointKey);
+
+  const res = await fetch(getTaskUrl(), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ task_type, session_id: sessionId ?? null, payload: payload ?? {} }),
+  });
+
+  const body = await res.json().catch(() => ({}));
+
+  if (!res.ok || body.status === "error" || body.status === "timeout") {
+    throw new Error(body.error_message ?? `요청 실패 (${res.status})`);
   }
 
-  let path = endpoints[endpointKey];
-  for (const [k, v] of Object.entries(replacements)) {
-    path = path.replace(`:${k}`, String(v));
-  }
-  return `${SERVER_URL}${path}`;
+  return body.result;
 }

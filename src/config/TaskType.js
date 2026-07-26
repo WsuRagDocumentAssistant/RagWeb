@@ -1,0 +1,17 @@
+// Gateway(RAG_Router)로 보내는 요청의 task_type 상수 목록.
+export const TaskType = {
+  // USER
+  LOGIN: "LOGIN",
+  REGISTER: "REGISTER",
+  LOGOUT: "LOGOUT",
+  SSO_LOGIN: "SSO_LOGIN",
+
+  // RAG
+  USER_QUERY: "USER_QUERY",
+  FILE_UPLOAD: "FILE_UPLOAD",
+  FILE_LIST: "FILE_LIST",
+  FILE_DELETE: "FILE_DELETE",
+
+  // DICTIONARY
+  DICTIONARY_LIST: "DICTIONARY_LIST",
+};

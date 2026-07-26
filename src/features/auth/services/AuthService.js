@@ -1,12 +1,4 @@
-import { createApiUrl } from "@/config/ApiService";
-
-async function parseResponse(res) {
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(body.message ?? body.detail ?? `요청 실패 (${res.status})`);
-  }
-  return body.data ?? body;
-}
+import { postTask } from "@/config/ApiService";
 
 /**
  * @param {string} email
@@ -14,12 +6,7 @@ async function parseResponse(res) {
  * @returns {Promise<{ access_token: string, user: any }>}
  */
 export async function login(email, password) {
-  const res = await fetch(createApiUrl("USER", "LOGIN"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
-  return parseResponse(res);
+  return postTask("USER", "LOGIN", { payload: { email, password } });
 }
 
 /**
@@ -29,12 +16,7 @@ export async function login(email, password) {
  * @returns {Promise<any>}
  */
 export async function register(email, password, name) {
-  const res = await fetch(createApiUrl("USER", "REGISTER"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, name }),
-  });
-  return parseResponse(res);
+  return postTask("USER", "REGISTER", { payload: { email, password, name } });
 }
 
 /**
@@ -43,19 +25,10 @@ export async function register(email, password, name) {
  * @returns {Promise<{ access_token: string, user: any }>}
  */
 export async function ssoLogin(ssoToken) {
-  const res = await fetch(createApiUrl("USER", "SSO_LOGIN"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sso_token: ssoToken }),
-  });
-  return parseResponse(res);
+  return postTask("USER", "SSO_LOGIN", { payload: { sso_token: ssoToken } });
 }
 
 /** @param {string} [token] */
 export async function logout(token) {
-  const res = await fetch(createApiUrl("USER", "LOGOUT"), {
-    method: "POST",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  return parseResponse(res);
+  return postTask("USER", "LOGOUT", { token });
 }

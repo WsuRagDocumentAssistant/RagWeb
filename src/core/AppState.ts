@@ -34,6 +34,7 @@ export interface Message {
   sources?: MessageSource[];
   provider?: AIProvider | "merged";
   turnId?: string;
+  preferred?: boolean;
 }
 
 export interface ChatSession {
@@ -82,6 +83,7 @@ interface ChatSlice {
   sendMessage: (text: string) => Promise<void>;
   toggleProvider: (p: AIProvider) => void;
   mergeTurn: (turnId: string) => Promise<void>;
+  choosePreference: (turnId: string, choice: string) => void;
   createSession: () => void;
   selectSession: (id: string) => void;
   deleteSession: (id: string) => void;
@@ -376,6 +378,20 @@ export const useAppState = create<AppStore>((set, get) => ({
         ),
       }));
     }
+    persistSessions(get().sessions);
+  },
+
+  choosePreference: (turnId, choice) => {
+    set((s) => ({
+      sessions: s.sessions.map((sess) => ({
+        ...sess,
+        messages: sess.messages.map((m) =>
+          m.turnId === turnId && m.role === "assistant" && m.provider !== "merged"
+            ? { ...m, preferred: choice === "tie" ? true : m.id === choice }
+            : m,
+        ),
+      })),
+    }));
     persistSessions(get().sessions);
   },
 

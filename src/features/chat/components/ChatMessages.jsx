@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from "react";
-import { GitMerge } from "lucide-react";
+import { Check, Equal, GitMerge, ThumbsUp } from "lucide-react";
 import { MessageBubble } from "@/shared";
 import "../styles/ChatMessages.css";
 
@@ -27,7 +27,7 @@ function groupIntoTurns(messages) {
   return turns;
 }
 
-export default function ChatMessages({ messages, selectedMessageId, onSelectMessage, onMergeTurn }) {
+export default function ChatMessages({ messages, selectedMessageId, onSelectMessage, onMergeTurn, onChoosePreference }) {
   const bottomRef = useRef(null);
   const turns = useMemo(() => groupIntoTurns(messages), [messages]);
 
@@ -54,6 +54,8 @@ export default function ChatMessages({ messages, selectedMessageId, onSelectMess
         const compareAssistants = turn.assistants.filter((m) => m.provider && m.provider !== "merged");
         const mergedMsg = turn.assistants.find((m) => m.provider === "merged");
         const isCompare = compareAssistants.length >= 2;
+        const hasPreference = compareAssistants.some((m) => m.preferred);
+        const allDone = compareAssistants.every((m) => !m.isStreaming);
 
         return (
           <div key={turn.user?.id ?? `turn-${i}`} className="message-turn">
@@ -63,8 +65,22 @@ export default function ChatMessages({ messages, selectedMessageId, onSelectMess
               <>
                 <div className="compare-grid">
                   {compareAssistants.map((m) => (
-                    <div key={m.id} className="compare-column">
-                      <span className="compare-column-label">{MODEL_LABEL[m.provider] ?? m.provider}</span>
+                    <div
+                      key={m.id}
+                      className={[
+                        "compare-card",
+                        m.preferred && "preferred",
+                        hasPreference && !m.preferred && "dimmed",
+                      ].filter(Boolean).join(" ")}
+                    >
+                      <div className="compare-card-header">
+                        <span className="compare-card-label">{MODEL_LABEL[m.provider] ?? m.provider}</span>
+                        {m.preferred && (
+                          <span className="compare-card-badge">
+                            <Check size={11} /> 선택됨
+                          </span>
+                        )}
+                      </div>
                       <MessageBubble
                         message={m}
                         isSelected={m.id === selectedMessageId}
@@ -74,21 +90,52 @@ export default function ChatMessages({ messages, selectedMessageId, onSelectMess
                   ))}
                 </div>
 
-                {!mergedMsg && compareAssistants.every((m) => !m.isStreaming) && (
-                  <button className="merge-btn" onClick={() => onMergeTurn?.(turn.user?.turnId)}>
-                    <GitMerge size={13} />
-                    두 결과 병합하기
-                  </button>
+                {allDone && (
+                  <div className="compare-actions">
+                    <div className="preference-bar">
+                      <span className="preference-bar-label">어떤 응답이 더 나은가요?</span>
+                      <div className="preference-buttons">
+                        {compareAssistants.map((m) => (
+                          <button
+                            key={m.id}
+                            className={`preference-btn ${m.preferred ? "active" : ""}`}
+                            onClick={() => onChoosePreference?.(turn.user?.turnId, m.id)}
+                          >
+                            <ThumbsUp size={13} />
+                            {MODEL_LABEL[m.provider] ?? m.provider}
+                          </button>
+                        ))}
+                        <button
+                          className={`preference-btn ${hasPreference && compareAssistants.every((m) => m.preferred) ? "active" : ""}`}
+                          onClick={() => onChoosePreference?.(turn.user?.turnId, "tie")}
+                        >
+                          <Equal size={13} />
+                          비슷해요
+                        </button>
+                      </div>
+                    </div>
+
+                    {!mergedMsg && (
+                      <button className="merge-btn" onClick={() => onMergeTurn?.(turn.user?.turnId)}>
+                        <GitMerge size={13} />
+                        두 결과 병합하기
+                      </button>
+                    )}
+                  </div>
                 )}
 
                 {mergedMsg && (
-                  <div className="compare-column compare-merged">
-                    <span className="compare-column-label">{MODEL_LABEL.merged}</span>
-                    <MessageBubble
-                      message={mergedMsg}
-                      isSelected={mergedMsg.id === selectedMessageId}
-                      onSelect={onSelectMessage}
-                    />
+                  <div className="compare-merged">
+                    <div className="compare-card">
+                      <div className="compare-card-header">
+                        <span className="compare-card-label">{MODEL_LABEL.merged}</span>
+                      </div>
+                      <MessageBubble
+                        message={mergedMsg}
+                        isSelected={mergedMsg.id === selectedMessageId}
+                        onSelect={onSelectMessage}
+                      />
+                    </div>
                   </div>
                 )}
               </>

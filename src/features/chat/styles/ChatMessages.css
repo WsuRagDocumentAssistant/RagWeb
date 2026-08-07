@@ -30,37 +30,111 @@
 .compare-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 10px;
   padding: 0 16px;
 }
 
-.compare-column {
+.compare-card {
   display: flex;
   flex-direction: column;
   gap: 4px;
   min-width: 0;
+  border: 1px solid #e2e2ea;
+  border-radius: 14px;
+  padding: 8px 4px 6px;
+  background-color: #ffffff;
+  transition: border-color 0.15s, box-shadow 0.15s, opacity 0.15s;
 }
 
-.compare-column .bubble-row { padding: 0; }
-.compare-column .bubble { max-width: 100%; }
+.compare-card.preferred {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px #eef0ff;
+}
 
-.compare-column-label {
+.compare-card.dimmed {
+  opacity: 0.55;
+}
+
+.compare-card .bubble-row { padding: 0 8px; }
+.compare-card .bubble { max-width: 100%; }
+
+.compare-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px 4px;
+}
+
+.compare-card-label {
   font-size: 11px;
   font-weight: 700;
   color: #4f46e5;
-  padding-left: 38px;
+}
+
+.compare-card-badge {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #4f46e5;
+  background-color: #eef0ff;
+  border-radius: 999px;
+  padding: 2px 8px;
 }
 
 .compare-merged {
   padding: 0 16px;
 }
 
+.compare-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 16px 10px;
+}
+
+.preference-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.preference-bar-label {
+  font-size: 12px;
+  color: #6b6b80;
+}
+
+.preference-buttons {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.preference-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid #e2e2ea;
+  background-color: #ffffff;
+  color: #1a1a2e;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s, color 0.15s;
+}
+.preference-btn:hover { border-color: #4f46e580; color: #4f46e5; background-color: #f7f7ff; }
+.preference-btn.active { border-color: #4f46e5; color: #4f46e5; background-color: #eef0ff; }
+
 .merge-btn {
-  align-self: center;
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 4px 0;
   padding: 6px 14px;
   border-radius: 999px;
   border: 1px solid #4f46e580;

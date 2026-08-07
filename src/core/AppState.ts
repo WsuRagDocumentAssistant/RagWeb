@@ -4,7 +4,14 @@ import * as chatService from "@/features/chat/services/ChatService";
 import * as fileService from "@/features/files/services/FileService";
 import * as authService from "@/features/auth/services/AuthService";
 import * as dictionaryService from "@/features/dictionary/services/DictionaryService";
-import { getDummyChatReply, DUMMY_FILES, DUMMY_DICTIONARY_ENTRIES, DUMMY_SOURCE_FILES } from "@/shared";
+import {
+  getDummyChatReply,
+  DUMMY_FILES,
+  DUMMY_DICTIONARY_ENTRIES,
+  DUMMY_SOURCE_FILES,
+  DUMMY_LOGIN_CREDENTIALS,
+  DUMMY_USER,
+} from "@/shared";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 
@@ -489,6 +496,14 @@ export const useAppState = create<AppStore>((set, get) => ({
       localStorage.setItem("auth_user", JSON.stringify(data.user));
       set({ user: data.user, token: data.access_token, authLoading: false });
     } catch (err) {
+      // 서버 연결 실패 시에도 화면을 계속 확인할 수 있도록 더미 계정으로 로그인 허용
+      if (email === DUMMY_LOGIN_CREDENTIALS.email && password === DUMMY_LOGIN_CREDENTIALS.password) {
+        const token = "dummy-token";
+        localStorage.setItem("auth_token", token);
+        localStorage.setItem("auth_user", JSON.stringify(DUMMY_USER));
+        set({ user: DUMMY_USER as AuthUser, token, authLoading: false, authError: null });
+        return;
+      }
       set({ authLoading: false, authError: err instanceof Error ? err.message : "로그인 실패" });
     }
   },

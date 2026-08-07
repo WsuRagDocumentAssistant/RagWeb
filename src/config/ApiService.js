@@ -15,6 +15,7 @@ export const API_ENDPOINTS = {
   },
   RAG: {
     CHAT: TaskType.USER_QUERY,
+    MERGE: TaskType.MERGE_RESULTS,
     UPLOAD_FILE: TaskType.FILE_UPLOAD,
     LIST_FILES: TaskType.FILE_LIST,
     DELETE_FILE: TaskType.FILE_DELETE,

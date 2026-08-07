@@ -13,3 +13,15 @@ export async function sendMessage({ message, provider, sessionId, fileIds }) {
     payload: { query: message, provider, fileIds },
   });
 }
+
+/**
+ * 서로 다른 모델의 답변 2개를 하나로 병합해서 받아온다.
+ * @param {{ query: string, answers: { provider: string, content: string }[] }} payload
+ * @returns {Promise<{ reply: string }>}
+ */
+export async function mergeResults({ query, answers }) {
+  return postTask("RAG", "MERGE", {
+    token: getToken(),
+    payload: { query, answers },
+  });
+}

@@ -25,6 +25,8 @@ export interface Message {
   isStreaming?: boolean;
   error?: string;
   sources?: MessageSource[];
+  provider?: AIProvider | "merged";
+  turnId?: string;
 }
 
 export interface ChatSession {
@@ -69,12 +71,13 @@ interface ChatSlice {
   activeSessionId: string | null;
   chatLoading: boolean;
   chatError: string | null;
-  provider: AIProvider;
+  selectedProviders: AIProvider[];
   sendMessage: (text: string) => Promise<void>;
+  toggleProvider: (p: AIProvider) => void;
+  mergeTurn: (turnId: string) => Promise<void>;
   createSession: () => void;
   selectSession: (id: string) => void;
   deleteSession: (id: string) => void;
-  setProvider: (p: AIProvider) => void;
   setChatError: (e: string | null) => void;
 }
 
@@ -150,6 +153,15 @@ const makeSession = (): ChatSession => ({
 
 const deriveTitle = (text: string) => (text.length > 20 ? `${text.slice(0, 20)}…` : text);
 
+const MODEL_LABEL: Record<string, string> = {
+  claude: "Claude",
+  gpt: "GPT",
+  gemini: "Gemini",
+  local: "로컬 모델",
+};
+
+const MAX_COMPARE_PROVIDERS = 2;
+
 const loadSessions = (): ChatSession[] => {
   try {
     const raw = localStorage.getItem(SESSIONS_KEY);
@@ -184,10 +196,10 @@ export const useAppState = create<AppStore>((set, get) => ({
   activeSessionId: initialActiveSessionId,
   chatLoading: false,
   chatError: null,
-  provider: "claude",
+  selectedProviders: ["gpt"],
 
   sendMessage: async (text) => {
-    let { activeSessionId, sessions, provider } = get();
+    let { activeSessionId, sessions, selectedProviders } = get();
 
     if (!activeSessionId || !sessions.some((s) => s.id === activeSessionId)) {
       const session = makeSession();
@@ -198,8 +210,18 @@ export const useAppState = create<AppStore>((set, get) => ({
     }
 
     const sessionId = activeSessionId;
-    const userMsg: Message = { id: genId("u"), role: "user", content: text, createdAt: Date.now() };
-    const asstMsg: Message = { id: genId("a"), role: "assistant", content: "", createdAt: Date.now(), isStreaming: true };
+    const providers = selectedProviders.length > 0 ? selectedProviders : (["gpt"] as AIProvider[]);
+    const turnId = genId("turn");
+    const userMsg: Message = { id: genId("u"), role: "user", content: text, createdAt: Date.now(), turnId };
+    const asstMsgs: Message[] = providers.map((provider) => ({
+      id: genId("a"),
+      role: "assistant",
+      content: "",
+      createdAt: Date.now(),
+      isStreaming: true,
+      provider,
+      turnId,
+    }));
 
     set((s) => ({
       sessions: s.sessions.map((sess) =>
@@ -207,7 +229,7 @@ export const useAppState = create<AppStore>((set, get) => ({
           ? {
               ...sess,
               title: sess.messages.length === 0 ? deriveTitle(text) : sess.title,
-              messages: [...sess.messages, userMsg, asstMsg],
+              messages: [...sess.messages, userMsg, ...asstMsgs],
             }
           : sess,
       ),
@@ -216,49 +238,135 @@ export const useAppState = create<AppStore>((set, get) => ({
     }));
     persistSessions(get().sessions);
 
+    await Promise.all(
+      asstMsgs.map(async (asstMsg) => {
+        try {
+          const activeSession = get().sessions.find((sess) => sess.id === sessionId);
+          const data = await chatService.sendMessage({
+            message: text,
+            provider: asstMsg.provider as AIProvider,
+            sessionId: activeSession?.backendSessionId ?? undefined,
+          });
+          const readyFileSources = get().files
+            .filter((f) => f.status === "ready")
+            .slice(0, 2)
+            .map((f) => ({ id: f.id, name: f.name }));
+          const sources: MessageSource[] = (data.sources as MessageSource[] | undefined)
+            ?? (readyFileSources.length > 0 ? readyFileSources : DUMMY_SOURCE_FILES.slice(0, 1));
+          set((s) => ({
+            sessions: s.sessions.map((sess) =>
+              sess.id === sessionId
+                ? {
+                    ...sess,
+                    backendSessionId: data.sessionId ?? sess.backendSessionId,
+                    messages: sess.messages.map((m) =>
+                      m.id === asstMsg.id ? { ...m, content: data.reply, isStreaming: false, sources } : m,
+                    ),
+                  }
+                : sess,
+            ),
+          }));
+        } catch (err) {
+          // 서버 연결 실패 시에도 화면을 계속 확인할 수 있도록 더미 답변으로 대체
+          const dummy = getDummyChatReply();
+          set((s) => ({
+            sessions: s.sessions.map((sess) =>
+              sess.id === sessionId
+                ? {
+                    ...sess,
+                    messages: sess.messages.map((m) =>
+                      m.id === asstMsg.id ? { ...m, content: dummy.reply, isStreaming: false, sources: dummy.sources } : m,
+                    ),
+                  }
+                : sess,
+            ),
+            chatError: err instanceof Error ? err.message : "알 수 없는 오류",
+          }));
+        }
+      }),
+    );
+
+    set({ chatLoading: false });
+    persistSessions(get().sessions);
+  },
+
+  toggleProvider: (p) => {
+    const { selectedProviders } = get();
+    if (selectedProviders.includes(p)) {
+      if (selectedProviders.length === 1) {
+        toast.info("최소 1개의 모델은 선택되어 있어야 합니다.");
+        return;
+      }
+      set({ selectedProviders: selectedProviders.filter((x) => x !== p) });
+      return;
+    }
+    if (selectedProviders.length >= MAX_COMPARE_PROVIDERS) {
+      toast.info(`최대 ${MAX_COMPARE_PROVIDERS}개까지 비교할 수 있습니다.`);
+      return;
+    }
+    set({ selectedProviders: [...selectedProviders, p] });
+  },
+
+  mergeTurn: async (turnId) => {
+    const { sessions, activeSessionId } = get();
+    const session = sessions.find((s) => s.id === activeSessionId);
+    if (!session) return;
+
+    const turnAssistants = session.messages.filter(
+      (m) => m.turnId === turnId && m.role === "assistant" && m.provider !== "merged",
+    );
+    if (turnAssistants.length < 2) return;
+    const userMsg = session.messages.find((m) => m.turnId === turnId && m.role === "user");
+
+    const mergedMsg: Message = {
+      id: genId("m"),
+      role: "assistant",
+      content: "",
+      createdAt: Date.now(),
+      isStreaming: true,
+      provider: "merged",
+      turnId,
+    };
+    set((s) => ({
+      sessions: s.sessions.map((sess) =>
+        sess.id === session.id ? { ...sess, messages: [...sess.messages, mergedMsg] } : sess,
+      ),
+    }));
+    persistSessions(get().sessions);
+
     try {
-      const activeSession = get().sessions.find((sess) => sess.id === sessionId);
-      const data = await chatService.sendMessage({
-        message: text,
-        provider,
-        sessionId: activeSession?.backendSessionId ?? undefined,
+      const data = await chatService.mergeResults({
+        query: userMsg?.content ?? "",
+        answers: turnAssistants.map((m) => ({ provider: m.provider as string, content: m.content })),
       });
-      const readyFileSources = get().files
-        .filter((f) => f.status === "ready")
-        .slice(0, 2)
-        .map((f) => ({ id: f.id, name: f.name }));
-      const sources: MessageSource[] = (data.sources as MessageSource[] | undefined)
-        ?? (readyFileSources.length > 0 ? readyFileSources : DUMMY_SOURCE_FILES.slice(0, 1));
       set((s) => ({
         sessions: s.sessions.map((sess) =>
-          sess.id === sessionId
+          sess.id === session.id
             ? {
                 ...sess,
-                backendSessionId: data.sessionId ?? sess.backendSessionId,
                 messages: sess.messages.map((m) =>
-                  m.id === asstMsg.id ? { ...m, content: data.reply, isStreaming: false, sources } : m,
+                  m.id === mergedMsg.id ? { ...m, content: data.reply, isStreaming: false } : m,
                 ),
               }
             : sess,
         ),
-        chatLoading: false,
       }));
-    } catch (err) {
-      // 서버 연결 실패 시에도 화면을 계속 확인할 수 있도록 더미 답변으로 대체
-      const dummy = getDummyChatReply();
+    } catch {
+      // 병합 전용 백엔드가 아직 없을 때를 대비한 클라이언트 측 대체 병합
+      const fallback = turnAssistants
+        .map((m) => `**${MODEL_LABEL[m.provider as string] ?? m.provider}**\n${m.content}`)
+        .join("\n\n---\n\n");
       set((s) => ({
         sessions: s.sessions.map((sess) =>
-          sess.id === sessionId
+          sess.id === session.id
             ? {
                 ...sess,
                 messages: sess.messages.map((m) =>
-                  m.id === asstMsg.id ? { ...m, content: dummy.reply, isStreaming: false, sources: dummy.sources } : m,
+                  m.id === mergedMsg.id ? { ...m, content: fallback, isStreaming: false } : m,
                 ),
               }
             : sess,
         ),
-        chatLoading: false,
-        chatError: err instanceof Error ? err.message : "알 수 없는 오류",
       }));
     }
     persistSessions(get().sessions);
@@ -286,7 +394,6 @@ export const useAppState = create<AppStore>((set, get) => ({
     persistActiveSessionId(get().activeSessionId);
   },
 
-  setProvider: (provider) => set({ provider }),
   setChatError: (chatError) => set({ chatError }),
 
   // ── File ──────────────────────────────────────────────────────────────────

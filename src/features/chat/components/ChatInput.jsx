@@ -1,22 +1,23 @@
 import React, { useState, useRef } from "react";
-import { ArrowUp, Loader2, Plus, ChevronDown } from "lucide-react";
+import { ArrowUp, Loader2, Plus } from "lucide-react";
 import { useAppState } from "@/core/AppState";
 import "../styles/ChatInput.css";
 
 const MODEL_LABEL = {
   claude: "Claude",
-  gpt: "GPT",
   gemini: "Gemini",
-  local: "로컬 모델",
+  gpt: "GPT",
 };
+
+const CHECKABLE_PROVIDERS = ["claude", "gemini", "gpt"];
 
 export default function ChatInput({ onSend, onUpload, isLoading }) {
   const [text, setText] = useState("");
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  const provider = useAppState((s) => s.provider);
-  const setProvider = useAppState((s) => s.setProvider);
+  const selectedProviders = useAppState((s) => s.selectedProviders);
+  const toggleProvider = useAppState((s) => s.toggleProvider);
 
   const handleSend = () => {
     const trimmed = text.trim();
@@ -65,15 +66,25 @@ export default function ChatInput({ onSend, onUpload, isLoading }) {
         </button>
       </div>
       <div className="model-select-row">
-        <label className="model-select">
-          모델 선택
-          <select value={provider} onChange={(e) => setProvider(e.target.value)}>
-            {Object.entries(MODEL_LABEL).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-          <ChevronDown size={13} className="model-select-caret" />
-        </label>
+        <span className="model-select-label">모델 선택</span>
+        <div className="model-checkbox-group">
+          {CHECKABLE_PROVIDERS.map((p) => (
+            <label
+              key={p}
+              className={`model-checkbox ${selectedProviders.includes(p) ? "checked" : ""}`}
+            >
+              <input
+                type="checkbox"
+                checked={selectedProviders.includes(p)}
+                onChange={() => toggleProvider(p)}
+              />
+              {MODEL_LABEL[p]}
+            </label>
+          ))}
+        </div>
+        {selectedProviders.length === 2 && (
+          <span className="model-compare-hint">2개 모델 비교 중</span>
+        )}
       </div>
     </div>
   );

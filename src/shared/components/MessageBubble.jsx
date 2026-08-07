@@ -1,4 +1,6 @@
 import React from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Loader2 } from "lucide-react";
 import "../styles/MessageBubble.css";
 
@@ -24,8 +26,12 @@ export default function MessageBubble({ message, isSelected, onSelect }) {
           <Loader2 size={16} className="animate-spin text-[#9b9bff]" />
         ) : hasError ? (
           <span style={{ color: "#f87171" }}>{message.error}</span>
-        ) : (
+        ) : isUser ? (
           message.content
+        ) : (
+          <div className="markdown-body">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+          </div>
         )}
       </div>
     </div>

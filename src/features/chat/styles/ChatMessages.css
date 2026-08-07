@@ -19,3 +19,56 @@
 .messages-empty-title { font-size: 20px; font-weight: 700; color: #1a1a2e; }
 .messages-empty-desc { font-size: 14px; color: #6b6b80; line-height: 1.7; }
 .messages-empty-desc span { color: #4f46e5; }
+
+.message-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 0 16px;
+}
+
+.compare-column {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.compare-column .bubble-row { padding: 0; }
+.compare-column .bubble { max-width: 100%; }
+
+.compare-column-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #4f46e5;
+  padding-left: 38px;
+}
+
+.compare-merged {
+  padding: 0 16px;
+}
+
+.merge-btn {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid #4f46e580;
+  background-color: #eef0ff;
+  color: #4f46e5;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.merge-btn:hover { background-color: #e0e3ff; }

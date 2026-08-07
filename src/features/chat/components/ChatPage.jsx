@@ -14,6 +14,7 @@ export default function ChatPage() {
   const chatLoading = useAppState((s) => s.chatLoading);
   const sendMessage = useAppState((s) => s.sendMessage);
   const uploadFile = useAppState((s) => s.uploadFile);
+  const mergeTurn = useAppState((s) => s.mergeTurn);
 
   const messages = sessions.find((s) => s.id === activeSessionId)?.messages ?? [];
 
@@ -88,6 +89,7 @@ export default function ChatPage() {
           messages={messages}
           selectedMessageId={selectedMessageId}
           onSelectMessage={handleSelectMessage}
+          onMergeTurn={mergeTurn}
         />
 
         <ChatInput onSend={sendMessage} onUpload={uploadFile} isLoading={chatLoading} />

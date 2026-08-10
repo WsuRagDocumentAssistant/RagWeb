@@ -1,15 +1,15 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Plus, Trash2, MessageSquare, FileText, SlidersHorizontal, Globe, BookOpen, Upload, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Plus, Trash2, MessageSquare, FileText, Globe, BookOpen, Upload, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAppState } from "@/core/AppState";
 import { DictionaryPanel } from "@/features/dictionary";
 import "../styles/LeftSidebar.css";
 
 const COLLAPSED_KEY = "chat_sidebar_collapsed";
 
+// 프롬프트 수정/SVG 편집기는 비활성화 — 라우트는 남겨두되 사이드바에는 노출하지 않음
 const NAV_ITEMS = [
   { path: "/documents", label: "문서 보기", icon: FileText },
-  { path: "/prompt", label: "프롬프트 수정", icon: SlidersHorizontal },
   { path: "/external-api", label: "외부 API 연동", icon: Globe },
   { path: "/files", label: "파일 임베딩", icon: Upload },
 ];
@@ -103,6 +103,8 @@ export default function LeftSidebar() {
         </div>
 
         <DictionaryPanel />
+
+        <div className="sidebar-divider" />
 
         {!isCollapsed && (
           <div className="session-list">

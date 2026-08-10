@@ -105,6 +105,13 @@
 }
 .collapse-btn:hover { color: #1a1a2e; border-color: #4f46e580; }
 
+.sidebar-divider {
+  width: 100%;
+  height: 1px;
+  flex-shrink: 0;
+  background-color: #e2e2ea;
+}
+
 .session-list {
   display: flex;
   flex-direction: column;

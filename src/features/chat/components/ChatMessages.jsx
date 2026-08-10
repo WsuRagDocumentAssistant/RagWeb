@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from "react";
-import { Check, Equal, GitMerge, ThumbsUp } from "lucide-react";
+import { Check, ThumbsUp } from "lucide-react";
 import { MessageBubble } from "@/shared";
 import "../styles/ChatMessages.css";
 
@@ -9,6 +9,14 @@ const MODEL_LABEL = {
   gpt: "GPT",
   local: "로컬 모델",
   merged: "병합 결과",
+};
+
+const MODEL_COLOR = {
+  claude: "#d97757",
+  gemini: "#2563eb",
+  gpt: "#10a37f",
+  local: "#6b6b80",
+  merged: "#4f46e5",
 };
 
 function groupIntoTurns(messages) {
@@ -53,9 +61,10 @@ export default function ChatMessages({ messages, selectedMessageId, onSelectMess
       {turns.map((turn, i) => {
         const compareAssistants = turn.assistants.filter((m) => m.provider && m.provider !== "merged");
         const mergedMsg = turn.assistants.find((m) => m.provider === "merged");
+        const chosenMsg = compareAssistants.find((m) => m.preferred);
         const isCompare = compareAssistants.length >= 2;
-        const hasPreference = compareAssistants.some((m) => m.preferred);
         const allDone = compareAssistants.every((m) => !m.isStreaming);
+        const resolved = !!chosenMsg || !!mergedMsg;
 
         return (
           <div key={turn.user?.id ?? `turn-${i}`} className="message-turn">
@@ -64,33 +73,37 @@ export default function ChatMessages({ messages, selectedMessageId, onSelectMess
             {isCompare ? (
               <>
                 <div className="compare-grid">
-                  {compareAssistants.map((m) => (
-                    <div
-                      key={m.id}
-                      className={[
-                        "compare-card",
-                        m.preferred && "preferred",
-                        hasPreference && !m.preferred && "dimmed",
-                      ].filter(Boolean).join(" ")}
-                    >
-                      <div className="compare-card-header">
-                        <span className="compare-card-label">{MODEL_LABEL[m.provider] ?? m.provider}</span>
-                        {m.preferred && (
-                          <span className="compare-card-badge">
-                            <Check size={11} /> 선택됨
-                          </span>
-                        )}
+                  {compareAssistants.map((m) => {
+                    const accent = MODEL_COLOR[m.provider] ?? "#4f46e5";
+                    return (
+                      <div
+                        key={m.id}
+                        className={[
+                          "compare-card",
+                          m.preferred && "preferred",
+                          chosenMsg && !m.preferred && "dimmed",
+                        ].filter(Boolean).join(" ")}
+                        style={{ "--accent": accent }}
+                      >
+                        <div className="compare-card-header">
+                          <span className="compare-card-label">{MODEL_LABEL[m.provider] ?? m.provider}</span>
+                          {m.preferred && (
+                            <span className="compare-card-badge">
+                              <Check size={11} /> 선택됨
+                            </span>
+                          )}
+                        </div>
+                        <MessageBubble
+                          message={m}
+                          isSelected={m.id === selectedMessageId}
+                          onSelect={onSelectMessage}
+                        />
                       </div>
-                      <MessageBubble
-                        message={m}
-                        isSelected={m.id === selectedMessageId}
-                        onSelect={onSelectMessage}
-                      />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
-                {allDone && (
+                {allDone && !resolved && (
                   <div className="compare-actions">
                     <div className="preference-bar">
                       <span className="preference-bar-label">어떤 응답이 더 나은가요?</span>
@@ -98,7 +111,8 @@ export default function ChatMessages({ messages, selectedMessageId, onSelectMess
                         {compareAssistants.map((m) => (
                           <button
                             key={m.id}
-                            className={`preference-btn ${m.preferred ? "active" : ""}`}
+                            className="preference-btn"
+                            style={{ "--accent": MODEL_COLOR[m.provider] ?? "#4f46e5" }}
                             onClick={() => onChoosePreference?.(turn.user?.turnId, m.id)}
                           >
                             <ThumbsUp size={13} />
@@ -106,21 +120,24 @@ export default function ChatMessages({ messages, selectedMessageId, onSelectMess
                           </button>
                         ))}
                         <button
-                          className={`preference-btn ${hasPreference && compareAssistants.every((m) => m.preferred) ? "active" : ""}`}
-                          onClick={() => onChoosePreference?.(turn.user?.turnId, "tie")}
+                          className="preference-btn"
+                          onClick={() => onMergeTurn?.(turn.user?.turnId)}
                         >
-                          <Equal size={13} />
-                          비슷해요
+                          병합
                         </button>
                       </div>
                     </div>
+                  </div>
+                )}
 
-                    {!mergedMsg && (
-                      <button className="merge-btn" onClick={() => onMergeTurn?.(turn.user?.turnId)}>
-                        <GitMerge size={13} />
-                        두 결과 병합하기
-                      </button>
-                    )}
+                {chosenMsg && (
+                  <div className="compare-resolved" style={{ "--accent": MODEL_COLOR[chosenMsg.provider] ?? "#4f46e5" }}>
+                    <span className="compare-resolved-label">선택한 답변 ({MODEL_LABEL[chosenMsg.provider] ?? chosenMsg.provider})</span>
+                    <MessageBubble
+                      message={chosenMsg}
+                      isSelected={chosenMsg.id === selectedMessageId}
+                      onSelect={onSelectMessage}
+                    />
                   </div>
                 )}
 

@@ -6,6 +6,7 @@ import * as authService from "@/features/auth/services/AuthService";
 import * as dictionaryService from "@/features/dictionary/services/DictionaryService";
 import {
   getDummyChatReply,
+  getDummyMergedReply,
   DUMMY_FILES,
   DUMMY_DICTIONARY_ENTRIES,
   DUMMY_SOURCE_FILES,
@@ -277,7 +278,7 @@ export const useAppState = create<AppStore>((set, get) => ({
           }));
         } catch (err) {
           // 서버 연결 실패 시에도 화면을 계속 확인할 수 있도록 더미 답변으로 대체
-          const dummy = getDummyChatReply();
+          const dummy = getDummyChatReply(text, asstMsg.provider as string);
           set((s) => ({
             sessions: s.sessions.map((sess) =>
               sess.id === sessionId
@@ -361,8 +362,10 @@ export const useAppState = create<AppStore>((set, get) => ({
         ),
       }));
     } catch {
-      // 병합 전용 백엔드가 아직 없을 때를 대비한 클라이언트 측 대체 병합
-      const fallback = turnAssistants
+      // 병합 전용 백엔드가 아직 없을 때를 대비한 클라이언트 측 대체 병합.
+      // 매칭되는 더미 시나리오가 있으면 그 병합 답변을 쓰고, 없으면 단순 이어붙이기로 대체.
+      const providers = turnAssistants.map((m) => m.provider as string);
+      const fallback = getDummyMergedReply(userMsg?.content, providers) ?? turnAssistants
         .map((m) => `**${MODEL_LABEL[m.provider as string] ?? m.provider}**\n${m.content}`)
         .join("\n\n---\n\n");
       set((s) => ({

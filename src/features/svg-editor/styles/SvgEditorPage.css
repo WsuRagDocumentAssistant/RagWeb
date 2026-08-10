@@ -1,0 +1,189 @@
+.svged-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 480px;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+.svged-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.svged-toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.svged-inspector-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 8px;
+  border-top: 1px dashed var(--color-border);
+}
+
+.svged-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.svged-btn:hover:not(:disabled) { border-color: var(--color-accent); }
+.svged-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.svged-btn-danger { color: #dc2626; border-color: #f3c9c9; }
+.svged-btn-danger:hover:not(:disabled) { border-color: #dc2626; background-color: #fef2f2; }
+
+.svged-btn-ghost { border-color: transparent; background: transparent; }
+.svged-btn-ghost:hover { background-color: var(--color-bg); }
+
+.svged-filename {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.svged-inspector-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+.svged-inspector-field-grow { flex: 1; min-width: 200px; }
+
+.svged-inspector-field input {
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-size: 13px;
+  min-width: 0;
+}
+.svged-inspector-field input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+.svged-inspector-field input[type="number"] { width: 80px; }
+
+.svged-hint {
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+.svged-canvas-wrap {
+  position: relative;
+  flex: 1;
+  overflow: auto;
+  padding: 20px;
+}
+
+.svged-host svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+.svged-host text,
+.svged-host tspan {
+  cursor: pointer;
+}
+.svged-host text:hover,
+.svged-host tspan:hover {
+  outline: 1px dashed var(--color-accent);
+  outline-offset: 2px;
+}
+
+.svged-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: var(--color-muted);
+  font-size: 13px;
+  text-align: center;
+  padding: 40px;
+}
+
+/* 캔버스 위 플로팅 편집 오버레이 */
+.svged-cell-input {
+  position: absolute;
+  font-size: 14px;
+  text-align: center;
+  border: 2px solid var(--color-accent);
+  border-radius: 4px;
+  padding: 2px 6px;
+  z-index: 10;
+  background-color: var(--color-surface);
+  color: var(--color-text);
+}
+.svged-cell-input:focus { outline: none; }
+
+.svged-sel-box {
+  position: absolute;
+  border: 1px dashed var(--color-accent);
+  z-index: 9;
+  pointer-events: none;
+}
+
+.svged-resize-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background-color: var(--color-accent);
+  border: 2px solid var(--color-surface);
+  border-radius: 50%;
+  z-index: 11;
+  cursor: nwse-resize;
+  pointer-events: auto;
+}
+
+.svged-move-handle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background-color: #d85a30;
+  border: 2px solid var(--color-surface);
+  border-radius: 3px;
+  z-index: 11;
+  cursor: move;
+  pointer-events: auto;
+}
+
+.svged-delete-handle {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background-color: #e24b4a;
+  border: 2px solid var(--color-surface);
+  border-radius: 50%;
+  z-index: 11;
+  cursor: pointer;
+  pointer-events: auto;
+  color: #fff;
+  font-size: 12px;
+  line-height: 12px;
+  text-align: center;
+  font-weight: bold;
+}

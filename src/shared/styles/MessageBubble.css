@@ -46,20 +46,31 @@
   align-items: flex-end;
 }
 
-.bubble-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background-color: #4f46e5;
+.bubble-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: 76%;
+  min-width: 0;
+}
+.bubble-col .bubble { max-width: 100%; }
+
+.bubble-copy-btn {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 700;
-  color: #fff;
-  flex-shrink: 0;
-  margin-bottom: 2px;
+  gap: 4px;
+  padding: 2px 6px;
+  border: none;
+  background: none;
+  color: #6b6b80;
+  font-size: 11px;
+  cursor: pointer;
+  border-radius: 6px;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, background-color 0.15s;
 }
+.bubble-row:hover .bubble-copy-btn { opacity: 1; }
+.bubble-copy-btn:hover { color: #4f46e5; background-color: #f4f4f8; }
 
 .markdown-body {
   white-space: normal;
@@ -136,3 +147,22 @@
   border: none;
   border-top: 1px solid #e2e2ea;
 }
+
+/* 사용자 말풍선(보라 배경) 위에서는 마크다운 요소들을 밝은 톤으로 반전 */
+.bubble-user .markdown-body a { color: #fff; }
+.bubble-user .markdown-body blockquote {
+  border-left-color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.85);
+}
+.bubble-user .markdown-body code {
+  background-color: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+.bubble-user .markdown-body pre {
+  background-color: rgba(0, 0, 0, 0.2);
+}
+.bubble-user .markdown-body th, .bubble-user .markdown-body td {
+  border-color: rgba(255, 255, 255, 0.35);
+}
+.bubble-user .markdown-body th { background-color: rgba(255, 255, 255, 0.12); }
+.bubble-user .markdown-body hr { border-top-color: rgba(255, 255, 255, 0.35); }

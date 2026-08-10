@@ -6,6 +6,7 @@ import { FileManagementPage } from "@/features/files";
 import { DocumentsPage } from "@/features/documents";
 import { PromptPage } from "@/features/prompt";
 import { ExternalApiPage } from "@/features/external-api";
+import { SvgEditorPage } from "@/features/svg-editor";
 
 export const router = createBrowserRouter([
   {
@@ -22,6 +23,7 @@ export const router = createBrowserRouter([
           { path: "prompt", element: <PromptPage /> },
           { path: "external-api", element: <ExternalApiPage /> },
           { path: "files", element: <FileManagementPage /> },
+          { path: "svg-editor", element: <SvgEditorPage /> },
         ],
       },
       { path: "*", element: <Navigate to="/chat" replace /> },

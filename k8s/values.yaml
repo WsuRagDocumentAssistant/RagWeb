@@ -1,0 +1,15 @@
+image:
+  repository: 117.16.166.23:80/wsu/rag-web
+  tag: v1.0.0
+  pullPolicy: IfNotPresent
+  pullSecretName: rag-registry-secret
+
+replicaCount: 1
+
+service:
+  port: 80
+
+gateway:
+  enabled: true
+  existingGatewayName: rag-gateway
+  existingGatewaySectionName: http

@@ -36,6 +36,7 @@ export interface Message {
   provider?: AIProvider | "merged";
   turnId?: string;
   preferred?: boolean;
+  mergerProvider?: AIProvider;
 }
 
 export interface ChatSession {
@@ -83,7 +84,7 @@ interface ChatSlice {
   selectedProviders: AIProvider[];
   sendMessage: (text: string) => Promise<void>;
   toggleProvider: (p: AIProvider) => void;
-  mergeTurn: (turnId: string) => Promise<void>;
+  mergeTurn: (turnId: string, messageIds: string[], mergerProvider: AIProvider) => Promise<void>;
   choosePreference: (turnId: string, choice: string) => void;
   createSession: () => void;
   selectSession: (id: string) => void;
@@ -170,7 +171,7 @@ const MODEL_LABEL: Record<string, string> = {
   local: "로컬 모델",
 };
 
-const MAX_COMPARE_PROVIDERS = 2;
+const MAX_COMPARE_PROVIDERS = 3;
 
 const loadSessions = (): ChatSession[] => {
   try {
@@ -317,13 +318,14 @@ export const useAppState = create<AppStore>((set, get) => ({
     set({ selectedProviders: [...selectedProviders, p] });
   },
 
-  mergeTurn: async (turnId) => {
+  mergeTurn: async (turnId, messageIds, mergerProvider) => {
     const { sessions, activeSessionId } = get();
     const session = sessions.find((s) => s.id === activeSessionId);
     if (!session) return;
 
+    const idSet = new Set(messageIds);
     const turnAssistants = session.messages.filter(
-      (m) => m.turnId === turnId && m.role === "assistant" && m.provider !== "merged",
+      (m) => m.turnId === turnId && m.role === "assistant" && m.provider !== "merged" && idSet.has(m.id),
     );
     if (turnAssistants.length < 2) return;
     const userMsg = session.messages.find((m) => m.turnId === turnId && m.role === "user");
@@ -335,6 +337,7 @@ export const useAppState = create<AppStore>((set, get) => ({
       createdAt: Date.now(),
       isStreaming: true,
       provider: "merged",
+      mergerProvider,
       turnId,
     };
     set((s) => ({
@@ -348,6 +351,7 @@ export const useAppState = create<AppStore>((set, get) => ({
       const data = await chatService.mergeResults({
         query: userMsg?.content ?? "",
         answers: turnAssistants.map((m) => ({ provider: m.provider as string, content: m.content })),
+        provider: mergerProvider,
       });
       set((s) => ({
         sessions: s.sessions.map((sess) =>

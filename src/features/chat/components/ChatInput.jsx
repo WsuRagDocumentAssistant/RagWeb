@@ -82,8 +82,8 @@ export default function ChatInput({ onSend, onUpload, isLoading }) {
             </label>
           ))}
         </div>
-        {selectedProviders.length === 2 && (
-          <span className="model-compare-hint">2개 모델 비교 중</span>
+        {selectedProviders.length >= 2 && (
+          <span className="model-compare-hint">{selectedProviders.length}개 모델 비교 중</span>
         )}
       </div>
     </div>

@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef } from "react";
-import { Check, ThumbsUp } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Check, ThumbsUp, X } from "lucide-react";
 import { MessageBubble } from "@/shared";
 import "../styles/ChatMessages.css";
 
@@ -39,9 +39,43 @@ export default function ChatMessages({ messages, selectedMessageId, onSelectMess
   const bottomRef = useRef(null);
   const turns = useMemo(() => groupIntoTurns(messages), [messages]);
 
+  // 병합 선택 팝오버 상태: { [turnId]: { selected: string[](메시지 id), merger: string(병합 수행 모델) } }
+  const [mergePicker, setMergePicker] = useState({});
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, messages.at(-1)?.content]);
+
+  const openMergePicker = (turnId, assistantIds, defaultMerger) => {
+    setMergePicker((prev) => ({ ...prev, [turnId]: { selected: assistantIds, merger: defaultMerger } }));
+  };
+
+  const closeMergePicker = (turnId) => {
+    setMergePicker((prev) => {
+      const next = { ...prev };
+      delete next[turnId];
+      return next;
+    });
+  };
+
+  const toggleMergeSelection = (turnId, id) => {
+    setMergePicker((prev) => {
+      const current = prev[turnId]?.selected ?? [];
+      const nextSelected = current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
+      return { ...prev, [turnId]: { ...prev[turnId], selected: nextSelected } };
+    });
+  };
+
+  const setMergeProvider = (turnId, provider) => {
+    setMergePicker((prev) => ({ ...prev, [turnId]: { ...prev[turnId], merger: provider } }));
+  };
+
+  const confirmMerge = (turnId) => {
+    const picker = mergePicker[turnId];
+    if (!picker || picker.selected.length < 2 || !picker.merger) return;
+    onMergeTurn?.(turnId, picker.selected, picker.merger);
+    closeMergePicker(turnId);
+  };
 
   if (messages.length === 0) {
     return (
@@ -65,6 +99,9 @@ export default function ChatMessages({ messages, selectedMessageId, onSelectMess
         const isCompare = compareAssistants.length >= 2;
         const allDone = compareAssistants.every((m) => !m.isStreaming);
         const resolved = !!chosenMsg || !!mergedMsg;
+        const turnId = turn.user?.turnId;
+        const pickerState = mergePicker[turnId];
+        const isPickerOpen = pickerState !== undefined;
 
         return (
           <div key={turn.user?.id ?? `turn-${i}`} className="message-turn">
@@ -72,7 +109,7 @@ export default function ChatMessages({ messages, selectedMessageId, onSelectMess
 
             {isCompare ? (
               <>
-                <div className="compare-grid">
+                <div className="compare-stack">
                   {compareAssistants.map((m) => {
                     const accent = MODEL_COLOR[m.provider] ?? "#4f46e5";
                     return (
@@ -113,7 +150,7 @@ export default function ChatMessages({ messages, selectedMessageId, onSelectMess
                             key={m.id}
                             className="preference-btn"
                             style={{ "--accent": MODEL_COLOR[m.provider] ?? "#4f46e5" }}
-                            onClick={() => onChoosePreference?.(turn.user?.turnId, m.id)}
+                            onClick={() => onChoosePreference?.(turnId, m.id)}
                           >
                             <ThumbsUp size={13} />
                             {MODEL_LABEL[m.provider] ?? m.provider}
@@ -121,12 +158,72 @@ export default function ChatMessages({ messages, selectedMessageId, onSelectMess
                         ))}
                         <button
                           className="preference-btn"
-                          onClick={() => onMergeTurn?.(turn.user?.turnId)}
+                          onClick={() => openMergePicker(
+                            turnId,
+                            compareAssistants.map((m) => m.id),
+                            compareAssistants[0]?.provider,
+                          )}
                         >
                           병합
                         </button>
                       </div>
                     </div>
+
+                    {isPickerOpen && (
+                      <div className="merge-picker">
+                        <div className="merge-picker-head">
+                          <span className="merge-picker-label">병합할 답변 선택</span>
+                          <button className="merge-picker-close" onClick={() => closeMergePicker(turnId)} title="닫기">
+                            <X size={13} />
+                          </button>
+                        </div>
+                        <div className="merge-picker-options">
+                          {compareAssistants.map((m) => (
+                            <label
+                              key={m.id}
+                              className={`merge-picker-option ${pickerState.selected.includes(m.id) ? "checked" : ""}`}
+                              style={{ "--accent": MODEL_COLOR[m.provider] ?? "#4f46e5" }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={pickerState.selected.includes(m.id)}
+                                onChange={() => toggleMergeSelection(turnId, m.id)}
+                              />
+                              {MODEL_LABEL[m.provider] ?? m.provider}
+                            </label>
+                          ))}
+                        </div>
+
+                        <div className="merge-picker-merger">
+                          <span className="merge-picker-label">병합에 사용할 모델</span>
+                          <div className="merge-picker-options">
+                            {compareAssistants.map((m) => (
+                              <label
+                                key={m.id}
+                                className={`merge-picker-option ${pickerState.merger === m.provider ? "checked" : ""}`}
+                                style={{ "--accent": MODEL_COLOR[m.provider] ?? "#4f46e5" }}
+                              >
+                                <input
+                                  type="radio"
+                                  name={`merger-${turnId}`}
+                                  checked={pickerState.merger === m.provider}
+                                  onChange={() => setMergeProvider(turnId, m.provider)}
+                                />
+                                {MODEL_LABEL[m.provider] ?? m.provider}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        <button
+                          className="merge-picker-confirm"
+                          disabled={pickerState.selected.length < 2}
+                          onClick={() => confirmMerge(turnId)}
+                        >
+                          선택한 {pickerState.selected.length}개 답변, {MODEL_LABEL[pickerState.merger] ?? pickerState.merger}(으)로 병합
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -143,9 +240,12 @@ export default function ChatMessages({ messages, selectedMessageId, onSelectMess
 
                 {mergedMsg && (
                   <div className="compare-merged">
-                    <div className="compare-card">
+                    <div className="compare-card" style={{ "--accent": MODEL_COLOR.merged }}>
                       <div className="compare-card-header">
-                        <span className="compare-card-label">{MODEL_LABEL.merged}</span>
+                        <span className="compare-card-label">
+                          {MODEL_LABEL.merged}
+                          {mergedMsg.mergerProvider && ` (${MODEL_LABEL[mergedMsg.mergerProvider] ?? mergedMsg.mergerProvider})`}
+                        </span>
                       </div>
                       <MessageBubble
                         message={mergedMsg}

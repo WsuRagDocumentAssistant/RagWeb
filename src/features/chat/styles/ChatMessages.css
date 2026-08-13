@@ -27,9 +27,9 @@
   margin-bottom: 6px;
 }
 
-.compare-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+.compare-stack {
+  display: flex;
+  flex-direction: column;
   gap: 10px;
   padding: 0 16px;
 }
@@ -144,3 +144,90 @@
   color: var(--accent, #6b6b80);
   padding-left: 8px;
 }
+
+.merge-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 360px;
+  padding: 12px;
+  border: 1px solid #e2e2ea;
+  border-radius: 12px;
+  background-color: #f9f9fc;
+}
+
+.merge-picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.merge-picker-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+.merge-picker-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: #6b6b80;
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
+}
+.merge-picker-close:hover { color: #1a1a2e; background-color: #eeeef4; }
+
+.merge-picker-options {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.merge-picker-merger {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid #e2e2ea;
+}
+
+.merge-picker-option {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid #e2e2ea;
+  background-color: #ffffff;
+  color: #6b6b80;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background-color 0.15s;
+}
+.merge-picker-option input[type="checkbox"] { accent-color: var(--accent, #4f46e5); cursor: pointer; }
+.merge-picker-option.checked {
+  border-color: var(--accent, #4f46e5);
+  color: var(--accent, #4f46e5);
+  background-color: color-mix(in srgb, var(--accent, #4f46e5) 12%, white);
+}
+
+.merge-picker-confirm {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: none;
+  background-color: #4f46e5;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.15s, opacity 0.15s;
+}
+.merge-picker-confirm:hover { background-color: #6366f1; }
+.merge-picker-confirm:disabled { background-color: #e2e2ea; color: #6b6b80; cursor: not-allowed; }

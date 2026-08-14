@@ -1,0 +1,20 @@
+name: Build and Push
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t 117.16.166.23:80/wsu/rag-web:${{ gitea.sha }} .
+
+      - name: Login to Gitea Registry
+        run: echo "${{ secrets.REGISTRY_TOKEN }}" | docker login 117.16.166.23:80 -u gitea_admin --password-stdin
+
+      - name: Push image
+        run: docker push 117.16.166.23:80/wsu/rag-web:${{ gitea.sha }}

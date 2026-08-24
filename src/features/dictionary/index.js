@@ -1,2 +1,2 @@
-export { default as DictionaryPanel } from "./components/DictionaryPanel";
+export { default as DictionaryPage } from "./components/DictionaryPage";
 export * as DictionaryService from "./services/DictionaryService";

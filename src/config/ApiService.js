@@ -22,6 +22,7 @@ export const API_ENDPOINTS = {
   },
   DICTIONARY: {
     LIST: TaskType.DICTIONARY_LIST,
+    SAVE: TaskType.DICTIONARY_SAVE,
   },
 };
 

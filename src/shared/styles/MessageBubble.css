@@ -15,13 +15,13 @@
 }
 
 .bubble-assistant {
-  background-color: #ffffff;
-  color: #1a1a2e;
+  background-color: var(--color-surface);
+  color: var(--color-text);
   border-bottom-left-radius: 4px;
 }
 
 .bubble-error {
-  background-color: #fdecec;
+  background-color: var(--color-danger-soft);
   border: 1px solid #dc2626;
 }
 
@@ -36,7 +36,7 @@
 
 .bubble-selected {
   border-color: #4f46e5;
-  box-shadow: 0 0 0 2px #eef0ff;
+  box-shadow: 0 0 0 2px var(--color-accent-soft);
 }
 
 .bubble-row {
@@ -62,7 +62,7 @@
   padding: 2px 6px;
   border: none;
   background: none;
-  color: #6b6b80;
+  color: var(--color-muted);
   font-size: 11px;
   cursor: pointer;
   border-radius: 6px;
@@ -70,7 +70,16 @@
   transition: opacity 0.15s, color 0.15s, background-color 0.15s;
 }
 .bubble-row:hover .bubble-copy-btn { opacity: 1; }
-.bubble-copy-btn:hover { color: #4f46e5; background-color: #f4f4f8; }
+.bubble-copy-btn:hover { color: #4f46e5; background-color: var(--color-bg); }
+
+.bubble-attachment {
+  display: block;
+  max-width: 100%;
+  max-height: 260px;
+  border-radius: 12px;
+  object-fit: cover;
+  margin-bottom: 6px;
+}
 
 .markdown-body {
   white-space: normal;
@@ -102,12 +111,12 @@
 .markdown-body blockquote {
   margin: 8px 0;
   padding: 4px 12px;
-  border-left: 3px solid #e2e2ea;
-  color: #6b6b80;
+  border-left: 3px solid var(--color-border);
+  color: var(--color-muted);
 }
 
 .markdown-body code {
-  background-color: #f4f4f8;
+  background-color: var(--color-bg);
   border-radius: 4px;
   padding: 1px 5px;
   font-size: 12.5px;
@@ -116,6 +125,7 @@
 }
 
 .markdown-body pre {
+  /* 코드 블록은 테마와 무관하게 항상 어둡게 고정 */
   background-color: #1a1a2e;
   color: #f4f4f8;
   border-radius: 10px;
@@ -137,15 +147,15 @@
   font-size: 13px;
 }
 .markdown-body th, .markdown-body td {
-  border: 1px solid #e2e2ea;
+  border: 1px solid var(--color-border);
   padding: 5px 10px;
 }
-.markdown-body th { background-color: #f4f4f8; }
+.markdown-body th { background-color: var(--color-bg); }
 
 .markdown-body hr {
   margin: 10px 0;
   border: none;
-  border-top: 1px solid #e2e2ea;
+  border-top: 1px solid var(--color-border);
 }
 
 /* 사용자 말풍선(보라 배경) 위에서는 마크다운 요소들을 밝은 톤으로 반전 */

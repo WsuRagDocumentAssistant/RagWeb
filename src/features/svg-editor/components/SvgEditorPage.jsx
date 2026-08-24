@@ -1,11 +1,11 @@
-import React, { useCallback, useRef, useState } from "react";
-import { FolderOpen, Save, Download, Type, Trash2, X } from "lucide-react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
+import { FolderOpen, Download, Type, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import {
-  openSvgWithPicker,
   readSvgFile,
+  convertImageToSvg,
   serializeSvgElement,
-  saveSvgToHandle,
   downloadSvg,
 } from "../services/SvgEditorService";
 import "../styles/SvgEditorPage.css";
@@ -13,6 +13,7 @@ import "../styles/SvgEditorPage.css";
 const SVG_NS = "http://www.w3.org/2000/svg";
 const MIN_FONT_SIZE = 6;
 const MAX_FONT_SIZE = 200;
+const IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"];
 
 const getFontSizePx = (node) => parseFloat(window.getComputedStyle(node).fontSize) || 14;
 
@@ -37,18 +38,18 @@ const screenDeltaToUserDelta = (svg, x0, y0, x1, y1) => {
 };
 
 export default function SvgEditorPage() {
+  const location = useLocation();
   const [loaded, setLoaded] = useState(false);
-  const [hasFileHandle, setHasFileHandle] = useState(false);
   const [fileName, setFileName] = useState("edited.svg");
   const [selection, setSelection] = useState(null); // { content, fontSize } — 상단 패널에 표시되는 선택된 텍스트 속성
 
   const hostRef = useRef(null);
   const canvasWrapRef = useRef(null);
   const fileInputRef = useRef(null);
-  const fileHandleRef = useRef(null);
   const panelRef = useRef(null); // 상단 인스펙터 패널 컨테이너 — 포커스가 여기 있으면 블러로 편집기를 닫지 않는다
   const activeEditorRef = useRef(null); // { node, input, selBox, resizeHandle, moveHandle, deleteHandle, originalContent }
   const dragStateRef = useRef({ isResizing: false, isMoving: false });
+  const loadedFromStateRef = useRef(false);
 
   /* =========================================================
      플로팅 오버레이(입력창 + 핸들) 위치 계산 — 상단 패널 수정 시에도 재사용
@@ -301,7 +302,7 @@ export default function SvgEditorPage() {
   );
 
   /* =========================================================
-     파일 로드 / 저장 / 다운로드
+     파일 로드 / 다운로드
      ========================================================= */
   const serializeSvg = useCallback(() => {
     const svg = hostRef.current?.querySelector("svg");
@@ -325,59 +326,59 @@ export default function SvgEditorPage() {
 
       if (name) setFileName(name);
       setLoaded(true);
-      toast.success(`${name ?? fileName} 불러옴 — 텍스트를 클릭해서 편집하세요.`);
     },
-    [attachTextHandlers, closeEditor, fileName]
+    [attachTextHandlers, closeEditor]
   );
 
-  const handleOpenFsa = useCallback(async () => {
-    try {
-      const { handle, name, text } = await openSvgWithPicker();
-      fileHandleRef.current = handle;
-      setHasFileHandle(true);
-      loadSvgText(text, name);
-    } catch (err) {
-      if (err.name !== "AbortError") {
-        toast.error(
-          err.name === "TypeError"
-            ? "이 브라우저는 덮어쓰기 API를 지원하지 않습니다. 다운로드 방식을 사용하세요."
-            : `파일 열기 실패: ${err.message}`
-        );
-      }
-    }
-  }, [loadSvgText]);
+  // 문서 목록의 "이미지 보기"에서 특정 이미지를 열고 넘어온 경우, 그 이미지를 바로 불러온다.
+  useEffect(() => {
+    if (loadedFromStateRef.current) return;
+    const incoming = location.state?.svgText;
+    if (!incoming) return;
+    loadedFromStateRef.current = true;
+    loadSvgText(incoming, location.state?.fileName ?? "image.svg");
+    toast.success("이미지 편집기에서 불러왔습니다.");
+  }, [location.state, loadSvgText]);
 
-  const handleOpenFallback = useCallback(() => {
-    fileHandleRef.current = null;
-    setHasFileHandle(false);
+  const handleOpenFile = useCallback(() => {
     fileInputRef.current?.click();
   }, []);
 
   const handleFileInputChange = useCallback(
     (e) => {
       const file = e.target.files?.[0];
-      if (!file) return;
-      readSvgFile(file)
-        .then((text) => loadSvgText(text, file.name))
-        .catch((err) => toast.error(`파일 읽기 실패: ${err.message}`));
       e.target.value = "";
+      if (!file) return;
+
+      const isSvg = file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg");
+      const isImage = IMAGE_EXTENSIONS.some((ext) => file.name.toLowerCase().endsWith(ext));
+
+      if (isSvg) {
+        readSvgFile(file)
+          .then((text) => {
+            loadSvgText(text, file.name);
+            toast.success(`${file.name} 불러옴 — 텍스트를 클릭해서 편집하세요.`);
+          })
+          .catch((err) => toast.error(`파일 읽기 실패: ${err.message}`));
+        return;
+      }
+
+      if (isImage) {
+        toast.loading("이미지를 SVG로 변환 중입니다...", { id: "svg-convert" });
+        convertImageToSvg(file)
+          .then((svgText) => {
+            const svgName = file.name.replace(/\.[^.]+$/, ".svg");
+            loadSvgText(svgText, svgName);
+            toast.success("이미지를 SVG로 변환했습니다. (변환 로직은 추후 서버와 연동됩니다)", { id: "svg-convert" });
+          })
+          .catch((err) => toast.error(`변환 실패: ${err.message}`, { id: "svg-convert" }));
+        return;
+      }
+
+      toast.error("SVG 또는 이미지 파일(PNG/JPG/GIF/WEBP)만 지원합니다.");
     },
     [loadSvgText]
   );
-
-  const handleSave = useCallback(async () => {
-    closeEditor();
-    if (!fileHandleRef.current) {
-      toast.error("이 파일은 덮어쓰기 핸들이 없습니다. 다운로드를 사용하세요.");
-      return;
-    }
-    try {
-      await saveSvgToHandle(fileHandleRef.current, serializeSvg());
-      toast.success(`${fileName}에 저장 완료.`);
-    } catch (err) {
-      toast.error(`저장 실패: ${err.message}`);
-    }
-  }, [closeEditor, serializeSvg, fileName]);
 
   const handleDownload = useCallback(() => {
     closeEditor();
@@ -412,25 +413,17 @@ export default function SvgEditorPage() {
     <div className="svged-page">
       <div className="svged-topbar">
         <div className="svged-toolbar-row">
-          <button className="svged-btn" onClick={handleOpenFsa}>
+          <button className="svged-btn" onClick={handleOpenFile}>
             <FolderOpen size={14} />
-            파일 열기 (덮어쓰기 지원)
-          </button>
-          <button className="svged-btn" onClick={handleOpenFallback}>
-            <FolderOpen size={14} />
-            파일 열기 (다운로드 방식)
+            파일 열기
           </button>
           <input
             type="file"
             ref={fileInputRef}
-            accept=".svg,image/svg+xml"
+            accept=".svg,image/svg+xml,image/png,image/jpeg,image/gif,image/webp,image/bmp"
             style={{ display: "none" }}
             onChange={handleFileInputChange}
           />
-          <button className="svged-btn" onClick={handleSave} disabled={!hasFileHandle}>
-            <Save size={14} />
-            저장 (덮어쓰기)
-          </button>
           <button className="svged-btn" onClick={handleDownload} disabled={!loaded}>
             <Download size={14} />
             다운로드
@@ -439,7 +432,7 @@ export default function SvgEditorPage() {
             <Type size={14} />
             텍스트 추가
           </button>
-          <span className="svged-filename">{loaded ? fileName : "SVG 파일을 열어주세요"}</span>
+          <span className="svged-filename">{loaded ? fileName : "파일을 열어주세요"}</span>
         </div>
 
         {selection && (
@@ -470,7 +463,8 @@ export default function SvgEditorPage() {
         )}
 
         <p className="svged-hint">
-          이미지는 SVG 파일만 지원합니다. 텍스트를 클릭하면 위 패널과 캔버스에서 동시에 내용/크기/위치를 편집할 수 있습니다.
+          SVG 파일은 그대로 열리고, PNG/JPG 등 이미지 파일은 SVG로 변환되어 열립니다(변환 로직은 서버와 연동될 예정입니다).
+          텍스트를 클릭하면 위 패널과 캔버스에서 동시에 내용/크기/위치를 편집할 수 있습니다.
           (파란 점: 크기 조절, 주황 사각형: 이동, 빨간 ×: 삭제)
         </p>
       </div>
@@ -481,7 +475,7 @@ export default function SvgEditorPage() {
 
       {!loaded && (
         <div className="svged-empty">
-          <p>SVG 파일을 열면 여기에서 텍스트를 클릭해 바로 수정할 수 있습니다.</p>
+          <p>이미지를 열면 여기에서 텍스트를 클릭해 바로 수정할 수 있습니다.</p>
         </div>
       )}
     </div>

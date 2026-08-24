@@ -27,32 +27,104 @@
   display: flex;
   flex-direction: column;
   border-radius: 12px;
-  border: 1px solid #e2e2ea;
-  background-color: #ffffff;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   z-index: 20;
   overflow: hidden;
 }
 
-.file-notifications-title {
+.file-notifications-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 12px 14px;
-  border-bottom: 1px solid #e2e2ea;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.file-notifications-title {
   font-size: 13px;
   font-weight: 700;
-  color: #1a1a2e;
+  color: var(--color-text);
 }
+
+.file-notifications-mark-all {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  color: #4f46e5;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.file-notifications-mark-all:hover { text-decoration: underline; }
 
 .file-notifications-empty {
   padding: 24px 14px;
   text-align: center;
   font-size: 13px;
-  color: #6b6b80;
+  color: var(--color-muted);
 }
 
 .file-notifications-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 10px;
+  gap: 4px;
+  padding: 8px;
   overflow-y: auto;
+}
+
+.notif-item {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.notif-item:hover { background-color: var(--color-bg); }
+.notif-item.unread { background-color: var(--color-accent-soft); }
+.notif-item.unread:hover { background-color: var(--color-accent-soft); }
+
+.notif-item-icon { flex-shrink: 0; margin-top: 1px; color: var(--color-muted); }
+.notif-item-success .notif-item-icon { color: #16a34a; }
+.notif-item-error .notif-item-icon { color: #dc2626; }
+.notif-item-info .notif-item-icon { color: #4f46e5; }
+
+.notif-item-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.notif-item-message {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.4;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.notif-item-time {
+  font-size: 10px;
+  color: var(--color-muted);
+}
+
+.notif-item-dot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #4f46e5;
+  margin-top: 5px;
 }

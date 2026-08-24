@@ -3,6 +3,7 @@ import { Navigate, Outlet } from "react-router-dom";
 import { useAppState } from "@/core/AppState";
 import Titlebar from "./Titlebar";
 import { LeftSidebar } from "@/features/chat";
+import { SettingsModal } from "@/features/settings";
 import "../styles/MainLayout.css";
 import "../styles/MainContents.css";
 
@@ -25,6 +26,7 @@ export default function ProtectedRoute() {
           <Outlet />
         </main>
       </div>
+      <SettingsModal />
     </div>
   );
 }

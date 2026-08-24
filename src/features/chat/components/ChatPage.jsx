@@ -22,6 +22,7 @@ export default function ChatPage() {
   const [isDragging, setIsDragging] = useState(false);
   const dragCounter = useRef(0);
   const [selectedMessageId, setSelectedMessageId] = useState(null);
+  const [pendingImage, setPendingImage] = useState(null); // { file, previewUrl } — 문서 등록이 아닌 채팅 첨부용
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(
     () => localStorage.getItem(RIGHT_SIDEBAR_COLLAPSED_KEY) === "1",
   );
@@ -67,7 +68,16 @@ export default function ChatPage() {
     e.preventDefault();
     dragCounter.current = 0;
     setIsDragging(false);
-    Array.from(e.dataTransfer.files ?? []).forEach((file) => uploadFile(file));
+    const files = Array.from(e.dataTransfer.files ?? []);
+    const imageFile = files.find((f) => f.type.startsWith("image/"));
+    // 이미지는 문서 등록(임베딩)이 아니라 채팅 첨부 미리보기로만 사용한다.
+    if (imageFile) {
+      setPendingImage((prev) => {
+        if (prev) URL.revokeObjectURL(prev.previewUrl);
+        return { file: imageFile, previewUrl: URL.createObjectURL(imageFile) };
+      });
+    }
+    files.filter((f) => f !== imageFile).forEach((file) => uploadFile(file));
   };
 
   return (
@@ -94,7 +104,13 @@ export default function ChatPage() {
           onChoosePreference={choosePreference}
         />
 
-        <ChatInput onSend={sendMessage} onUpload={uploadFile} isLoading={chatLoading} />
+        <ChatInput
+          onSend={sendMessage}
+          onUpload={uploadFile}
+          isLoading={chatLoading}
+          pendingImage={pendingImage}
+          setPendingImage={setPendingImage}
+        />
       </div>
 
       <RightSidebar

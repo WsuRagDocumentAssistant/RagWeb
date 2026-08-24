@@ -3,8 +3,8 @@
   align-items: center;
   height: 52px;
   padding: 0 16px;
-  background-color: #ffffff;
-  border-bottom: 1px solid #e2e2ea;
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
   gap: 12px;
   flex-shrink: 0;
 }
@@ -18,11 +18,11 @@
   border-radius: 8px;
   border: none;
   background: none;
-  color: #6b6b80;
+  color: var(--color-muted);
   cursor: pointer;
   transition: color 0.15s, background 0.15s;
 }
-.titlebar-menu-btn:hover { color: #1a1a2e; background: #e2e2ea; }
+.titlebar-menu-btn:hover { color: var(--color-text); background: var(--color-border); }
 
 .titlebar-brand {
   display: flex;
@@ -35,7 +35,7 @@
 .titlebar-title {
   font-size: 15px;
   font-weight: 700;
-  color: #1a1a2e;
+  color: var(--color-text);
 }
 
 .titlebar-spacer { flex: 1; }

@@ -3,7 +3,7 @@
   align-items: center;
   justify-content: center;
   height: 100dvh;
-  background-color: #f4f4f8;
+  background-color: var(--color-bg);
 }
 
 .login-card {
@@ -14,8 +14,8 @@
   width: 320px;
   padding: 40px 32px;
   border-radius: 16px;
-  border: 1px solid #e2e2ea;
-  background-color: #ffffff;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
   text-align: center;
 }
 
@@ -27,12 +27,12 @@
 .login-title {
   font-size: 19px;
   font-weight: 700;
-  color: #1a1a2e;
+  color: var(--color-text);
 }
 
 .login-desc {
   font-size: 13px;
-  color: #6b6b80;
+  color: var(--color-muted);
   margin-bottom: 20px;
 }
 
@@ -61,7 +61,7 @@
   gap: 10px;
   width: 100%;
   margin: 20px 0 12px;
-  color: #6b6b80;
+  color: var(--color-muted);
   font-size: 11px;
 }
 .temp-login-divider::before,
@@ -69,7 +69,7 @@
   content: "";
   flex: 1;
   height: 1px;
-  background: #e2e2ea;
+  background: var(--color-border);
 }
 
 .temp-login-form {
@@ -83,12 +83,12 @@
   width: 100%;
   padding: 10px 12px;
   border-radius: 8px;
-  border: 1px solid #e2e2ea;
-  background-color: #ffffff;
-  color: #1a1a2e;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text);
   font-size: 13px;
 }
-.temp-login-input::placeholder { color: #6b6b80; }
+.temp-login-input::placeholder { color: var(--color-muted); }
 .temp-login-input:focus { outline: none; border-color: #4f46e5; }
 
 .temp-login-error {
@@ -101,9 +101,9 @@
   width: 100%;
   padding: 10px;
   border-radius: 8px;
-  border: 1px solid #e2e2ea;
-  background: #ffffff;
-  color: #1a1a2e;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;

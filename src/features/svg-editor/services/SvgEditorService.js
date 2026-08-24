@@ -1,27 +1,8 @@
-// SVG 파일을 브라우저에서 직접 열고 저장하기 위한 로컬 파일 IO 헬퍼.
-// 백엔드 연동 없이 File System Access API(FSA) 또는 <input type="file"> 폴백만 사용한다.
-
-/** @returns {boolean} 현재 브라우저가 파일 직접 덮어쓰기(FSA)를 지원하는지 여부 */
-export function supportsFileSystemAccess() {
-  return typeof window !== "undefined" && typeof window.showOpenFilePicker === "function";
-}
+// 이미지 편집기(구 SVG 편집기)의 로컬 파일 IO 헬퍼.
+// 백엔드 연동 없이 <input type="file">로 받은 파일만 다룬다. 저장은 다운로드로만 지원한다.
 
 /**
- * FSA로 SVG 파일을 선택해 핸들과 텍스트를 함께 가져온다.
- * 사용자가 선택을 취소하면 showOpenFilePicker가 AbortError를 던진다 (호출부에서 처리).
- * @returns {Promise<{ handle: FileSystemFileHandle, name: string, text: string }>}
- */
-export async function openSvgWithPicker() {
-  const [handle] = await window.showOpenFilePicker({
-    types: [{ description: "SVG files", accept: { "image/svg+xml": [".svg"] } }],
-  });
-  const file = await handle.getFile();
-  const text = await file.text();
-  return { handle, name: file.name, text };
-}
-
-/**
- * <input type="file">로 선택된 File을 텍스트로 읽는다.
+ * <input type="file">로 선택된 SVG 파일을 텍스트로 읽는다.
  * @param {File} file
  * @returns {Promise<string>}
  */
@@ -34,20 +15,36 @@ export function readSvgFile(file) {
   });
 }
 
+/**
+ * JPG/PNG 등 래스터 이미지를 SVG로 감싸서 편집기에서 열 수 있게 변환한다.
+ * 실제 벡터화(선/도형 추출) 변환은 서버에서 처리될 예정이며, 여기서는 원본 이미지를
+ * <image> 요소로 감싼 SVG 래퍼를 만들어 텍스트 추가 등 편집 기능을 바로 쓸 수 있게 한다.
+ * @param {File} file
+ * @returns {Promise<string>} SVG 텍스트
+ */
+export function convertImageToSvg(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      const img = new Image();
+      img.onload = () => {
+        const width = img.naturalWidth || 800;
+        const height = img.naturalHeight || 600;
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}"><image href="${dataUrl}" x="0" y="0" width="${width}" height="${height}" /></svg>`;
+        resolve(svg);
+      };
+      img.onerror = () => reject(new Error("이미지를 불러올 수 없습니다."));
+      img.src = dataUrl;
+    };
+    reader.onerror = () => reject(reader.error ?? new Error("파일을 읽을 수 없습니다."));
+    reader.readAsDataURL(file);
+  });
+}
+
 /** @param {SVGSVGElement} svgEl @returns {string} */
 export function serializeSvgElement(svgEl) {
   return new XMLSerializer().serializeToString(svgEl);
-}
-
-/**
- * FSA 핸들에 SVG 텍스트를 직접 덮어쓴다.
- * @param {FileSystemFileHandle} handle
- * @param {string} svgText
- */
-export async function saveSvgToHandle(handle, svgText) {
-  const writable = await handle.createWritable();
-  await writable.write(svgText);
-  await writable.close();
 }
 
 /**

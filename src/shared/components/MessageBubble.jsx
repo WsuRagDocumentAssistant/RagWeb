@@ -40,9 +40,14 @@ export default function MessageBubble({ message, isSelected, onSelect }) {
           ) : hasError ? (
             <span style={{ color: "#f87171" }}>{message.error}</span>
           ) : (
-            <div className="markdown-body">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
-            </div>
+            <>
+              {message.attachmentUrl && (
+                <img src={message.attachmentUrl} alt="첨부 이미지" className="bubble-attachment" />
+              )}
+              <div className="markdown-body">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+              </div>
+            </>
           )}
         </div>
 

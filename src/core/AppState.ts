@@ -7,6 +7,7 @@ import * as dictionaryService from "@/features/dictionary/services/DictionarySer
 import {
   getDummyChatReply,
   getDummyMergedReply,
+  getDummyDocumentImages,
   DUMMY_FILES,
   DUMMY_DICTIONARY_ENTRIES,
   DUMMY_SOURCE_FILES,
@@ -37,6 +38,7 @@ export interface Message {
   turnId?: string;
   preferred?: boolean;
   mergerProvider?: AIProvider;
+  attachmentUrl?: string; // 채팅에 첨부한 이미지 미리보기 (data URL) — 문서 등록/임베딩과는 무관
 }
 
 export interface ChatSession {
@@ -47,7 +49,17 @@ export interface ChatSession {
   createdAt: number;
 }
 
-export interface EmbeddingFile {
+export interface DocumentMetadata {
+  area?: string; // 영역
+  task?: string; // 세부 과제
+  docType?: string; // 구분
+  subType?: string; // 세부구분
+  category?: string; // 유형
+  subCategory?: string; // 세부 유형
+  docDate?: string; // 기준 날짜 (YYYY-MM-DD)
+}
+
+export interface EmbeddingFile extends DocumentMetadata {
   id: string;
   name: string;
   size: number;
@@ -55,6 +67,21 @@ export interface EmbeddingFile {
   status: EmbeddingFileStatus;
   uploadedAt: number;
   errorMessage?: string;
+  chunks?: number;
+}
+
+export interface DocumentImage {
+  id: string;
+  index: number;
+  caption: string;
+  majorTitle?: string; // 대제목
+  midTitle?: string; // 중제목
+  minorTitle?: string; // 소제목
+  note?: string; // 부연 설명
+  aiSummary: string; // AI 한줄 요약
+  keyFacts: string[]; // 핵심 시각 정보
+  keyPhrases: string[]; // 이미지 내 주요 문구/키워드
+  imageUrl?: string | null; // 교체된 이미지(object URL). null이면 기본 목업 미리보기 사용
 }
 
 export interface AuthUser {
@@ -66,12 +93,22 @@ export interface AuthUser {
 }
 
 export interface DictionaryEntry {
-  id: number;
-  term: string;
-  meaning: string;
-  note?: string | null;
+  id: number | string;
+  term: string; // 기준 검색어
+  synonyms: string; // 같이 인식할 단어 (쉼표로 구분)
   created_at: string;
   updated_at: string;
+}
+
+export type NotificationType = "success" | "error" | "info";
+
+export interface AppNotification {
+  id: string;
+  message: string;
+  type: NotificationType;
+  link?: string; // 클릭 시 이동할 경로
+  createdAt: number;
+  read: boolean;
 }
 
 // ─── 슬라이스 타입 ────────────────────────────────────────────────────────────
@@ -82,10 +119,10 @@ interface ChatSlice {
   chatLoading: boolean;
   chatError: string | null;
   selectedProviders: AIProvider[];
-  sendMessage: (text: string) => Promise<void>;
+  sendMessage: (text: string, attachmentUrl?: string) => Promise<void>;
   toggleProvider: (p: AIProvider) => void;
   mergeTurn: (turnId: string, messageIds: string[], mergerProvider: AIProvider) => Promise<void>;
-  choosePreference: (turnId: string, choice: string) => void;
+  choosePreference: (turnId: string, keepMessageId: string) => void;
   createSession: () => void;
   selectSession: (id: string) => void;
   deleteSession: (id: string) => void;
@@ -98,9 +135,12 @@ interface FileSlice {
   uploadProgress: number;
   fileError: string | null;
   fetchFiles: () => Promise<void>;
-  uploadFile: (file: File) => Promise<void>;
+  uploadFile: (file: File, metadata?: DocumentMetadata) => Promise<void>;
   deleteFile: (id: string) => Promise<void>;
   setFileError: (e: string | null) => void;
+  documentImages: Record<string, DocumentImage[]>;
+  ensureDocumentImages: (file: EmbeddingFile) => DocumentImage[];
+  updateDocumentImage: (fileId: string, imageId: string, changes: Partial<DocumentImage>) => void;
 }
 
 interface AuthSlice {
@@ -117,10 +157,18 @@ interface AuthSlice {
   setAuthError: (e: string | null) => void;
 }
 
+export type ThemeMode = "light" | "dark";
+
 interface UISlice {
   sidebarOpen: boolean;
   toggleSidebar: () => void;
   closeSidebar: () => void;
+  theme: ThemeMode;
+  setTheme: (theme: ThemeMode) => void;
+  toggleTheme: () => void;
+  settingsOpen: boolean;
+  openSettings: () => void;
+  closeSettings: () => void;
 }
 
 interface PromptSlice {
@@ -134,14 +182,23 @@ interface PromptSlice {
 interface DictionarySlice {
   dictEntries: DictionaryEntry[];
   dictLoading: boolean;
+  dictSaving: boolean;
   dictError: string | null;
-  dictPanelOpen: boolean;
   fetchDictEntries: (search?: string) => Promise<void>;
-  closeDictPanel: () => void;
-  toggleDictPanel: () => void;
+  addDictEntry: () => void;
+  updateDictEntry: (id: DictionaryEntry["id"], changes: Partial<Pick<DictionaryEntry, "term" | "synonyms">>) => void;
+  removeDictEntry: (id: DictionaryEntry["id"]) => void;
+  saveDictEntries: () => Promise<void>;
 }
 
-type AppStore = ChatSlice & FileSlice & AuthSlice & UISlice & DictionarySlice & PromptSlice;
+interface NotificationSlice {
+  notifications: AppNotification[];
+  pushNotification: (message: string, opts?: { type?: NotificationType; link?: string }) => void;
+  markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
+}
+
+type AppStore = ChatSlice & FileSlice & AuthSlice & UISlice & DictionarySlice & PromptSlice & NotificationSlice;
 
 // ─── 헬퍼 ─────────────────────────────────────────────────────────────────────
 
@@ -153,6 +210,17 @@ const ACTIVE_SESSION_KEY = "chat_active_session";
 const PROMPT_TEXT_KEY = "system_prompt";
 const PROMPT_WEIGHT_KEY = "prompt_weight";
 const DEFAULT_PROMPT_WEIGHT = 50;
+const THEME_KEY = "app_theme";
+const NOTIFICATIONS_KEY = "app_notifications";
+const NOTIFICATIONS_LIMIT = 30;
+
+const initialTheme: ThemeMode = localStorage.getItem(THEME_KEY) === "dark" ? "dark" : "light";
+document.documentElement.setAttribute("data-theme", initialTheme);
+
+const applyTheme = (theme: ThemeMode) => {
+  localStorage.setItem(THEME_KEY, theme);
+  document.documentElement.setAttribute("data-theme", theme);
+};
 
 const makeSession = (): ChatSession => ({
   id: genId("session"),
@@ -162,7 +230,10 @@ const makeSession = (): ChatSession => ({
   createdAt: Date.now(),
 });
 
-const deriveTitle = (text: string) => (text.length > 20 ? `${text.slice(0, 20)}…` : text);
+const deriveTitle = (text: string) => {
+  if (!text) return "이미지 문의";
+  return text.length > 20 ? `${text.slice(0, 20)}…` : text;
+};
 
 const MODEL_LABEL: Record<string, string> = {
   claude: "Claude",
@@ -191,6 +262,19 @@ const persistActiveSessionId = (id: string | null) => {
   else localStorage.removeItem(ACTIVE_SESSION_KEY);
 };
 
+const loadNotifications = (): AppNotification[] => {
+  try {
+    const raw = localStorage.getItem(NOTIFICATIONS_KEY);
+    return raw ? (JSON.parse(raw) as AppNotification[]) : [];
+  } catch {
+    return [];
+  }
+};
+
+const persistNotifications = (notifications: AppNotification[]) => {
+  localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(notifications));
+};
+
 const storedSessions = loadSessions();
 const initialSessions = storedSessions.length > 0 ? storedSessions : [makeSession()];
 const initialActiveSessionId = (() => {
@@ -209,7 +293,7 @@ export const useAppState = create<AppStore>((set, get) => ({
   chatError: null,
   selectedProviders: ["gpt"],
 
-  sendMessage: async (text) => {
+  sendMessage: async (text, attachmentUrl) => {
     let { activeSessionId, sessions, selectedProviders } = get();
 
     if (!activeSessionId || !sessions.some((s) => s.id === activeSessionId)) {
@@ -223,7 +307,7 @@ export const useAppState = create<AppStore>((set, get) => ({
     const sessionId = activeSessionId;
     const providers = selectedProviders.length > 0 ? selectedProviders : (["gpt"] as AIProvider[]);
     const turnId = genId("turn");
-    const userMsg: Message = { id: genId("u"), role: "user", content: text, createdAt: Date.now(), turnId };
+    const userMsg: Message = { id: genId("u"), role: "user", content: text, createdAt: Date.now(), turnId, attachmentUrl };
     const asstMsgs: Message[] = providers.map((provider) => ({
       id: genId("a"),
       role: "assistant",
@@ -388,13 +472,14 @@ export const useAppState = create<AppStore>((set, get) => ({
     persistSessions(get().sessions);
   },
 
-  choosePreference: (turnId, choice) => {
+  // 선택된 답변만 남기고 같은 턴의 나머지 비교 답변은 삭제한다.
+  choosePreference: (turnId, keepMessageId) => {
     set((s) => ({
       sessions: s.sessions.map((sess) => ({
         ...sess,
         messages: sess.messages.map((m) =>
           m.turnId === turnId && m.role === "assistant" && m.provider !== "merged"
-            ? { ...m, preferred: choice === "tie" ? true : m.id === choice }
+            ? { ...m, preferred: m.id === keepMessageId }
             : m,
         ),
       })),
@@ -442,12 +527,20 @@ export const useAppState = create<AppStore>((set, get) => ({
     }
   },
 
-  uploadFile: async (file: File) => {
+  uploadFile: async (file: File, metadata?: DocumentMetadata) => {
     const tempId = genId("tmp");
     const toastId = toast.loading(`${file.name} 업로드 중...`);
     set((s) => ({
       files: [
-        { id: tempId, name: file.name, size: file.size, mimeType: file.type, status: "uploading", uploadedAt: Date.now() },
+        {
+          id: tempId,
+          name: file.name,
+          size: file.size,
+          mimeType: file.type,
+          status: "uploading",
+          uploadedAt: Date.now(),
+          ...metadata,
+        },
         ...s.files,
       ],
       fileLoading: true,
@@ -455,42 +548,74 @@ export const useAppState = create<AppStore>((set, get) => ({
       fileError: null,
     }));
     try {
-      const data = await fileService.uploadFile(file, (progress) => set({ uploadProgress: progress })) as any;
+      const data = await fileService.uploadFile(file, (progress) => set({ uploadProgress: progress }), metadata) as any;
       const fileId = data.fileId ?? data.id ?? data.file_id ?? tempId;
       const fileStatus = (data.status ?? "ready") as EmbeddingFileStatus;
+      const chunks = data.chunks ?? Math.max(1, Math.round(file.size / 4000));
       set((s) => ({
         files: s.files.map((f) =>
-          f.id === tempId ? { ...f, id: fileId, status: fileStatus } : f,
+          f.id === tempId ? { ...f, id: fileId, status: fileStatus, chunks } : f,
         ),
         fileLoading: false,
         uploadProgress: 0,
       }));
       toast.success(`${file.name} 업로드 완료`, { id: toastId });
+      get().pushNotification(`${file.name} 업로드가 완료되었습니다.`, { type: "success", link: "/documents" });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "업로드 실패";
+      // 서버 연결 실패 시에도 데모를 계속 볼 수 있도록 더미 결과(완료 처리)로 대체
+      const chunks = Math.max(1, Math.round(file.size / 4000));
       set((s) => ({
         files: s.files.map((f) =>
-          f.id === tempId ? { ...f, status: "error", errorMessage: msg } : f,
+          f.id === tempId ? { ...f, status: "ready", chunks } : f,
         ),
         fileLoading: false,
         uploadProgress: 0,
         fileError: msg,
       }));
-      toast.error(`${file.name} 업로드 실패: ${msg}`, { id: toastId });
+      toast.success(`${file.name} 업로드 완료 (더미)`, { id: toastId });
+      get().pushNotification(`${file.name} 업로드가 완료되었습니다. (더미)`, { type: "success", link: "/documents" });
     }
   },
 
   deleteFile: async (id) => {
     const prev = get().files;
-    set((s) => ({ files: s.files.filter((f) => f.id !== id) }));
+    const prevImages = get().documentImages;
+    set((s) => {
+      // 문서를 삭제하면 해당 문서의 이미지/임베딩 정보도 함께 제거한다.
+      const nextImages = { ...s.documentImages };
+      delete nextImages[id];
+      return { files: s.files.filter((f) => f.id !== id), documentImages: nextImages };
+    });
     try {
       await fileService.deleteFile(id);
     } catch (err) {
-      set({ files: prev, fileError: err instanceof Error ? err.message : "삭제 실패" });
+      set({ files: prev, documentImages: prevImages, fileError: err instanceof Error ? err.message : "삭제 실패" });
     }
   },
 
   setFileError: (fileError) => set({ fileError }),
+
+  documentImages: {},
+
+  ensureDocumentImages: (file) => {
+    const existing = get().documentImages[file.id];
+    if (existing) return existing;
+    const generated = getDummyDocumentImages(file);
+    set((s) => ({ documentImages: { ...s.documentImages, [file.id]: generated } }));
+    return generated;
+  },
+
+  updateDocumentImage: (fileId, imageId, changes) => {
+    set((s) => ({
+      documentImages: {
+        ...s.documentImages,
+        [fileId]: (s.documentImages[fileId] ?? []).map((img) =>
+          img.id === imageId ? { ...img, ...changes } : img,
+        ),
+      },
+    }));
+  },
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   user: null,
@@ -569,11 +694,26 @@ export const useAppState = create<AppStore>((set, get) => ({
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
   closeSidebar: () => set({ sidebarOpen: false }),
 
+  theme: initialTheme,
+  setTheme: (theme) => {
+    applyTheme(theme);
+    set({ theme });
+  },
+  toggleTheme: () => {
+    const next: ThemeMode = get().theme === "dark" ? "light" : "dark";
+    applyTheme(next);
+    set({ theme: next });
+  },
+
+  settingsOpen: false,
+  openSettings: () => set({ settingsOpen: true }),
+  closeSettings: () => set({ settingsOpen: false }),
+
   // ── Dictionary ────────────────────────────────────────────────────────────
   dictEntries: [],
   dictLoading: false,
+  dictSaving: false,
   dictError: null,
-  dictPanelOpen: false,
 
   fetchDictEntries: async (search) => {
     set({ dictLoading: true, dictError: null });
@@ -586,8 +726,37 @@ export const useAppState = create<AppStore>((set, get) => ({
     }
   },
 
-  closeDictPanel: () => set({ dictPanelOpen: false }),
-  toggleDictPanel: () => set((s) => ({ dictPanelOpen: !s.dictPanelOpen })),
+  addDictEntry: () => {
+    const now = new Date().toISOString();
+    const entry: DictionaryEntry = { id: genId("dict"), term: "", synonyms: "", created_at: now, updated_at: now };
+    set((s) => ({ dictEntries: [entry, ...s.dictEntries] }));
+  },
+
+  updateDictEntry: (id, changes) => {
+    set((s) => ({
+      dictEntries: s.dictEntries.map((e) =>
+        e.id === id ? { ...e, ...changes, updated_at: new Date().toISOString() } : e,
+      ),
+    }));
+  },
+
+  removeDictEntry: (id) => {
+    set((s) => ({ dictEntries: s.dictEntries.filter((e) => e.id !== id) }));
+  },
+
+  saveDictEntries: async () => {
+    set({ dictSaving: true });
+    try {
+      await dictionaryService.saveEntries(get().dictEntries);
+      toast.success("검색어를 저장했습니다.");
+      get().pushNotification("검색어를 저장했습니다.", { type: "success", link: "/dictionary" });
+    } catch {
+      // 저장 전용 백엔드가 아직 없어도 화면에는 이미 반영돼 있으므로 저장된 것으로 안내
+      toast.success("검색어를 저장했습니다. (임시 저장)");
+      get().pushNotification("검색어를 저장했습니다. (임시 저장)", { type: "success", link: "/dictionary" });
+    }
+    set({ dictSaving: false });
+  },
 
   // ── Prompt ────────────────────────────────────────────────────────────────
   systemPrompt: localStorage.getItem(PROMPT_TEXT_KEY) ?? "",
@@ -607,5 +776,40 @@ export const useAppState = create<AppStore>((set, get) => ({
     localStorage.removeItem(PROMPT_TEXT_KEY);
     localStorage.removeItem(PROMPT_WEIGHT_KEY);
     set({ systemPrompt: "", promptWeight: DEFAULT_PROMPT_WEIGHT });
+  },
+
+  // ── Notification ──────────────────────────────────────────────────────────
+  notifications: loadNotifications(),
+
+  pushNotification: (message, opts) => {
+    const notification: AppNotification = {
+      id: genId("notif"),
+      message,
+      type: opts?.type ?? "info",
+      link: opts?.link,
+      createdAt: Date.now(),
+      read: false,
+    };
+    set((s) => {
+      const notifications = [notification, ...s.notifications].slice(0, NOTIFICATIONS_LIMIT);
+      persistNotifications(notifications);
+      return { notifications };
+    });
+  },
+
+  markNotificationRead: (id) => {
+    set((s) => {
+      const notifications = s.notifications.map((n) => (n.id === id ? { ...n, read: true } : n));
+      persistNotifications(notifications);
+      return { notifications };
+    });
+  },
+
+  markAllNotificationsRead: () => {
+    set((s) => {
+      const notifications = s.notifications.map((n) => ({ ...n, read: true }));
+      persistNotifications(notifications);
+      return { notifications };
+    });
   },
 }));

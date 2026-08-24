@@ -1,17 +1,18 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Plus, Trash2, MessageSquare, FileText, Globe, BookOpen, Upload, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Plus, Trash2, MessageSquare, FileText, Globe, BookOpen, Upload, Image, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAppState } from "@/core/AppState";
-import { DictionaryPanel } from "@/features/dictionary";
 import "../styles/LeftSidebar.css";
 
 const COLLAPSED_KEY = "chat_sidebar_collapsed";
 
-// 프롬프트 수정/SVG 편집기는 비활성화 — 라우트는 남겨두되 사이드바에는 노출하지 않음
+// 프롬프트 수정은 비활성화 — 라우트는 남겨두되 사이드바에는 노출하지 않음
 const NAV_ITEMS = [
-  { path: "/documents", label: "문서 보기", icon: FileText },
+  { path: "/documents", label: "문서 목록", icon: FileText },
   { path: "/external-api", label: "외부 API 연동", icon: Globe },
-  { path: "/files", label: "파일 임베딩", icon: Upload },
+  { path: "/files", label: "문서 등록", icon: Upload },
+  { path: "/image-editor", label: "이미지 편집기", icon: Image },
+  { path: "/dictionary", label: "검색어 관리", icon: BookOpen },
 ];
 
 export default function LeftSidebar() {
@@ -23,8 +24,7 @@ export default function LeftSidebar() {
   const user = useAppState((s) => s.user);
   const sidebarOpen = useAppState((s) => s.sidebarOpen);
   const closeSidebar = useAppState((s) => s.closeSidebar);
-  const dictPanelOpen = useAppState((s) => s.dictPanelOpen);
-  const toggleDictPanel = useAppState((s) => s.toggleDictPanel);
+  const openSettings = useAppState((s) => s.openSettings);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -91,18 +91,7 @@ export default function LeftSidebar() {
               {!isCollapsed && label}
             </button>
           ))}
-
-          <button
-            className={["sidebar-nav-btn", dictPanelOpen && "active"].filter(Boolean).join(" ")}
-            onClick={toggleDictPanel}
-            title="사전 보기"
-          >
-            <BookOpen size={16} />
-            {!isCollapsed && "사전 보기"}
-          </button>
         </div>
-
-        <DictionaryPanel />
 
         <div className="sidebar-divider" />
 
@@ -128,7 +117,7 @@ export default function LeftSidebar() {
           </div>
         )}
 
-        <button className="user-info-btn" title={displayName}>
+        <button className="user-info-btn" title={displayName} onClick={openSettings}>
           <span className="user-avatar">{initial}</span>
           {!isCollapsed && (
             <span className="user-info-text">

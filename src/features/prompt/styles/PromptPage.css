@@ -20,13 +20,13 @@
   height: 40px;
   padding: 0 14px;
   border-radius: 10px;
-  border: 1px solid #e2e2ea;
-  background-color: #ffffff;
-  color: #1a1a2e;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text);
   font-size: 13px;
   outline: none;
 }
-.prompt-input::placeholder { color: #6b6b80; }
+.prompt-input::placeholder { color: var(--color-muted); }
 .prompt-input:focus { border-color: #4f46e5; }
 
 .prompt-weight-slider {
@@ -47,9 +47,9 @@
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  border: 1px solid #e2e2ea;
-  background-color: #ffffff;
-  color: #6b6b80;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-muted);
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s;
 }
@@ -62,9 +62,9 @@
   width: 160px;
   padding: 8px 10px;
   border-radius: 8px;
-  border: 1px solid #e2e2ea;
-  background-color: #ffffff;
-  color: #1a1a2e;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text);
   font-size: 11px;
   line-height: 1.5;
   text-align: center;
@@ -81,9 +81,9 @@
   height: 32px;
   padding: 0 16px;
   border-radius: 8px;
-  border: 1px solid #e2e2ea;
-  background-color: #ffffff;
-  color: #1a1a2e;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;

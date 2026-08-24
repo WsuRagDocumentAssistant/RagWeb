@@ -16,9 +16,10 @@ function readFileAsBase64(file) {
  * 업로드 진행률(onProgress)을 받아야 해서 fetch 대신 XHR로 같은 task_type 봉투를 보낸다.
  * @param {File} file
  * @param {(progress: number) => void} [onProgress]
- * @returns {Promise<{ fileId: string, status: string }>}
+ * @param {{ area?: string, task?: string, docType?: string, subType?: string, category?: string, subCategory?: string, docDate?: string }} [metadata]
+ * @returns {Promise<{ fileId: string, status: string, chunks?: number }>}
  */
-export function uploadFile(file, onProgress) {
+export function uploadFile(file, onProgress, metadata) {
   return readFileAsBase64(file).then(
     (content) =>
       new Promise((resolve, reject) => {
@@ -26,7 +27,7 @@ export function uploadFile(file, onProgress) {
         const body = JSON.stringify({
           task_type: getTaskType("RAG", "UPLOAD_FILE"),
           session_id: null,
-          payload: { name: file.name, mimeType: file.type, size: file.size, content },
+          payload: { name: file.name, mimeType: file.type, size: file.size, content, ...metadata },
         });
 
         const xhr = new XMLHttpRequest();

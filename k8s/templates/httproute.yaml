@@ -11,6 +11,10 @@ spec:
       {{- if .Values.gateway.existingGatewaySectionName }}
       sectionName: {{ .Values.gateway.existingGatewaySectionName }}
       {{- end }}
+  {{- if .Values.gateway.hostname }}
+  hostnames:
+    - {{ .Values.gateway.hostname }}
+  {{- end }}
   rules:
     - matches:
         - path:

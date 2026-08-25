@@ -8,6 +8,7 @@ import { PromptPage } from "@/features/prompt";
 import { ExternalApiPage } from "@/features/external-api";
 import { SvgEditorPage } from "@/features/svg-editor";
 import { DictionaryPage } from "@/features/dictionary";
+import { AdminUsersPage } from "@/features/admin";
 
 export const router = createBrowserRouter([
   {
@@ -26,6 +27,7 @@ export const router = createBrowserRouter([
           { path: "files", element: <FileManagementPage /> },
           { path: "image-editor", element: <SvgEditorPage /> },
           { path: "dictionary", element: <DictionaryPage /> },
+          { path: "admin", element: <AdminUsersPage /> },
         ],
       },
       { path: "*", element: <Navigate to="/chat" replace /> },

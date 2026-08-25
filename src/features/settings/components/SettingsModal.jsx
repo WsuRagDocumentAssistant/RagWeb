@@ -43,7 +43,7 @@ export default function SettingsModal() {
               <span className="settings-avatar">{initial}</span>
               <div className="settings-account-text">
                 <span className="settings-account-name">{displayName}</span>
-                <span className="settings-account-role">관리자</span>
+                <span className="settings-account-role">{user?.role === "admin" ? "관리자" : "일반 사용자"}</span>
               </div>
             </div>
             <div className="settings-account-actions">

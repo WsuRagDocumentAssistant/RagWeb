@@ -36,24 +36,6 @@
   margin-bottom: 20px;
 }
 
-.sso-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  padding: 12px;
-  border-radius: 10px;
-  border: none;
-  background: #4f46e5;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.sso-btn:hover { background: #4338ca; }
-
 /* TEMP: SSO 연동 전까지 사용하는 임시 로그인 스타일. SSO 연동 완료 시 아래 전체 제거. */
 .temp-login-divider {
   display: flex;

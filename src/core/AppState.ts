@@ -11,8 +11,7 @@ import {
   DUMMY_FILES,
   DUMMY_DICTIONARY_ENTRIES,
   DUMMY_SOURCE_FILES,
-  DUMMY_LOGIN_CREDENTIALS,
-  DUMMY_USER,
+  DUMMY_ACCOUNTS,
 } from "@/shared";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
@@ -50,13 +49,11 @@ export interface ChatSession {
 }
 
 export interface DocumentMetadata {
-  area?: string; // 영역
-  task?: string; // 세부 과제
-  docType?: string; // 구분
-  subType?: string; // 세부구분
-  category?: string; // 유형
-  subCategory?: string; // 세부 유형
-  docDate?: string; // 기준 날짜 (YYYY-MM-DD)
+  workCategory?: string; // 업무구분 (재정지원사업/대학평가/행정부서/행정부서(학과)/기타)
+  task?: string; // 수행업무 — 재정지원사업/대학평가일 때만 사용
+  department?: string; // 수행부서
+  reportType?: string; // 보고서명
+  productionYear?: string; // 생산연도
 }
 
 export interface EmbeddingFile extends DocumentMetadata {
@@ -84,12 +81,22 @@ export interface DocumentImage {
   imageUrl?: string | null; // 교체된 이미지(object URL). null이면 기본 목업 미리보기 사용
 }
 
+export type UserRole = "admin" | "user";
+
 export interface AuthUser {
   id: number;
   email: string;
   name?: string;
   provider: string;
   created_at: string;
+  role: UserRole;
+}
+
+export interface DirectoryUser {
+  id: number;
+  email: string;
+  name: string;
+  role: UserRole;
 }
 
 export interface DictionaryEntry {
@@ -157,6 +164,11 @@ interface AuthSlice {
   setAuthError: (e: string | null) => void;
 }
 
+interface PermissionSlice {
+  userDirectory: DirectoryUser[];
+  setUserRole: (email: string, role: UserRole) => void;
+}
+
 export type ThemeMode = "light" | "dark";
 
 interface UISlice {
@@ -185,9 +197,7 @@ interface DictionarySlice {
   dictSaving: boolean;
   dictError: string | null;
   fetchDictEntries: (search?: string) => Promise<void>;
-  addDictEntry: () => void;
   updateDictEntry: (id: DictionaryEntry["id"], changes: Partial<Pick<DictionaryEntry, "term" | "synonyms">>) => void;
-  removeDictEntry: (id: DictionaryEntry["id"]) => void;
   saveDictEntries: () => Promise<void>;
 }
 
@@ -198,7 +208,7 @@ interface NotificationSlice {
   markAllNotificationsRead: () => void;
 }
 
-type AppStore = ChatSlice & FileSlice & AuthSlice & UISlice & DictionarySlice & PromptSlice & NotificationSlice;
+type AppStore = ChatSlice & FileSlice & AuthSlice & PermissionSlice & UISlice & DictionarySlice & PromptSlice & NotificationSlice;
 
 // ─── 헬퍼 ─────────────────────────────────────────────────────────────────────
 
@@ -260,6 +270,27 @@ const persistSessions = (sessions: ChatSession[]) => {
 const persistActiveSessionId = (id: string | null) => {
   if (id) localStorage.setItem(ACTIVE_SESSION_KEY, id);
   else localStorage.removeItem(ACTIVE_SESSION_KEY);
+};
+
+const USER_DIRECTORY_KEY = "app_user_directory";
+
+const loadUserDirectory = (): DirectoryUser[] => {
+  try {
+    const raw = localStorage.getItem(USER_DIRECTORY_KEY);
+    if (raw) return JSON.parse(raw) as DirectoryUser[];
+  } catch {
+    /* ignore */
+  }
+  return DUMMY_ACCOUNTS.map(({ id, email, name, role }) => ({
+    id,
+    email,
+    name,
+    role: role as UserRole,
+  }));
+};
+
+const persistUserDirectory = (directory: DirectoryUser[]) => {
+  localStorage.setItem(USER_DIRECTORY_KEY, JSON.stringify(directory));
 };
 
 const loadNotifications = (): AppNotification[] => {
@@ -645,11 +676,23 @@ export const useAppState = create<AppStore>((set, get) => ({
       set({ user: data.user, token: data.access_token, authLoading: false });
     } catch (err) {
       // 서버 연결 실패 시에도 화면을 계속 확인할 수 있도록 더미 계정으로 로그인 허용
-      if (email === DUMMY_LOGIN_CREDENTIALS.email && password === DUMMY_LOGIN_CREDENTIALS.password) {
-        const token = "dummy-token";
+      const account = DUMMY_ACCOUNTS.find((a) => a.email === email && a.password === password);
+      if (account) {
+        // 역할은 admin이 권한 관리 화면에서 실시간으로 바꿀 수 있으므로, 저장된 계정 정보가 아니라
+        // 현재 userDirectory(관리자 화면에서 수정한 최신 상태)에서 조회한다.
+        const directoryEntry = get().userDirectory.find((u) => u.email === email);
+        const user: AuthUser = {
+          id: account.id,
+          email: account.email,
+          name: account.name,
+          provider: account.provider,
+          created_at: account.created_at,
+          role: directoryEntry?.role ?? (account.role as UserRole),
+        };
+        const token = `dummy-token-${account.id}`;
         localStorage.setItem("auth_token", token);
-        localStorage.setItem("auth_user", JSON.stringify(DUMMY_USER));
-        set({ user: DUMMY_USER as AuthUser, token, authLoading: false, authError: null });
+        localStorage.setItem("auth_user", JSON.stringify(user));
+        set({ user, token, authLoading: false, authError: null });
         return;
       }
       set({ authLoading: false, authError: err instanceof Error ? err.message : "로그인 실패" });
@@ -689,6 +732,17 @@ export const useAppState = create<AppStore>((set, get) => ({
 
   setAuthError: (authError) => set({ authError }),
 
+  // ── Permission (관리자 권한 관리) ──────────────────────────────────────────
+  userDirectory: loadUserDirectory(),
+
+  setUserRole: (email, role) => {
+    set((s) => {
+      const userDirectory = s.userDirectory.map((u) => (u.email === email ? { ...u, role } : u));
+      persistUserDirectory(userDirectory);
+      return { userDirectory };
+    });
+  },
+
   // ── UI ────────────────────────────────────────────────────────────────────
   sidebarOpen: false,
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
@@ -726,22 +780,12 @@ export const useAppState = create<AppStore>((set, get) => ({
     }
   },
 
-  addDictEntry: () => {
-    const now = new Date().toISOString();
-    const entry: DictionaryEntry = { id: genId("dict"), term: "", synonyms: "", created_at: now, updated_at: now };
-    set((s) => ({ dictEntries: [entry, ...s.dictEntries] }));
-  },
-
   updateDictEntry: (id, changes) => {
     set((s) => ({
       dictEntries: s.dictEntries.map((e) =>
         e.id === id ? { ...e, ...changes, updated_at: new Date().toISOString() } : e,
       ),
     }));
-  },
-
-  removeDictEntry: (id) => {
-    set((s) => ({ dictEntries: s.dictEntries.filter((e) => e.id !== id) }));
   },
 
   saveDictEntries: async () => {

@@ -15,12 +15,6 @@ export function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
-/** "1. 교육혁신성과" → "교육혁신성과" — 카테고리 표시용, 앞의 숫자 넘버링만 제거 (예: "별첨."은 유지) */
-export function stripNumberPrefix(text) {
-  if (!text) return text;
-  return text.replace(/^\d+\.\s*/, "");
-}
-
 /** @param {number} timestamp epoch ms → "방금 전" / "5분 전" / "3시간 전" / "2일 전" 형태의 상대 시간 */
 export function formatRelativeTime(timestamp) {
   const diffSec = Math.floor((Date.now() - timestamp) / 1000);

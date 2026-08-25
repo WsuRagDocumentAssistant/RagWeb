@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
 import { useAppState } from "@/core/AppState";
 import "../styles/DictionaryPage.css";
 
@@ -8,9 +7,7 @@ export default function DictionaryPage() {
   const dictLoading = useAppState((s) => s.dictLoading);
   const dictSaving = useAppState((s) => s.dictSaving);
   const fetchDictEntries = useAppState((s) => s.fetchDictEntries);
-  const addDictEntry = useAppState((s) => s.addDictEntry);
   const updateDictEntry = useAppState((s) => s.updateDictEntry);
-  const removeDictEntry = useAppState((s) => s.removeDictEntry);
   const saveDictEntries = useAppState((s) => s.saveDictEntries);
 
   const [query, setQuery] = useState("");
@@ -32,7 +29,8 @@ export default function DictionaryPage() {
       <div className="dict-page-header">
         <h1>검색어 관리</h1>
         <p className="dict-page-desc">
-          관리 모드로 등록해두면 사용자 질문에 등장하는 단어를 도메인 용어와 매칭해 더 정확한 답을 찾습니다.
+          등록된 검색어는 자동으로 사용자 질문과 매칭되어 더 정확한 답을 찾는 데 쓰입니다. 이 화면에서는 등록된
+          검색어를 확인하고 내용만 수정할 수 있습니다.
         </p>
       </div>
 
@@ -47,24 +45,19 @@ export default function DictionaryPage() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="등록된 검색어 찾기"
           />
-          <button className="dict-add-btn" onClick={addDictEntry}>
-            <Plus size={14} />
-            검색어 추가
-          </button>
         </div>
       </div>
 
       <p className="dict-hint">
         <strong>기준 검색어</strong>는 대표로 쓰이는 단어이고, <strong>같이 인식할 단어</strong>는 같은 뜻으로 다르게
-        부르는 다른 표현입니다. 여러 개일 경우 쉼표(,)로 구분해서 자유롭게 입력하세요.
-        <strong>기준 검색어</strong>는 아래에서 언제든 추가할 수 있으며 저장 버튼을 눌러야 반영됩니다.
+        부르는 다른 표현입니다. 여러 개일 경우 쉼표(,)로 구분해서 자유롭게 입력하세요. 내용을 바꾼 뒤에는
+        <strong>수정</strong> 버튼을 눌러야 반영됩니다.
       </p>
 
       <div className="dict-table">
         <div className="dict-table-head">
           <span>기준 검색어</span>
           <span>같이 인식할 단어</span>
-          <span className="dict-table-head-manage">관리</span>
         </div>
 
         <div className="dict-table-body">
@@ -89,10 +82,6 @@ export default function DictionaryPage() {
                   rows={1}
                   placeholder="같이 인식할 단어 (쉼표로 구분)"
                 />
-                <button className="dict-row-delete" onClick={() => removeDictEntry(entry.id)} title="삭제">
-                  <Trash2 size={13} />
-                  삭제
-                </button>
               </div>
             ))
           )}
@@ -101,7 +90,7 @@ export default function DictionaryPage() {
 
       <div className="dict-save-row">
         <button className="dict-save-btn" onClick={saveDictEntries} disabled={dictSaving}>
-          {dictSaving ? "저장 중..." : "저장"}
+          {dictSaving ? "수정 중..." : "수정"}
         </button>
       </div>
     </div>

@@ -1,17 +1,48 @@
 // 앱 전체에서 쓰는 더미(목업) 데이터를 한 곳에서 관리.
 // 실제 백엔드 응답이 없거나 실패했을 때 화면을 계속 확인할 수 있도록 하는 용도.
 
-// ─── 로그인 ───────────────────────────────────────────────────────────────
+// ─── 로그인 / 계정 ───────────────────────────────────────────────────────────
+// role이 "admin"인 계정만 "문서 등록"과 "외부 API 등록" 화면에 접근할 수 있다.
+// 권한 관리 화면에서 admin이 다른 계정의 역할(관리자/일반 사용자)을 바꿀 수 있다.
 
-export const DUMMY_LOGIN_CREDENTIALS = { email: "111@111.com", password: "111" };
-
-export const DUMMY_USER = {
-  id: 0,
-  email: "111@111.com",
-  name: "테스트 사용자",
-  provider: "dummy",
-  created_at: "2026-01-01T00:00:00.000Z",
-};
+export const DUMMY_ACCOUNTS = [
+  {
+    id: 1,
+    email: "admin@wsu.ac.kr",
+    password: "1234",
+    name: "관리자",
+    role: "admin",
+    provider: "dummy",
+    created_at: "2026-01-01T00:00:00.000Z",
+  },
+  {
+    id: 2,
+    email: "user@wsu.ac.kr",
+    password: "1234",
+    name: "일반 사용자",
+    role: "user",
+    provider: "dummy",
+    created_at: "2026-01-01T00:00:00.000Z",
+  },
+  {
+    id: 3,
+    email: "kim.prof@wsu.ac.kr",
+    password: "1234",
+    name: "김민준 교수",
+    role: "user",
+    provider: "dummy",
+    created_at: "2026-01-01T00:00:00.000Z",
+  },
+  {
+    id: 4,
+    email: "lee.staff@wsu.ac.kr",
+    password: "1234",
+    name: "이서연 조교",
+    role: "user",
+    provider: "dummy",
+    created_at: "2026-01-01T00:00:00.000Z",
+  },
+];
 
 // ─── 채팅 ─────────────────────────────────────────────────────────────────
 
@@ -95,96 +126,105 @@ export function getDummyMergedReply(query, providers) {
 }
 
 // ─── 파일 임베딩 (문서 업로드 메타데이터 포함) ────────────────────────────────
-// "대학혁신지원사업 증빙자료 현황" 대장(엑셀) 시트의 분류 체계를 그대로 반영한 카테고리 목록.
+// "대학혁신지원사업 증빙자료 현황" 대장(엑셀)의 '서류분류' 시트 체계를 그대로 반영한 분류.
+// 업무구분에 따라 수행업무/수행부서 선택지가 달라지는 종속 구조:
+//   - 재정지원사업 / 대학평가 → 수행업무를 고르면 수행부서가 짝지어 채워짐
+//   - 행정부서 / 행정부서(학과) → 수행업무 없이 수행부서만 직접 선택
+//   - 기타 → 자유 입력
 
-export const DOCUMENT_AREAS = [
-  "0. 성과보고서 요약",
-  "1. 교육혁신성과",
-  "2. 자체성과관리",
-  "별첨. 2024년 사업계획",
+export const WORK_CATEGORIES = ["재정지원사업", "대학평가", "행정부서", "행정부서(학과)", "기타"];
+
+// 업무구분이 "수행업무" 단계를 갖는 경우 (재정지원사업/대학평가) — 수행업무 ↔ 수행부서 짝
+export const TASK_DEPARTMENT_PAIRS = {
+  재정지원사업: [
+    { task: "SW 중심대학사업", department: "SW 중심대학사업단" },
+    { task: "바이오헬스(coss) 첨단분야 혁신융합대학", department: "바이오헬스(coss) 첨단분야 혁신융합대학 사업단" },
+    { task: "CAMPUS Asia-AIMS", department: "엔디컷국제대학" },
+    { task: "대학혁신지원사업", department: "대학혁신지원사업단" },
+    { task: "글로벌철도 연수과정지원사업", department: "글로벌철도 연수과정지원사업단" },
+    { task: "첨단산업 인재양성 부트캠프(반도체)", department: "부트캠프 사업단" },
+    { task: "RISE 사업", department: "RISE 사업단" },
+    { task: "바이오헬스 아카데미", department: "바이오헬스 아카데미 사업단" },
+    { task: "4단계 학교기업지원사업", department: "외식조리학과" },
+    { task: "고교-대학 연계 사업", department: "엔디컷국제대학" },
+    { task: "글로벌 인재취업 선도대학사업", department: "취업지원센터" },
+    { task: "채용연계형 SW전문인재양성사업", department: "SW 중심대학사업단" },
+    { task: "지방대학활성화사업", department: "지방대학활성화사업단" },
+    { task: "SW개발 벤처스타트업 사업", department: "SW 중심대학사업단" },
+    { task: "LINC 3.0 사업", department: "RISE 사업단" },
+  ],
+  대학평가: [
+    { task: "기관인증평가", department: "기획처" },
+    { task: "세계대학평가", department: "기획처" },
+    { task: "대학정보공시", department: "기획처" },
+    { task: "고등교육통계", department: "고등교육통계센터" },
+    { task: "대학편제단위", department: "기획처" },
+  ],
+};
+
+// 업무구분이 수행업무 단계 없이 수행부서만 직접 고르는 경우
+export const DEPARTMENTS_BY_WORK_CATEGORY = {
+  행정부서: [
+    "기획처", "대학혁신본부", "고등교육평가센터", "ESG센터", "인사기획처", "대외협력처", "교무처",
+    "대학원", "교수학습개발센터", "입학처", "학생복지처", "학생상담센터", "장애학생지원센터", "사회봉사단",
+    "인권센터", "RISE 혁신지원센터", "국제교류처", "총무처", "인사관리과", "시설처", "산학협력단",
+    "취업지원센터", "창업자원종합관리센터", "유학생동문지원센터", "평생교육원", "우송정보센터", "외국어교육원",
+    "우송IT교육센터", "우송비즈니스교육센터", "학생군사교육단", "지역상생협력센터", "동구 통합가족 지원센터",
+    "한국어교육원", "현장실습지원센터",
+  ],
+  "행정부서(학과)": [
+    "철도경영학과", "철도시스템학부 철도전기시스템전공", "철도시스템학부 철도소프트웨어전공",
+    "철도건설시스템학부 철도건설시스템전공", "철도건설시스템학부 글로벌철도학과", "철도건설시스템학부 건축공학전공",
+    "철도차량시스템학과", "철도자율전공", "소프트웨어학부 컴퓨터공학전공", "소프트웨어학부 컴퓨터·소프트웨어전공",
+    "게임멀티미디어학부 게임소프트웨어전공", "게임멀티미디어학부 게임그래픽전공",
+    "테크노미디어융합학부 미디어디자인·영상전공", "테크노미디어융합학부 글로벌미디어영상학과",
+    "보건의료경영학과", "물리치료학과", "사회복지학과", "작업치료학과", "언어치료·청각재활학과",
+    "스포츠건강재활학과", "유아교육과", "뷰티디자인경영학과", "응급구조학과", "소방·안전학부", "간호학과",
+    "동물관리학부 동물의료관리학과", "동물관리학부 토탈펫케어학과", "보건복지자율전공",
+    "외식조리학부 외식조리전공", "외식조리학부 한식·조리과학전공", "외식조리학부 외식,조리경영전공",
+    "외식조리학부 제과제빵·조리전공", "외식조리영양학과", "호텔관광경영학과", "글로벌조리학부 글로벌조리전공",
+    "글로벌조리학부 Lyfe조리전공", "글로벌조리학부 글로벌외식,조리경영", "외식조리자율전공",
+    "휴먼디지털인터페이스학부(HADI)", "솔브릿지경영학부", "AI경영학과", "AI·빅데이터학과",
+    "글로벌호스피탈리티·디지털매니지먼트학과", "자유전공학부",
+  ],
+};
+
+// 수행업무 단계가 있는 업무구분(재정지원사업/대학평가)인지 여부
+export const TASK_BASED_WORK_CATEGORIES = Object.keys(TASK_DEPARTMENT_PAIRS);
+
+// 수행부서 콤보박스에서 "짝이 자동 채워진 뒤 직접 바꾸고 싶을 때" 쓰는 전체 부서 목록
+export const ALL_DEPARTMENTS = [
+  ...new Set([
+    ...Object.values(TASK_DEPARTMENT_PAIRS).flatMap((pairs) => pairs.map((p) => p.department)),
+    ...Object.values(DEPARTMENTS_BY_WORK_CATEGORY).flat(),
+  ]),
 ];
 
-export const DOCUMENT_TASKS = [
-  "자율혁신 목표 및 추진방향",
-  "주요내용",
-  "2차년도 재정투자 현황",
-  "2차년도 자율 성과 지표",
-  "대학의 중장기 발전꼐획과 사업목표, 교육혁신 추진 로드맵('23~'25)",
-  "교육혁신 추진전략 및 도출 과정",
-  "유연한 학사 운영",
-  "역량중심 전공교양 교육과정 내실화",
-  "교수법 혁신 및 역량 강화",
-  "생애주기 맞춤형 교육과정 운영 및 지원체계 혁신",
-  "스마트 교육 프로그램 강화",
-  "학생 지원 및 관리 체계",
-  "취업 지원 프로그램 혁신",
-  "창업 지원 프로그램 혁신",
-  "학습역량 지원 프로그램 강화",
-  "진로ㆍ심리상담 프로그램 강화",
-  "학생역량강화 통합 관리 및 지원",
-  "글로벌 커뮤니케이션 역량 강화 프로그램 운영",
-  "글로벌 실전 취창업 프로그램 고도화",
-  "전공자율선택제 모집 학생 관리 추진체계 및 추진전략",
-  "역량중심 전공ㆍ교양교육과정 내실화",
-  "생애주기 교육기반 구축",
-  "대학혁신을 위한 교육과정 및 수업 추진체계",
-  "대학혁신을 위한 교육과정 및 수업 추진전략",
-  "추진 세부내용 및 과제별 실적 및 성과",
-  "스마트 교육 환경 개선",
-  "글로벌 틀별교육과정(프로그램) 운영)",
-  "선진 교육과정/자료 개발 및 운영",
-  "글로벌 자매대학과 네트워크 프로그램 강화",
-  "글로벌 산학 연계 프로그램 강화",
-  "교육혁신을 위한 학생 수요에 따른 제도 및 추진체계와 추진전략",
-  "대학혁신지원사업을 위한 혁신 교원채용 및 활용",
-  "지역사회 상생협력 프로그램 운영",
-  "교육혁신 추진을 위한 학내 논의 체계",
-  "교육혁신 전략 이행 점검",
-  "자율성과지표",
-  "자체 성과관리(환류)",
-  "2024년 대학자율혁신계획 요약문",
-];
-
-export const DOCUMENT_TYPES = ["표", "그림", "사진", "이미지", "텍스트"];
-
-export const DOCUMENT_SUB_TYPES = ["글", "표", "그림", "실적표", "텍스트", "이미지", "사진", "-", "성과지표"];
-
-export const DOCUMENT_CATEGORIES = ["-", "기타", "교과", "비교과"];
-
-export const DOCUMENT_SUB_CATEGORIES = [
-  "-",
-  "기타",
-  "발전계획",
-  "규정제·개정",
-  "전공·교육과정",
-  "교수법·교원역량",
-  "학습지원",
-  "취업",
-  "창업",
-  "상담·심리",
-  "글로벌·국제화",
+export const REPORT_TYPES = [
+  "신청계획서", "수정사업계획서", "사업계획서", "연간보고서", "성과보고서", "결과보고서", "우수사례 보고서",
+  "모니터링보고서", "자체평가보고서", "승인신청서", "운영계획", "시행계획", "기타",
 ];
 
 export const DUMMY_FILES = [
   {
     id: "dummy-file-1", name: "2025_Q3_회의록.pdf", size: 245000, mimeType: "application/pdf",
     status: "ready", uploadedAt: Date.parse("2026-06-01"),
-    area: "1. 교육혁신성과", task: "취업 지원 프로그램 혁신", docType: "표", subType: "실적표",
-    category: "비교과", subCategory: "취업", docDate: "2026-06-01",
+    workCategory: "재정지원사업", task: "대학혁신지원사업", department: "대학혁신지원사업단",
+    reportType: "연간보고서", productionYear: "2026",
     chunks: 61,
   },
   {
     id: "dummy-file-2", name: "2025_로드맵.docx", size: 128000, mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     status: "processing", uploadedAt: Date.parse("2026-06-02"),
-    area: "1. 교육혁신성과", task: "대학의 중장기 발전꼐획과 사업목표, 교육혁신 추진 로드맵('23~'25)", docType: "그림", subType: "그림",
-    category: "기타", subCategory: "발전계획", docDate: "2026-06-02",
+    workCategory: "대학평가", task: "대학정보공시", department: "기획처",
+    reportType: "승인신청서", productionYear: "2026",
     chunks: 32,
   },
   {
     id: "dummy-file-3", name: "스캔본.png", size: 3100000, mimeType: "image/png",
     status: "error", uploadedAt: Date.parse("2026-06-03"), errorMessage: "업로드 실패 (400)",
-    area: "2. 자체성과관리", task: "학생역량강화 통합 관리 및 지원", docType: "이미지", subType: "이미지",
-    category: "비교과", subCategory: "학습지원", docDate: "2026-06-03",
+    workCategory: "행정부서(학과)", task: "", department: "소프트웨어학부 컴퓨터공학전공",
+    reportType: "결과보고서", productionYear: "2025",
   },
 ];
 
@@ -266,14 +306,16 @@ export function getDummyDocumentImages(file) {
   }));
 }
 
-// ─── 외부 API 연동 ─────────────────────────────────────────────────────────
+// ─── 외부 API 등록 (정형) ────────────────────────────────────────────────────
+
+export const EXTERNAL_API_FORMATS = ["XML", "JSON", "XLSX", "CSV", "기타"];
 
 export const DUMMY_EXTERNAL_APIS = [
-  { id: "1", url: "Naver.com/api/v1/....", source: "Naver", category: "검색", status: "ready" },
-  { id: "2", url: "Naver.com/api/v1/....", source: "Naver", category: "검색", status: "ready" },
-  { id: "3", url: "Naver.com/api/v1/....", source: "Naver", category: "검색", status: "ready" },
-  { id: "4", url: "정부24.co.kr/api.v1/...", source: "정부24", category: "행정", status: "error" },
-  { id: "5", url: "google.com/api/v1/...", source: "Google", category: "검색", status: "processing" },
+  { id: "1", title: "네이버 검색 API", url: "Naver.com/api/v1/....", site: "naver.com", source: "Naver", category: "검색", format: "JSON", fetchedAt: "2026-07-01", status: "ready" },
+  { id: "2", title: "네이버 지도 API", url: "Naver.com/api/v1/....", site: "naver.com", source: "Naver", category: "검색", format: "JSON", fetchedAt: "2026-07-03", status: "ready" },
+  { id: "3", title: "네이버 오픈 API", url: "Naver.com/api/v1/....", site: "naver.com", source: "Naver", category: "검색", format: "XML", fetchedAt: "2026-07-05", status: "ready" },
+  { id: "4", title: "공공데이터 개방 포털", url: "정부24.co.kr/api.v1/...", site: "data.go.kr", source: "정부24", category: "행정", format: "XLSX", fetchedAt: "2026-07-10", status: "error" },
+  { id: "5", title: "구글 커스텀 검색 API", url: "google.com/api/v1/...", site: "google.com", source: "Google", category: "검색", format: "JSON", fetchedAt: "2026-07-15", status: "processing" },
 ];
 
 // ─── 검색어 관리 ──────────────────────────────────────────────────────────

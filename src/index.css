@@ -56,6 +56,26 @@ body {
 /* 텍스트 선택 */
 ::selection { background: #4f46e544; }
 
+/* 정렬 가능한 표 헤더 — 표 형태 목록 공통으로 쓰는 클릭 정렬 버튼 */
+.sortable-th {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.sortable-th:hover { color: #4f46e5; }
+.sortable-th.active { color: #4f46e5; }
+.sortable-th-idle-icon { opacity: 0.4; }
+.sortable-th:hover .sortable-th-idle-icon { opacity: 0.8; }
+
 /* 토스트 알림 — 앱의 서페이스/보더/텍스트 토큰에 맞춰 sonner 기본 팔레트를 대체 */
 [data-sonner-toaster][data-sonner-theme] {
   --border-radius: 12px !important;

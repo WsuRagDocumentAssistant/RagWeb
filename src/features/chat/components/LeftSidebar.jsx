@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Plus, Trash2, MessageSquare, FileText, Globe, BookOpen, Upload, Image, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Plus, Trash2, MessageSquare, FileText, Globe, BookOpen, Upload, Image, ShieldCheck, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAppState } from "@/core/AppState";
 import "../styles/LeftSidebar.css";
 
@@ -9,10 +9,11 @@ const COLLAPSED_KEY = "chat_sidebar_collapsed";
 // 프롬프트 수정은 비활성화 — 라우트는 남겨두되 사이드바에는 노출하지 않음
 const NAV_ITEMS = [
   { path: "/documents", label: "문서 목록", icon: FileText },
-  { path: "/external-api", label: "외부 API 연동", icon: Globe },
-  { path: "/files", label: "문서 등록", icon: Upload },
+  { path: "/external-api", label: "외부 API 등록 (정형)", icon: Globe, adminOnly: true },
+  { path: "/files", label: "문서 등록 (비정형)", icon: Upload, adminOnly: true },
   { path: "/image-editor", label: "이미지 편집기", icon: Image },
   { path: "/dictionary", label: "검색어 관리", icon: BookOpen },
+  { path: "/admin", label: "권한 관리", icon: ShieldCheck, adminOnly: true },
 ];
 
 export default function LeftSidebar() {
@@ -22,6 +23,8 @@ export default function LeftSidebar() {
   const selectSession = useAppState((s) => s.selectSession);
   const deleteSession = useAppState((s) => s.deleteSession);
   const user = useAppState((s) => s.user);
+  const isAdmin = user?.role === "admin";
+  const visibleNavItems = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
   const sidebarOpen = useAppState((s) => s.sidebarOpen);
   const closeSidebar = useAppState((s) => s.closeSidebar);
   const openSettings = useAppState((s) => s.openSettings);
@@ -80,7 +83,7 @@ export default function LeftSidebar() {
             <Plus size={16} />
             {!isCollapsed && "새 채팅"}
           </button>
-          {NAV_ITEMS.map(({ path, label, icon: Icon }) => (
+          {visibleNavItems.map(({ path, label, icon: Icon }) => (
             <button
               key={path}
               className={["sidebar-nav-btn", location.pathname === path && "active"].filter(Boolean).join(" ")}

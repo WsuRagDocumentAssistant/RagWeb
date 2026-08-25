@@ -52,17 +52,6 @@
 }
 .doc-search input::placeholder { color: var(--color-muted); }
 
-.doc-category-select {
-  height: 38px;
-  padding: 0 12px;
-  border-radius: 8px;
-  border: 1px solid var(--color-border);
-  background-color: var(--color-surface);
-  color: var(--color-text);
-  font-size: 12px;
-  outline: none;
-}
-
 .doc-total {
   font-size: 12px;
   color: var(--color-muted);

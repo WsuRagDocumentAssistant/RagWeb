@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Search, Download, Trash2, Image as ImageIcon } from "lucide-react";
 import { useAppState } from "@/core/AppState";
-import { stripNumberPrefix } from "@/shared";
+import { SortableHeaderCell, useSortableRows } from "@/shared";
 import DocumentImageViewerModal from "./DocumentImageViewerModal";
 import "../styles/DocumentsPage.css";
 
@@ -10,28 +10,20 @@ export default function DocumentsPage() {
   const deleteFile = useAppState((s) => s.deleteFile);
 
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState("전체");
   const [viewingFile, setViewingFile] = useState(null);
 
-  const categories = useMemo(() => {
-    const set = new Set(files.map((f) => f.area).filter(Boolean));
-    return ["전체", ...set];
-  }, [files]);
-
-  const filtered = useMemo(() => {
+  const filteredBase = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return files.filter((f) => {
-      const matchesQuery = !q || f.name.toLowerCase().includes(q);
-      const matchesCategory = category === "전체" || f.area === category;
-      return matchesQuery && matchesCategory;
-    });
-  }, [files, query, category]);
+    return files.filter((f) => !q || f.name.toLowerCase().includes(q));
+  }, [files, query]);
+
+  const { sorted: filtered, sortKey, sortDir, toggleSort } = useSortableRows(filteredBase);
 
   return (
     <div className="documents-page">
       <div className="doc-page-header">
         <h1>문서 목록</h1>
-        <p>등록된 문서와 임베딩(RAG 지식) 상태를 확인할 수 있습니다. 카테고리는 문서 등록 시 입력한 영역을 따릅니다.</p>
+        <p>등록된 문서와 임베딩(RAG 지식) 상태를 확인할 수 있습니다.</p>
       </div>
 
       <div className="doc-toolbar">
@@ -39,21 +31,16 @@ export default function DocumentsPage() {
           <Search size={14} />
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="문서명 검색" />
         </div>
-        <select className="doc-category-select" value={category} onChange={(e) => setCategory(e.target.value)}>
-          {categories.map((c) => (
-            <option key={c} value={c}>{c === "전체" ? "전체 카테고리" : stripNumberPrefix(c)}</option>
-          ))}
-        </select>
         <span className="doc-total">총 <strong>{files.length}</strong>건</span>
       </div>
 
       <div className="doc-table">
         <div className="doc-table-head">
-          <span>문서명 (source)</span>
-          <span>파일명</span>
-          <span>카테고리</span>
-          <span>기준 날짜</span>
-          <span>청크</span>
+          <SortableHeaderCell label="문서명 (source)" sortKey="name" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+          <SortableHeaderCell label="파일명" sortKey="name" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+          <SortableHeaderCell label="업무구분" sortKey="workCategory" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+          <SortableHeaderCell label="생산연도" sortKey="productionYear" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+          <SortableHeaderCell label="청크" sortKey="chunks" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
           <span>액션</span>
         </div>
 
@@ -65,10 +52,10 @@ export default function DocumentsPage() {
               <div key={f.id} className="doc-table-row">
                 <span className="doc-table-name" title={f.name}>{f.name}</span>
                 <span className="doc-table-filename" title={f.name}>{f.name}</span>
-                <span className={`doc-table-category ${!f.area ? "muted" : ""}`}>
-                  {f.area ? stripNumberPrefix(f.area) : "-"}
+                <span className={`doc-table-category ${!f.workCategory ? "muted" : ""}`}>
+                  {f.workCategory || "-"}
                 </span>
-                <span>{f.docDate || "-"}</span>
+                <span>{f.productionYear || "-"}</span>
                 <span>{f.chunks ?? "-"}</span>
                 <span className="doc-table-actions">
                   <button className="doc-table-btn" title="이미지 보기" onClick={() => setViewingFile(f)}>

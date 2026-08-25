@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Image as ImageIcon, Upload, PenSquare, Maximize2 } from "lucide-react";
+import { toast } from "sonner";
+import { X, Image as ImageIcon, Upload, PenSquare, Maximize2, Save } from "lucide-react";
 import { useAppState } from "@/core/AppState";
 import "../styles/DocumentImageViewerModal.css";
 
@@ -26,6 +27,10 @@ export default function DocumentImageViewerModal({ file, onClose }) {
   const [zoomed, setZoomed] = useState(false);
   const imageInputRef = useRef(null);
 
+  // 저장 버튼을 누르기 전까지는 화면에서만 수정하는 임시 편집본 — 다른 이미지로 넘어가면 초기화된다.
+  const [draft, setDraft] = useState(null);
+  const [dirty, setDirty] = useState(false);
+
   useEffect(() => {
     const list = ensureDocumentImages(file);
     setSelectedId((cur) => cur ?? list[0]?.id ?? null);
@@ -34,29 +39,42 @@ export default function DocumentImageViewerModal({ file, onClose }) {
 
   const selected = images.find((img) => img.id === selectedId) ?? null;
 
+  useEffect(() => {
+    setDraft(selected ? { ...selected } : null);
+    setDirty(false);
+  }, [selectedId, selected?.id]);
+
   const update = (changes) => {
-    if (!selected) return;
-    updateDocumentImage(file.id, selected.id, changes);
+    if (!draft) return;
+    setDraft((d) => ({ ...d, ...changes }));
+    setDirty(true);
+  };
+
+  const handleSave = () => {
+    if (!draft) return;
+    updateDocumentImage(file.id, draft.id, draft);
+    setDirty(false);
+    toast.success("변경사항을 저장했습니다.");
   };
 
   const handleImageChange = (e) => {
     const picked = e.target.files?.[0];
     e.target.value = "";
-    if (!picked || !selected) return;
-    if (selected.imageUrl) URL.revokeObjectURL(selected.imageUrl);
+    if (!picked || !draft) return;
+    if (draft.imageUrl) URL.revokeObjectURL(draft.imageUrl);
     update({ imageUrl: URL.createObjectURL(picked) });
   };
 
   const openInImageEditor = () => {
-    if (!selected) return;
-    const color = THUMB_COLORS[selected.index % THUMB_COLORS.length];
-    const svgText = buildPlaceholderSvg(color, selected.index, selected.caption);
+    if (!draft) return;
+    const color = THUMB_COLORS[draft.index % THUMB_COLORS.length];
+    const svgText = buildPlaceholderSvg(color, draft.index, draft.caption);
     navigate("/image-editor", {
-      state: { svgText, fileName: `${file.name}_이미지${selected.index}.svg` },
+      state: { svgText, fileName: `${file.name}_이미지${draft.index}.svg` },
     });
   };
 
-  const previewStyle = selected?.imageUrl ? undefined : { backgroundColor: THUMB_COLORS[(selected?.index ?? 0) % THUMB_COLORS.length] };
+  const previewStyle = draft?.imageUrl ? undefined : { backgroundColor: THUMB_COLORS[(draft?.index ?? 0) % THUMB_COLORS.length] };
 
   return (
     <div className="div-backdrop" onClick={onClose}>
@@ -97,19 +115,19 @@ export default function DocumentImageViewerModal({ file, onClose }) {
             ))}
           </div>
 
-          <div className="div-viewer-panel">
+          <div className="div-image-col">
             <div className="div-viewer-title">이미지 보기</div>
-            {!selected ? (
+            {!draft ? (
               <p className="div-viewer-empty">왼쪽에서 이미지를 선택하면 상세 설명을 볼 수 있습니다.</p>
             ) : (
               <>
                 <button className="div-viewer-preview" style={previewStyle} onClick={() => setZoomed(true)} title="클릭하면 확대됩니다">
-                  {selected.imageUrl ? (
-                    <img src={selected.imageUrl} alt={selected.caption} />
+                  {draft.imageUrl ? (
+                    <img src={draft.imageUrl} alt={draft.caption} />
                   ) : (
                     <>
                       <ImageIcon size={40} />
-                      <span>이미지 {selected.index}</span>
+                      <span>이미지 {draft.index}</span>
                     </>
                   )}
                   <span className="div-viewer-zoom-hint"><Maximize2 size={12} /> 클릭하면 확대</span>
@@ -124,7 +142,13 @@ export default function DocumentImageViewerModal({ file, onClose }) {
                     <PenSquare size={13} /> 이미지 편집기에서 열기
                   </button>
                 </div>
+              </>
+            )}
+          </div>
 
+          <div className="div-meta-col">
+            {!draft ? null : (
+              <>
                 <div className="div-viewer-section">
                   <span className="div-viewer-tag">문서 제목</span>
                   <p>{file.name}</p>
@@ -137,7 +161,7 @@ export default function DocumentImageViewerModal({ file, onClose }) {
                       <span>대제목</span>
                       <input
                         type="text"
-                        value={selected.majorTitle ?? ""}
+                        value={draft.majorTitle ?? ""}
                         onChange={(e) => update({ majorTitle: e.target.value })}
                       />
                     </label>
@@ -145,7 +169,7 @@ export default function DocumentImageViewerModal({ file, onClose }) {
                       <span>중제목</span>
                       <input
                         type="text"
-                        value={selected.midTitle ?? ""}
+                        value={draft.midTitle ?? ""}
                         onChange={(e) => update({ midTitle: e.target.value })}
                       />
                     </label>
@@ -153,7 +177,7 @@ export default function DocumentImageViewerModal({ file, onClose }) {
                       <span>소제목</span>
                       <input
                         type="text"
-                        value={selected.minorTitle ?? ""}
+                        value={draft.minorTitle ?? ""}
                         onChange={(e) => update({ minorTitle: e.target.value })}
                       />
                     </label>
@@ -162,7 +186,7 @@ export default function DocumentImageViewerModal({ file, onClose }) {
                     className="div-viewer-textarea"
                     rows={2}
                     placeholder="이미지에 대한 부연 설명을 입력하세요."
-                    value={selected.note ?? ""}
+                    value={draft.note ?? ""}
                     onChange={(e) => update({ note: e.target.value })}
                   />
                 </div>
@@ -172,7 +196,7 @@ export default function DocumentImageViewerModal({ file, onClose }) {
                   <textarea
                     className="div-viewer-textarea"
                     rows={2}
-                    value={selected.aiSummary}
+                    value={draft.aiSummary}
                     onChange={(e) => update({ aiSummary: e.target.value })}
                   />
                 </div>
@@ -183,7 +207,7 @@ export default function DocumentImageViewerModal({ file, onClose }) {
                     className="div-viewer-textarea"
                     rows={3}
                     placeholder="한 줄에 하나씩 입력하세요."
-                    value={selected.keyFacts.join("\n")}
+                    value={draft.keyFacts.join("\n")}
                     onChange={(e) => update({ keyFacts: e.target.value.split("\n") })}
                   />
                 </div>
@@ -194,9 +218,15 @@ export default function DocumentImageViewerModal({ file, onClose }) {
                     className="div-viewer-textarea"
                     rows={2}
                     placeholder="쉼표(,)로 구분해서 입력하세요."
-                    value={selected.keyPhrases.join(", ")}
+                    value={draft.keyPhrases.join(", ")}
                     onChange={(e) => update({ keyPhrases: e.target.value.split(",").map((v) => v.trim()) })}
                   />
+                </div>
+
+                <div className="div-meta-save-row">
+                  <button className="div-save-btn" onClick={handleSave} disabled={!dirty}>
+                    <Save size={13} /> {dirty ? "저장" : "저장됨"}
+                  </button>
                 </div>
               </>
             )}
@@ -204,18 +234,18 @@ export default function DocumentImageViewerModal({ file, onClose }) {
         </div>
       </div>
 
-      {zoomed && selected && (
+      {zoomed && draft && (
         <div className="div-lightbox" onClick={(e) => { e.stopPropagation(); setZoomed(false); }}>
           <button className="div-close-btn div-lightbox-close" onClick={() => setZoomed(false)} title="닫기">
             <X size={20} />
           </button>
           <div className="div-lightbox-content" style={previewStyle} onClick={(e) => e.stopPropagation()}>
-            {selected.imageUrl ? (
-              <img src={selected.imageUrl} alt={selected.caption} />
+            {draft.imageUrl ? (
+              <img src={draft.imageUrl} alt={draft.caption} />
             ) : (
               <>
                 <ImageIcon size={72} />
-                <span>이미지 {selected.index}</span>
+                <span>이미지 {draft.index}</span>
               </>
             )}
           </div>

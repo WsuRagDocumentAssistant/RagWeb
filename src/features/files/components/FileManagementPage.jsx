@@ -1,23 +1,30 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { Navigate } from "react-router-dom";
 import { UploadCloud, FileText, Trash2 } from "lucide-react";
 import { useAppState } from "@/core/AppState";
 import {
-  DOCUMENT_AREAS,
-  DOCUMENT_TASKS,
-  DOCUMENT_TYPES,
-  DOCUMENT_SUB_TYPES,
-  DOCUMENT_CATEGORIES,
-  DOCUMENT_SUB_CATEGORIES,
+  WORK_CATEGORIES,
+  TASK_DEPARTMENT_PAIRS,
+  TASK_BASED_WORK_CATEGORIES,
+  DEPARTMENTS_BY_WORK_CATEGORY,
+  ALL_DEPARTMENTS,
+  REPORT_TYPES,
   formatBytes,
-  stripNumberPrefix,
+  ComboBoxInput,
+  SortableHeaderCell,
+  useSortableRows,
 } from "@/shared";
 import "../styles/FileManagementPage.css";
 
-const RECENT_LIST_LIMIT = 10;
-
 const genQueueId = () => `q-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-const todayStr = () => new Date().toISOString().slice(0, 10);
-const emptyMetadata = () => ({ area: "", task: "", docType: "", subType: "", category: "", subCategory: "", docDate: todayStr() });
+const currentYearStr = () => String(new Date().getFullYear());
+const emptyMetadata = () => ({
+  workCategory: "",
+  task: "",
+  department: "",
+  reportType: "",
+  productionYear: currentYearStr(),
+});
 
 const STATUS_LABEL = {
   uploading: "업로드 중",
@@ -27,59 +34,95 @@ const STATUS_LABEL = {
 };
 
 function MetadataFields({ values, onChange }) {
+  const isTaskBased = TASK_BASED_WORK_CATEGORIES.includes(values.workCategory);
+  const taskOptions = (TASK_DEPARTMENT_PAIRS[values.workCategory] ?? []).map((p) => p.task);
+  const directDepartmentOptions = DEPARTMENTS_BY_WORK_CATEGORY[values.workCategory] ?? ALL_DEPARTMENTS;
+
+  const handleWorkCategoryChange = (v) => {
+    onChange("workCategory", v);
+    onChange("task", "");
+    onChange("department", "");
+  };
+
+  const handleTaskChange = (v) => {
+    onChange("task", v);
+    const match = (TASK_DEPARTMENT_PAIRS[values.workCategory] ?? []).find((p) => p.task === v);
+    if (match) onChange("department", match.department);
+  };
+
   return (
     <div className="fm-meta-fields">
       <label className="fm-meta-field">
-        <span>영역</span>
-        <select value={values.area} onChange={(e) => onChange("area", e.target.value)}>
-          <option value="">선택 안 함</option>
-          {DOCUMENT_AREAS.map((v) => <option key={v} value={v}>{stripNumberPrefix(v)}</option>)}
-        </select>
+        <span>업무구분</span>
+        <ComboBoxInput
+          value={values.workCategory}
+          onChange={handleWorkCategoryChange}
+          options={WORK_CATEGORIES}
+          placeholder="업무구분 선택 또는 입력"
+        />
       </label>
+
+      {isTaskBased ? (
+        <label className="fm-meta-field">
+          <span>수행업무</span>
+          <ComboBoxInput
+            value={values.task}
+            onChange={handleTaskChange}
+            options={taskOptions}
+            placeholder="수행업무 선택 또는 입력"
+          />
+        </label>
+      ) : (
+        <label className="fm-meta-field">
+          <span>수행부서</span>
+          <ComboBoxInput
+            value={values.department}
+            onChange={(v) => onChange("department", v)}
+            options={directDepartmentOptions}
+            placeholder="수행부서 선택 또는 입력"
+          />
+        </label>
+      )}
+
+      {isTaskBased && (
+        <label className="fm-meta-field">
+          <span>수행부서</span>
+          <ComboBoxInput
+            value={values.department}
+            onChange={(v) => onChange("department", v)}
+            options={ALL_DEPARTMENTS}
+            placeholder="수행업무를 고르면 자동으로 채워집니다"
+          />
+        </label>
+      )}
+
       <label className="fm-meta-field">
-        <span>세부 과제</span>
-        <select value={values.task} onChange={(e) => onChange("task", e.target.value)}>
-          <option value="">선택 안 함</option>
-          {DOCUMENT_TASKS.map((v) => <option key={v} value={v}>{v}</option>)}
-        </select>
+        <span>보고서명</span>
+        <ComboBoxInput
+          value={values.reportType}
+          onChange={(v) => onChange("reportType", v)}
+          options={REPORT_TYPES}
+          placeholder="보고서명 선택 또는 입력"
+        />
       </label>
-      <label className="fm-meta-field">
-        <span>구분</span>
-        <select value={values.docType} onChange={(e) => onChange("docType", e.target.value)}>
-          <option value="">선택 안 함</option>
-          {DOCUMENT_TYPES.map((v) => <option key={v} value={v}>{v}</option>)}
-        </select>
-      </label>
-      <label className="fm-meta-field">
-        <span>세부구분</span>
-        <select value={values.subType} onChange={(e) => onChange("subType", e.target.value)}>
-          <option value="">선택 안 함</option>
-          {DOCUMENT_SUB_TYPES.map((v) => <option key={v} value={v}>{v}</option>)}
-        </select>
-      </label>
-      <label className="fm-meta-field">
-        <span>유형</span>
-        <select value={values.category} onChange={(e) => onChange("category", e.target.value)}>
-          <option value="">선택 안 함</option>
-          {DOCUMENT_CATEGORIES.map((v) => <option key={v} value={v}>{v}</option>)}
-        </select>
-      </label>
-      <label className="fm-meta-field">
-        <span>세부 유형</span>
-        <select value={values.subCategory} onChange={(e) => onChange("subCategory", e.target.value)}>
-          <option value="">선택 안 함</option>
-          {DOCUMENT_SUB_CATEGORIES.map((v) => <option key={v} value={v}>{v}</option>)}
-        </select>
-      </label>
+
       <label className="fm-meta-field fm-meta-field-date">
-        <span>기준 날짜</span>
-        <input type="date" value={values.docDate} onChange={(e) => onChange("docDate", e.target.value)} />
+        <span>생산연도</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          maxLength={4}
+          placeholder="예: 2026"
+          value={values.productionYear}
+          onChange={(e) => onChange("productionYear", e.target.value)}
+        />
       </label>
     </div>
   );
 }
 
 export default function FileManagementPage() {
+  const user = useAppState((s) => s.user);
   const files = useAppState((s) => s.files);
   const fetchFiles = useAppState((s) => s.fetchFiles);
   const uploadFile = useAppState((s) => s.uploadFile);
@@ -91,9 +134,10 @@ export default function FileManagementPage() {
   const [queue, setQueue] = useState([]); // { id, file, override: null | metadata }
   const [shared, setShared] = useState(emptyMetadata());
   const [individualId, setIndividualId] = useState(null); // 개별 설정 중인 문서 하나만 유지
-  const [areaFilter, setAreaFilter] = useState("전체");
 
   useEffect(() => { fetchFiles(); }, []);
+
+  if (user?.role !== "admin") return <Navigate to="/chat" replace />;
 
   const addFilesToQueue = (fileList) => {
     const items = Array.from(fileList).map((file) => ({ id: genQueueId(), file, override: null }));
@@ -170,20 +214,15 @@ export default function FileManagementPage() {
   const processingCount = files.filter((f) => f.status === "uploading" || f.status === "processing").length;
   const errorCount = files.filter((f) => f.status === "error").length;
 
-  // 문서 업로드 아래 목록은 최근 10건까지만 보여주고, 새 문서가 임베딩되면 가장 오래된 것부터 밀려난다.
-  const recentFiles = useMemo(() => {
-    return [...files]
-      .filter((f) => areaFilter === "전체" || f.area === areaFilter)
-      .sort((a, b) => b.uploadedAt - a.uploadedAt)
-      .slice(0, RECENT_LIST_LIMIT);
-  }, [files, areaFilter]);
+  // 현재 등록된 문서 목록 — 건수 제한 없이 전부 보여주고, 표 헤더를 눌러 정렬할 수 있다.
+  const { sorted: currentFiles, sortKey, sortDir, toggleSort } = useSortableRows(files, "uploadedAt", "desc");
 
   const activeIndividualItem = queue.find((it) => it.id === individualId);
 
   return (
     <div className="file-management-page">
       <div className="fm-header">
-        <h1>문서 등록</h1>
+        <h1>문서 등록 (비정형)</h1>
         <p>문서를 등록하면 챗봇이 그 내용을 찾아 답변합니다.</p>
       </div>
 
@@ -257,6 +296,7 @@ export default function FileManagementPage() {
               <MetadataFields values={shared} onChange={updateShared} />
               <p className="fm-meta-hint">
                 위 정보는 선택한 문서 전체에 적용됩니다. 문서마다 다르게 넣으려면 왼쪽에서 <strong>문서를 클릭</strong>하세요.
+                목록에 없는 값은 직접 입력해서 새 항목으로 추가할 수 있습니다.
               </p>
             </>
           ) : (
@@ -292,30 +332,24 @@ export default function FileManagementPage() {
 
       <div className="fm-progress-section">
         <div className="fm-progress-head">
-          <span>최근 등록 문서 <strong>{recentFiles.length}</strong>건 (최대 {RECENT_LIST_LIMIT}건)</span>
-          <div className="fm-progress-filters">
-            <select value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)}>
-              <option value="전체">모든 영역</option>
-              {DOCUMENT_AREAS.map((v) => <option key={v} value={v}>{stripNumberPrefix(v)}</option>)}
-            </select>
-          </div>
+          <span>현재 등록 문서 <strong>{currentFiles.length}</strong>건</span>
         </div>
 
         <div className="fm-progress-table">
           <div className="fm-progress-table-head">
-            <span>문서명</span>
-            <span>영역</span>
-            <span>세부 과제</span>
-            <span>상태</span>
+            <SortableHeaderCell label="문서명" sortKey="name" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+            <SortableHeaderCell label="업무구분" sortKey="workCategory" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+            <SortableHeaderCell label="수행업무/부서" sortKey="task" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+            <SortableHeaderCell label="상태" sortKey="status" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
           </div>
-          {recentFiles.length === 0 ? (
+          {currentFiles.length === 0 ? (
             <p className="fm-empty">등록된 문서가 없습니다.</p>
           ) : (
-            recentFiles.map((f) => (
+            currentFiles.map((f) => (
               <div key={f.id} className="fm-progress-row">
                 <span className="fm-progress-name" title={f.name}>{f.name}</span>
-                <span className="fm-progress-cell" title={f.area}>{f.area ? stripNumberPrefix(f.area) : "-"}</span>
-                <span className="fm-progress-cell" title={f.task}>{f.task || "-"}</span>
+                <span className="fm-progress-cell" title={f.workCategory}>{f.workCategory || "-"}</span>
+                <span className="fm-progress-cell" title={f.task || f.department}>{f.task || f.department || "-"}</span>
                 <span className={`fm-status-pill fm-status-pill-${f.status}`}>{STATUS_LABEL[f.status]}</span>
               </div>
             ))

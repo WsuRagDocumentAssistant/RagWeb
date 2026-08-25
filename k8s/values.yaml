@@ -12,4 +12,5 @@ service:
 gateway:
   enabled: true
   existingGatewayName: rag-gateway
-  existingGatewaySectionName: http
+  existingGatewaySectionName: https
+  hostname: "rag.wsu.ac.kr"

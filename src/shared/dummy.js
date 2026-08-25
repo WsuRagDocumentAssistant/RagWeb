@@ -311,11 +311,11 @@ export function getDummyDocumentImages(file) {
 export const EXTERNAL_API_FORMATS = ["XML", "JSON", "XLSX", "CSV", "기타"];
 
 export const DUMMY_EXTERNAL_APIS = [
-  { id: "1", title: "네이버 검색 API", url: "Naver.com/api/v1/....", site: "naver.com", source: "Naver", category: "검색", format: "JSON", fetchedAt: "2026-07-01", status: "ready" },
-  { id: "2", title: "네이버 지도 API", url: "Naver.com/api/v1/....", site: "naver.com", source: "Naver", category: "검색", format: "JSON", fetchedAt: "2026-07-03", status: "ready" },
-  { id: "3", title: "네이버 오픈 API", url: "Naver.com/api/v1/....", site: "naver.com", source: "Naver", category: "검색", format: "XML", fetchedAt: "2026-07-05", status: "ready" },
-  { id: "4", title: "공공데이터 개방 포털", url: "정부24.co.kr/api.v1/...", site: "data.go.kr", source: "정부24", category: "행정", format: "XLSX", fetchedAt: "2026-07-10", status: "error" },
-  { id: "5", title: "구글 커스텀 검색 API", url: "google.com/api/v1/...", site: "google.com", source: "Google", category: "검색", format: "JSON", fetchedAt: "2026-07-15", status: "processing" },
+  { id: "1", title: "네이버 검색 API", url: "Naver.com/api/v1/....", site: "naver.com", source: "Naver", category: "검색", format: "JSON", fetchedAt: "2026-07-01" },
+  { id: "2", title: "네이버 지도 API", url: "Naver.com/api/v1/....", site: "naver.com", source: "Naver", category: "검색", format: "JSON", fetchedAt: "2026-07-03" },
+  { id: "3", title: "네이버 오픈 API", url: "Naver.com/api/v1/....", site: "naver.com", source: "Naver", category: "검색", format: "XML", fetchedAt: "2026-07-05" },
+  { id: "4", title: "공공데이터 개방 포털", url: "정부24.co.kr/api.v1/...", site: "data.go.kr", source: "정부24", category: "행정", format: "XLSX", fetchedAt: "2026-07-10" },
+  { id: "5", title: "구글 커스텀 검색 API", url: "google.com/api/v1/...", site: "google.com", source: "Google", category: "검색", format: "JSON", fetchedAt: "2026-07-15" },
 ];
 
 // ─── 검색어 관리 ──────────────────────────────────────────────────────────

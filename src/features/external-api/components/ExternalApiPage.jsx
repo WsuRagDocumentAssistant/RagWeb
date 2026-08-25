@@ -23,12 +23,6 @@ const emptyForm = () => ({
   fetchedAt: todayStr(),
 });
 
-function StatusRing({ status }) {
-  if (status === "error") return <span className="ea-ring ea-ring-error">오류</span>;
-  if (status === "processing") return <span className="ea-ring ea-ring-processing">50%</span>;
-  return <span className="ea-ring ea-ring-ready">100%</span>;
-}
-
 export default function ExternalApiPage() {
   const user = useAppState((s) => s.user);
   const pushNotification = useAppState((s) => s.pushNotification);
@@ -36,10 +30,10 @@ export default function ExternalApiPage() {
   const [query, setQuery] = useState("");
   const [source, setSource] = useState("전체");
   const [category, setCategory] = useState("전체");
-  const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState(null); // null이면 신규 등록 모드
   const [form, setForm] = useState(emptyForm());
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshingRowId, setRefreshingRowId] = useState(null);
 
   const filteredBase = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -55,12 +49,6 @@ export default function ExternalApiPage() {
 
   if (user?.role !== "admin") return <Navigate to="/chat" replace />;
 
-  const openAddForm = () => {
-    setEditingId(null);
-    setForm(emptyForm());
-    setFormOpen(true);
-  };
-
   const openEditForm = (api) => {
     setEditingId(api.id);
     setForm({
@@ -72,11 +60,9 @@ export default function ExternalApiPage() {
       format: api.format,
       fetchedAt: api.fetchedAt,
     });
-    setFormOpen(true);
   };
 
-  const closeForm = () => {
-    setFormOpen(false);
+  const resetForm = () => {
     setEditingId(null);
     setForm(emptyForm());
   };
@@ -92,11 +78,11 @@ export default function ExternalApiPage() {
       pushNotification("API 정보를 수정했습니다.", { type: "success", link: "/external-api" });
     } else {
       setApis((prev) => [
-        { id: `${Date.now()}`, ...form, title: form.title.trim(), url: form.url.trim(), status: "processing" },
+        { id: `${Date.now()}`, ...form, title: form.title.trim(), url: form.url.trim() },
         ...prev,
       ]);
     }
-    closeForm();
+    resetForm();
   };
 
   const handleDelete = (id) => setApis((prev) => prev.filter((a) => a.id !== id));
@@ -107,6 +93,14 @@ export default function ExternalApiPage() {
     toast.success("API 목록을 새로고침했습니다.");
     pushNotification("API 목록을 새로고침했습니다.", { type: "success", link: "/external-api" });
     setTimeout(() => setRefreshing(false), 400);
+  };
+
+  const handleRowRefresh = (api) => {
+    setRefreshingRowId(api.id);
+    setApis((prev) => prev.map((a) => (a.id === api.id ? { ...a, fetchedAt: todayStr() } : a)));
+    toast.success(`${api.title} 데이터를 새로고침했습니다.`);
+    pushNotification(`${api.title} 데이터를 새로고침했습니다.`, { type: "success", link: "/external-api" });
+    setTimeout(() => setRefreshingRowId(null), 400);
   };
 
   return (
@@ -121,10 +115,9 @@ export default function ExternalApiPage() {
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="검색" />
           <Search size={14} />
         </div>
-        <button className="ea-refresh-btn" onClick={handleRefresh} title="새로고침">
+        <button className="ea-refresh-btn" onClick={handleRefresh} title="전체 새로고침">
           <RefreshCw size={14} className={refreshing ? "ea-spin" : ""} />
         </button>
-        <button className="ea-register-btn" onClick={openAddForm}>등록</button>
       </div>
 
       <div className="ea-filters">
@@ -136,8 +129,11 @@ export default function ExternalApiPage() {
         </select>
       </div>
 
-      {formOpen && (
-        <form className="ea-add-form" onSubmit={handleSubmit}>
+      <form className="ea-add-form" onSubmit={handleSubmit}>
+          <div className="ea-add-form-head">
+            <span>{editingId ? "API 정보 수정" : "API 등록"}</span>
+            {editingId && <span className="ea-add-form-head-sub">선택한 API의 정보를 수정하고 있습니다</span>}
+          </div>
           <div className="ea-add-form-grid">
             <label className="ea-add-field">
               <span>문서 타이틀</span>
@@ -210,10 +206,11 @@ export default function ExternalApiPage() {
           </div>
           <div className="ea-add-form-actions">
             <button type="submit" className="ea-add-submit">{editingId ? "저장" : "추가"}</button>
-            <button type="button" className="ea-add-cancel" onClick={closeForm}>취소</button>
+            {editingId && (
+              <button type="button" className="ea-add-cancel" onClick={resetForm}>취소</button>
+            )}
           </div>
         </form>
-      )}
 
       <div className="ea-table">
         <div className="ea-table-head">
@@ -221,7 +218,6 @@ export default function ExternalApiPage() {
           <SortableHeaderCell label="사이트 / URL" sortKey="site" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
           <SortableHeaderCell label="형식" sortKey="format" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
           <SortableHeaderCell label="가져온 날짜" sortKey="fetchedAt" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-          <SortableHeaderCell label="상태" sortKey="status" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
           <span>관리</span>
         </div>
 
@@ -235,8 +231,10 @@ export default function ExternalApiPage() {
                 <span className="ea-row-meta" title={`${api.site} · ${api.url}`}>{api.site} · {api.url}</span>
                 <span className="ea-row-format">{api.format}</span>
                 <span className="ea-row-date">{api.fetchedAt}</span>
-                <StatusRing status={api.status} />
                 <span className="ea-row-actions">
+                  <button className="ea-row-refresh" onClick={() => handleRowRefresh(api)} title="데이터 새로고침">
+                    <RefreshCw size={14} className={refreshingRowId === api.id ? "ea-spin" : ""} />
+                  </button>
                   <button className="ea-row-edit" onClick={() => openEditForm(api)} title="수정">
                     <Pencil size={14} />
                   </button>

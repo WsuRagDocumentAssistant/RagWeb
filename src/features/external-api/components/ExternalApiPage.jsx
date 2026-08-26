@@ -63,16 +63,20 @@ export default function ExternalApiPage() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!form.title.trim() || !form.url.trim() || !form.fetchedAt) return;
+    if (!form.title.trim() || !form.url.trim() || !form.apiKey.trim() || !form.fetchedAt) return;
     if (editingId) {
       setApis((prev) =>
-        prev.map((a) => (a.id === editingId ? { ...a, ...form, title: form.title.trim(), url: form.url.trim() } : a)),
+        prev.map((a) =>
+          a.id === editingId
+            ? { ...a, ...form, title: form.title.trim(), url: form.url.trim(), apiKey: form.apiKey.trim() }
+            : a,
+        ),
       );
       toast.success("API 정보를 수정했습니다.");
       pushNotification("API 정보를 수정했습니다.", { type: "success", link: "/external-api" });
     } else {
       setApis((prev) => [
-        { id: `${Date.now()}`, ...form, title: form.title.trim(), url: form.url.trim() },
+        { id: `${Date.now()}`, ...form, title: form.title.trim(), url: form.url.trim(), apiKey: form.apiKey.trim() },
         ...prev,
       ]);
     }
@@ -156,7 +160,8 @@ export default function ExternalApiPage() {
                 autoComplete="off"
                 value={form.apiKey}
                 onChange={(e) => setForm((f) => ({ ...f, apiKey: e.target.value }))}
-                placeholder="API 키 입력 (선택)"
+                placeholder="API 키 입력"
+                required
               />
             </label>
             <label className="ea-add-field">

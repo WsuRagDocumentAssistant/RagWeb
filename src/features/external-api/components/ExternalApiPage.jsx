@@ -3,25 +3,24 @@ import { Navigate } from "react-router-dom";
 import { Search, Trash2, Pencil, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useAppState } from "@/core/AppState";
-import { DUMMY_EXTERNAL_APIS, EXTERNAL_API_FORMATS, ComboBoxInput, SortableHeaderCell, useSortableRows } from "@/shared";
+import { DUMMY_EXTERNAL_APIS, ComboBoxInput, SortableHeaderCell, useSortableRows } from "@/shared";
 import "../styles/ExternalApiPage.css";
 
 const SOURCES = ["전체", "Naver", "정부24", "Google", "기타"];
-const CATEGORIES = ["전체", "검색", "행정", "미분류"];
 const FORM_SOURCES = SOURCES.slice(1);
-const FORM_CATEGORIES = CATEGORIES.slice(1);
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
 const emptyForm = () => ({
   title: "",
-  site: "",
   url: "",
   source: FORM_SOURCES[0],
-  category: FORM_CATEGORIES[0],
-  format: EXTERNAL_API_FORMATS[0],
+  apiKey: "",
   fetchedAt: todayStr(),
 });
+
+// 표에는 API 키 전체를 노출하지 않고 끝 4자리만 보여준다.
+const maskApiKey = (key) => (key ? `•••• ${key.slice(-4)}` : "-");
 
 export default function ExternalApiPage() {
   const user = useAppState((s) => s.user);
@@ -29,21 +28,18 @@ export default function ExternalApiPage() {
   const [apis, setApis] = useState(DUMMY_EXTERNAL_APIS);
   const [query, setQuery] = useState("");
   const [source, setSource] = useState("전체");
-  const [category, setCategory] = useState("전체");
   const [editingId, setEditingId] = useState(null); // null이면 신규 등록 모드
   const [form, setForm] = useState(emptyForm());
   const [refreshing, setRefreshing] = useState(false);
-  const [refreshingRowId, setRefreshingRowId] = useState(null);
 
   const filteredBase = useMemo(() => {
     const q = query.trim().toLowerCase();
     return apis.filter((a) => {
       const matchesQuery = !q || a.title.toLowerCase().includes(q) || a.url.toLowerCase().includes(q);
       const matchesSource = source === "전체" || a.source === source;
-      const matchesCategory = category === "전체" || a.category === category;
-      return matchesQuery && matchesSource && matchesCategory;
+      return matchesQuery && matchesSource;
     });
-  }, [apis, query, source, category]);
+  }, [apis, query, source]);
 
   const { sorted: filtered, sortKey, sortDir, toggleSort } = useSortableRows(filteredBase, "fetchedAt", "desc");
 
@@ -53,11 +49,9 @@ export default function ExternalApiPage() {
     setEditingId(api.id);
     setForm({
       title: api.title,
-      site: api.site,
       url: api.url,
       source: api.source,
-      category: api.category,
-      format: api.format,
+      apiKey: api.apiKey,
       fetchedAt: api.fetchedAt,
     });
   };
@@ -95,14 +89,6 @@ export default function ExternalApiPage() {
     setTimeout(() => setRefreshing(false), 400);
   };
 
-  const handleRowRefresh = (api) => {
-    setRefreshingRowId(api.id);
-    setApis((prev) => prev.map((a) => (a.id === api.id ? { ...a, fetchedAt: todayStr() } : a)));
-    toast.success(`${api.title} 데이터를 새로고침했습니다.`);
-    pushNotification(`${api.title} 데이터를 새로고침했습니다.`, { type: "success", link: "/external-api" });
-    setTimeout(() => setRefreshingRowId(null), 400);
-  };
-
   return (
     <div className="external-api-page">
       <div className="ea-page-header">
@@ -124,9 +110,6 @@ export default function ExternalApiPage() {
         <select value={source} onChange={(e) => setSource(e.target.value)}>
           {SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
-        <select value={category} onChange={(e) => setCategory(e.target.value)}>
-          {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
       </div>
 
       <form className="ea-add-form" onSubmit={handleSubmit}>
@@ -144,15 +127,6 @@ export default function ExternalApiPage() {
                 placeholder="예: 공공데이터 개방 포털"
                 autoFocus
                 required
-              />
-            </label>
-            <label className="ea-add-field">
-              <span>사이트</span>
-              <input
-                className="ea-add-input"
-                value={form.site}
-                onChange={(e) => setForm((f) => ({ ...f, site: e.target.value }))}
-                placeholder="예: data.go.kr"
               />
             </label>
             <label className="ea-add-field ea-add-field-wide">
@@ -175,22 +149,14 @@ export default function ExternalApiPage() {
               />
             </label>
             <label className="ea-add-field">
-              <span>구분</span>
-              <select
-                className="ea-add-select"
-                value={form.category}
-                onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-              >
-                {FORM_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </label>
-            <label className="ea-add-field">
-              <span>데이터 형식</span>
-              <ComboBoxInput
-                value={form.format}
-                onChange={(v) => setForm((f) => ({ ...f, format: v }))}
-                options={EXTERNAL_API_FORMATS}
-                placeholder="예: JSON"
+              <span>API Key</span>
+              <input
+                className="ea-add-input"
+                type="password"
+                autoComplete="off"
+                value={form.apiKey}
+                onChange={(e) => setForm((f) => ({ ...f, apiKey: e.target.value }))}
+                placeholder="API 키 입력 (선택)"
               />
             </label>
             <label className="ea-add-field">
@@ -199,8 +165,8 @@ export default function ExternalApiPage() {
                 className="ea-add-input"
                 type="date"
                 value={form.fetchedAt}
-                onChange={(e) => setForm((f) => ({ ...f, fetchedAt: e.target.value }))}
-                required
+                disabled
+                title="실제로 데이터를 가져온 날짜가 자동으로 기록되며 직접 수정할 수 없습니다."
               />
             </label>
           </div>
@@ -215,8 +181,8 @@ export default function ExternalApiPage() {
       <div className="ea-table">
         <div className="ea-table-head">
           <SortableHeaderCell label="문서 타이틀" sortKey="title" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-          <SortableHeaderCell label="사이트 / URL" sortKey="site" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-          <SortableHeaderCell label="형식" sortKey="format" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+          <SortableHeaderCell label="URL" sortKey="url" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+          <SortableHeaderCell label="API Key" sortKey="apiKey" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
           <SortableHeaderCell label="가져온 날짜" sortKey="fetchedAt" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
           <span>관리</span>
         </div>
@@ -228,13 +194,10 @@ export default function ExternalApiPage() {
             filtered.map((api) => (
               <div key={api.id} className="ea-table-row">
                 <span className="ea-row-title" title={api.title}>{api.title}</span>
-                <span className="ea-row-meta" title={`${api.site} · ${api.url}`}>{api.site} · {api.url}</span>
-                <span className="ea-row-format">{api.format}</span>
+                <span className="ea-row-meta" title={api.url}>{api.url}</span>
+                <span className="ea-row-apikey">{maskApiKey(api.apiKey)}</span>
                 <span className="ea-row-date">{api.fetchedAt}</span>
                 <span className="ea-row-actions">
-                  <button className="ea-row-refresh" onClick={() => handleRowRefresh(api)} title="데이터 새로고침">
-                    <RefreshCw size={14} className={refreshingRowId === api.id ? "ea-spin" : ""} />
-                  </button>
                   <button className="ea-row-edit" onClick={() => openEditForm(api)} title="수정">
                     <Pencil size={14} />
                   </button>

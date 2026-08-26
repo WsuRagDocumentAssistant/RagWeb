@@ -151,19 +151,6 @@
 }
 .ea-add-input:focus { border-color: #4f46e5; }
 
-.ea-add-select {
-  width: 100%;
-  height: 34px;
-  padding: 0 10px;
-  border-radius: 8px;
-  border: 1px solid var(--color-border);
-  background-color: var(--color-surface);
-  color: var(--color-text);
-  font-size: 12px;
-  outline: none;
-}
-.ea-add-select:focus { border-color: #4f46e5; }
-
 .ea-add-field input {
   width: 100%;
   min-width: 0;
@@ -177,6 +164,11 @@
   outline: none;
 }
 .ea-add-field input:focus { border-color: #4f46e5; }
+.ea-add-field input:disabled {
+  background-color: var(--color-bg);
+  color: var(--color-muted);
+  cursor: not-allowed;
+}
 
 .ea-add-submit,
 .ea-add-cancel {
@@ -259,12 +251,13 @@
   white-space: nowrap;
 }
 
-.ea-row-format {
+.ea-row-apikey {
   justify-self: start;
   padding: 3px 10px;
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   color: #4f46e5;
   background-color: var(--color-accent-soft);
 }
@@ -279,7 +272,6 @@
   gap: 4px;
 }
 
-.ea-row-refresh,
 .ea-row-edit,
 .ea-row-delete {
   flex-shrink: 0;
@@ -293,7 +285,6 @@
   cursor: pointer;
   transition: color 0.15s;
 }
-.ea-row-refresh:hover { color: #4f46e5; }
 .ea-row-edit:hover { color: #4f46e5; }
 .ea-row-delete:hover { color: #dc2626; }
 

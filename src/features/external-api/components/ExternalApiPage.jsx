@@ -1,13 +1,16 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Search, Trash2, Pencil, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useAppState } from "@/core/AppState";
-import { DUMMY_EXTERNAL_APIS, ComboBoxInput, SortableHeaderCell, useSortableRows } from "@/shared";
+import { DUMMY_EXTERNAL_APIS, ComboBoxInput, SortableHeaderCell, useSortableRows, startServerSyncedInterval } from "@/shared";
 import "../styles/ExternalApiPage.css";
 
 const SOURCES = ["전체", "Naver", "정부24", "Google", "기타"];
 const FORM_SOURCES = SOURCES.slice(1);
+
+// 외부 API 목록을 자동으로 다시 불러오는 주기 — 서버(nginx) 시간 기준으로 동기화된다.
+const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5분
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
@@ -42,6 +45,24 @@ export default function ExternalApiPage() {
   }, [apis, query, source]);
 
   const { sorted: filtered, sortKey, sortDir, toggleSort } = useSortableRows(filteredBase, "fetchedAt", "desc");
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    setApis(DUMMY_EXTERNAL_APIS);
+    toast.success("API 목록을 새로고침했습니다.");
+    pushNotification("API 목록을 새로고침했습니다.", { type: "success", link: "/external-api" });
+    setTimeout(() => setRefreshing(false), 400);
+  };
+
+  // 서버 시간 기준으로 5분마다 자동 새로고침 — 클라이언트 시계가 틀리거나 탭이 백그라운드에 있어도
+  // 다음 실행 시점이 서버 Date 헤더로 매번 다시 보정된다.
+  useEffect(() => {
+    const stop = startServerSyncedInterval(AUTO_REFRESH_INTERVAL_MS, () => {
+      handleRefresh();
+    });
+    return stop;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (user?.role !== "admin") return <Navigate to="/chat" replace />;
 
@@ -84,14 +105,6 @@ export default function ExternalApiPage() {
   };
 
   const handleDelete = (id) => setApis((prev) => prev.filter((a) => a.id !== id));
-
-  const handleRefresh = () => {
-    setRefreshing(true);
-    setApis(DUMMY_EXTERNAL_APIS);
-    toast.success("API 목록을 새로고침했습니다.");
-    pushNotification("API 목록을 새로고침했습니다.", { type: "success", link: "/external-api" });
-    setTimeout(() => setRefreshing(false), 400);
-  };
 
   return (
     <div className="external-api-page">

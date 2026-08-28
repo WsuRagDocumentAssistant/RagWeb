@@ -8,6 +8,7 @@ import "../styles/DocumentsPage.css";
 export default function DocumentsPage() {
   const files = useAppState((s) => s.files);
   const deleteFile = useAppState((s) => s.deleteFile);
+  const downloadFile = useAppState((s) => s.downloadFile);
 
   const [query, setQuery] = useState("");
   const [viewingFile, setViewingFile] = useState(null);
@@ -61,7 +62,7 @@ export default function DocumentsPage() {
                   <button className="doc-table-btn" title="이미지 보기" onClick={() => setViewingFile(f)}>
                     <ImageIcon size={14} />
                   </button>
-                  <button className="doc-table-btn" title="다운로드">
+                  <button className="doc-table-btn" title="다운로드" onClick={() => downloadFile(f.id)}>
                     <Download size={14} />
                   </button>
                   <button className="doc-table-btn doc-table-btn-danger" title="삭제" onClick={() => deleteFile(f.id)}>

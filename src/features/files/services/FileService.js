@@ -16,7 +16,7 @@ function readFileAsBase64(file) {
  * 업로드 진행률(onProgress)을 받아야 해서 fetch 대신 XHR로 같은 task_type 봉투를 보낸다.
  * @param {File} file
  * @param {(progress: number) => void} [onProgress]
- * @param {{ area?: string, task?: string, docType?: string, subType?: string, category?: string, subCategory?: string, docDate?: string }} [metadata]
+ * @param {{ workCategory?: string, task?: string, department?: string, reportType?: string, productionYear?: string }} [metadata]
  * @returns {Promise<{ fileId: string, status: string, chunks?: number }>}
  */
 export function uploadFile(file, onProgress, metadata) {
@@ -67,4 +67,13 @@ export async function listFiles() {
 /** @param {string} fileId */
 export async function deleteFile(fileId) {
   await postTask("RAG", "DELETE_FILE", { token: getToken(), payload: { fileId } });
+}
+
+/**
+ * 문서 원본 파일을 내려받을 수 있는 다운로드 URL을 요청한다.
+ * @param {string} fileId
+ * @returns {Promise<{ url: string }>}
+ */
+export async function downloadFile(fileId) {
+  return postTask("RAG", "DOWNLOAD_FILE", { token: getToken(), payload: { fileId } });
 }

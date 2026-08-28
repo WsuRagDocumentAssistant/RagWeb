@@ -309,11 +309,11 @@ export function getDummyDocumentImages(file) {
 // ─── 외부 API 등록 (정형) ────────────────────────────────────────────────────
 
 export const DUMMY_EXTERNAL_APIS = [
-  { id: "1", title: "네이버 검색 API", url: "Naver.com/api/v1/....", source: "Naver", apiKey: "nv-live-8f21ac93", fetchedAt: "2026-07-01" },
-  { id: "2", title: "네이버 지도 API", url: "Naver.com/api/v1/....", source: "Naver", apiKey: "nv-live-72e0b415", fetchedAt: "2026-07-03" },
-  { id: "3", title: "네이버 오픈 API", url: "Naver.com/api/v1/....", source: "Naver", apiKey: "nv-live-1a4f6d02", fetchedAt: "2026-07-05" },
-  { id: "4", title: "공공데이터 개방 포털", url: "정부24.co.kr/api.v1/...", source: "정부24", apiKey: "data-go-kr-3c9d1e88", fetchedAt: "2026-07-10" },
-  { id: "5", title: "구글 커스텀 검색 API", url: "google.com/api/v1/...", source: "Google", apiKey: "gcs-key-e59a0271", fetchedAt: "2026-07-15" },
+  { id: "1", title: "네이버 검색 API", url: "Naver.com/api/v1/....", source: "Naver", apiKey: "nv-live-8f21ac93", fetchedAt: "2026-07-01T09:00:00.000Z", refreshIntervalMinutes: 5 },
+  { id: "2", title: "네이버 지도 API", url: "Naver.com/api/v1/....", source: "Naver", apiKey: "nv-live-72e0b415", fetchedAt: "2026-07-03T09:00:00.000Z", refreshIntervalMinutes: 30 },
+  { id: "3", title: "네이버 오픈 API", url: "Naver.com/api/v1/....", source: "Naver", apiKey: "nv-live-1a4f6d02", fetchedAt: "2026-07-05T09:00:00.000Z", refreshIntervalMinutes: 60 },
+  { id: "4", title: "공공데이터 개방 포털", url: "정부24.co.kr/api.v1/...", source: "정부24", apiKey: "data-go-kr-3c9d1e88", fetchedAt: "2026-07-10T09:00:00.000Z", refreshIntervalMinutes: 1440 },
+  { id: "5", title: "구글 커스텀 검색 API", url: "google.com/api/v1/...", source: "Google", apiKey: "gcs-key-e59a0271", fetchedAt: "2026-07-15T09:00:00.000Z", refreshIntervalMinutes: 60 },
 ];
 
 // ─── 검색어 관리 ──────────────────────────────────────────────────────────

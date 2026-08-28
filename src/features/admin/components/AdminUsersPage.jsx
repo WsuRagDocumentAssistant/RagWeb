@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { useAppState } from "@/core/AppState";
 import { SortableHeaderCell, useSortableRows } from "@/shared";
@@ -13,7 +13,14 @@ const SUPER_ADMIN_EMAIL = "admin@wsu.ac.kr";
 export default function AdminUsersPage() {
   const user = useAppState((s) => s.user);
   const userDirectory = useAppState((s) => s.userDirectory);
+  const fetchUserDirectory = useAppState((s) => s.fetchUserDirectory);
   const setUserRole = useAppState((s) => s.setUserRole);
+
+  // 서버에서 최신 계정 목록을 가져온다 (실패하면 스토어가 로컬/더미 목록을 그대로 둔다).
+  useEffect(() => {
+    fetchUserDirectory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const manageableUsers = userDirectory.filter((u) => u.email !== SUPER_ADMIN_EMAIL);
   const { sorted: rows, sortKey, sortDir, toggleSort } = useSortableRows(manageableUsers, "name");

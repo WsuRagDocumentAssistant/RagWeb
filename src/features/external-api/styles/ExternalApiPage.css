@@ -205,7 +205,7 @@
 .ea-table-head,
 .ea-table-row {
   display: grid;
-  grid-template-columns: 1.3fr 1.6fr 0.6fr 0.8fr 0.95fr;
+  grid-template-columns: 1.2fr 1.4fr 0.6fr 0.8fr 0.95fr 0.75fr;
   align-items: center;
   gap: 10px;
   padding: 10px 16px;
@@ -260,6 +260,11 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   color: #4f46e5;
   background-color: var(--color-accent-soft);
+}
+
+.ea-row-interval {
+  font-size: 12px;
+  color: var(--color-text);
 }
 
 .ea-row-date {

@@ -4,6 +4,9 @@ import * as chatService from "@/features/chat/services/ChatService";
 import * as fileService from "@/features/files/services/FileService";
 import * as authService from "@/features/auth/services/AuthService";
 import * as dictionaryService from "@/features/dictionary/services/DictionaryService";
+import * as adminService from "@/features/admin/services/AdminService";
+import * as externalApiService from "@/features/external-api/services/ExternalApiService";
+import * as documentImageService from "@/features/documents/services/DocumentImageService";
 import {
   getDummyChatReply,
   getDummyMergedReply,
@@ -12,6 +15,7 @@ import {
   DUMMY_DICTIONARY_ENTRIES,
   DUMMY_SOURCE_FILES,
   DUMMY_ACCOUNTS,
+  DUMMY_EXTERNAL_APIS,
 } from "@/shared";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
@@ -107,6 +111,16 @@ export interface DictionaryEntry {
   updated_at: string;
 }
 
+export interface ExternalApi {
+  id: string;
+  title: string;
+  url: string;
+  source: string;
+  apiKey: string;
+  fetchedAt: string; // ISO 시각 — 실제로 데이터를 가져온 시점
+  refreshIntervalMinutes: number; // 사용자가 설정하는 자동 갱신 주기
+}
+
 export type NotificationType = "success" | "error" | "info";
 
 export interface AppNotification {
@@ -144,10 +158,13 @@ interface FileSlice {
   fetchFiles: () => Promise<void>;
   uploadFile: (file: File, metadata?: DocumentMetadata) => Promise<void>;
   deleteFile: (id: string) => Promise<void>;
+  downloadFile: (id: string) => Promise<void>;
   setFileError: (e: string | null) => void;
   documentImages: Record<string, DocumentImage[]>;
   ensureDocumentImages: (file: EmbeddingFile) => DocumentImage[];
+  fetchDocumentImages: (file: EmbeddingFile) => Promise<void>;
   updateDocumentImage: (fileId: string, imageId: string, changes: Partial<DocumentImage>) => void;
+  saveDocumentImage: (fileId: string, imageId: string, changes: Partial<DocumentImage>) => Promise<void>;
 }
 
 interface AuthSlice {
@@ -166,7 +183,8 @@ interface AuthSlice {
 
 interface PermissionSlice {
   userDirectory: DirectoryUser[];
-  setUserRole: (email: string, role: UserRole) => void;
+  fetchUserDirectory: () => Promise<void>;
+  setUserRole: (email: string, role: UserRole) => Promise<void>;
 }
 
 export type ThemeMode = "light" | "dark";
@@ -208,7 +226,24 @@ interface NotificationSlice {
   markAllNotificationsRead: () => void;
 }
 
-type AppStore = ChatSlice & FileSlice & AuthSlice & PermissionSlice & UISlice & DictionarySlice & PromptSlice & NotificationSlice;
+interface ExternalApiSlice {
+  externalApis: ExternalApi[];
+  externalApiLoading: boolean;
+  fetchExternalApis: () => Promise<void>;
+  saveExternalApi: (api: Partial<ExternalApi> & { title: string; url: string; source: string; apiKey: string; refreshIntervalMinutes: number }) => Promise<void>;
+  deleteExternalApi: (id: string) => Promise<void>;
+  syncExternalApi: (id: string, title: string, fallbackFetchedAt: string) => Promise<void>;
+}
+
+type AppStore = ChatSlice &
+  FileSlice &
+  AuthSlice &
+  PermissionSlice &
+  UISlice &
+  DictionarySlice &
+  PromptSlice &
+  NotificationSlice &
+  ExternalApiSlice;
 
 // ─── 헬퍼 ─────────────────────────────────────────────────────────────────────
 
@@ -625,6 +660,21 @@ export const useAppState = create<AppStore>((set, get) => ({
     }
   },
 
+  downloadFile: async (id) => {
+    const file = get().files.find((f) => f.id === id);
+    try {
+      const data = (await fileService.downloadFile(id)) as { url: string };
+      if (!data?.url) throw new Error("다운로드 URL이 없습니다.");
+      const a = document.createElement("a");
+      a.href = data.url;
+      a.download = file?.name ?? "";
+      a.click();
+    } catch {
+      // 더미 환경에는 원본 파일이 없어 대체할 데이터가 없으므로, 실패를 그대로 안내한다.
+      toast.error(`${file?.name ?? "파일"}을 다운로드할 수 없습니다. (서버 연결 실패)`);
+    }
+  },
+
   setFileError: (fileError) => set({ fileError }),
 
   documentImages: {},
@@ -637,6 +687,19 @@ export const useAppState = create<AppStore>((set, get) => ({
     return generated;
   },
 
+  fetchDocumentImages: async (file) => {
+    // 화면이 비어 보이지 않도록 먼저 더미(혹은 캐시된) 이미지를 채워두고, 서버 응답이 오면 교체한다.
+    get().ensureDocumentImages(file);
+    try {
+      const data = (await documentImageService.listImages(file.id)) as { images: DocumentImage[] };
+      if (data?.images?.length) {
+        set((s) => ({ documentImages: { ...s.documentImages, [file.id]: data.images } }));
+      }
+    } catch {
+      // 서버 연결 실패 시 이미 채워둔 더미 이미지를 그대로 사용
+    }
+  },
+
   updateDocumentImage: (fileId, imageId, changes) => {
     set((s) => ({
       documentImages: {
@@ -646,6 +709,16 @@ export const useAppState = create<AppStore>((set, get) => ({
         ),
       },
     }));
+  },
+
+  saveDocumentImage: async (fileId, imageId, changes) => {
+    // 낙관적으로 먼저 반영해서 화면에는 바로 저장된 것처럼 보이게 한다.
+    get().updateDocumentImage(fileId, imageId, changes);
+    try {
+      await documentImageService.saveImage(fileId, imageId, changes);
+    } catch {
+      // 저장 전용 백엔드가 아직 없어도 화면에는 이미 반영되어 있으므로 조용히 무시
+    }
   },
 
   // ── Auth ──────────────────────────────────────────────────────────────────
@@ -735,12 +808,30 @@ export const useAppState = create<AppStore>((set, get) => ({
   // ── Permission (관리자 권한 관리) ──────────────────────────────────────────
   userDirectory: loadUserDirectory(),
 
-  setUserRole: (email, role) => {
+  fetchUserDirectory: async () => {
+    try {
+      const data = (await adminService.listUsers()) as { users: DirectoryUser[] };
+      if (data?.users) {
+        set({ userDirectory: data.users });
+        persistUserDirectory(data.users);
+      }
+    } catch {
+      // 서버 연결 실패 시 이미 로드해둔 로컬/더미 목록을 그대로 사용
+    }
+  },
+
+  setUserRole: async (email, role) => {
+    // 낙관적으로 먼저 반영 — 관리자 화면이 서버 응답을 기다리지 않고 바로 바뀐 값을 보여준다.
     set((s) => {
       const userDirectory = s.userDirectory.map((u) => (u.email === email ? { ...u, role } : u));
       persistUserDirectory(userDirectory);
       return { userDirectory };
     });
+    try {
+      await adminService.setUserRole(email, role);
+    } catch {
+      // 서버 연결 실패 시에도 화면에는 이미 반영되어 있으므로 조용히 무시
+    }
   },
 
   // ── UI ────────────────────────────────────────────────────────────────────
@@ -855,5 +946,77 @@ export const useAppState = create<AppStore>((set, get) => ({
       persistNotifications(notifications);
       return { notifications };
     });
+  },
+
+  // ── 외부 API 등록 (정형) ───────────────────────────────────────────────────
+  externalApis: DUMMY_EXTERNAL_APIS as ExternalApi[],
+  externalApiLoading: false,
+
+  fetchExternalApis: async () => {
+    set({ externalApiLoading: true });
+    try {
+      const data = (await externalApiService.listApis()) as { apis: ExternalApi[] };
+      set({ externalApis: data.apis ?? [], externalApiLoading: false });
+    } catch {
+      // 서버 연결 실패 시 더미 목록으로 대체
+      set({ externalApis: DUMMY_EXTERNAL_APIS as ExternalApi[], externalApiLoading: false });
+    }
+  },
+
+  saveExternalApi: async (api) => {
+    const isEdit = !!api.id;
+    const prevFetchedAt = isEdit ? get().externalApis.find((a) => a.id === api.id)?.fetchedAt : undefined;
+    const successMessage = isEdit ? "API 정보를 수정했습니다." : "API를 등록했습니다.";
+    try {
+      const data = (await externalApiService.saveApi(api)) as { api: ExternalApi };
+      const saved = data.api;
+      set((s) => ({
+        externalApis: isEdit
+          ? s.externalApis.map((a) => (a.id === saved.id ? saved : a))
+          : [saved, ...s.externalApis],
+      }));
+      toast.success(successMessage);
+    } catch {
+      // 등록/수정 전용 백엔드가 아직 없어도 화면에는 반영되도록 더미 결과로 대체
+      const fallback: ExternalApi = {
+        id: api.id ?? genId("ext-api"),
+        title: api.title,
+        url: api.url,
+        source: api.source,
+        apiKey: api.apiKey,
+        refreshIntervalMinutes: api.refreshIntervalMinutes,
+        fetchedAt: prevFetchedAt ?? new Date().toISOString(),
+      };
+      set((s) => ({
+        externalApis: isEdit
+          ? s.externalApis.map((a) => (a.id === fallback.id ? fallback : a))
+          : [fallback, ...s.externalApis],
+      }));
+      toast.success(`${successMessage} (더미)`);
+    }
+    get().pushNotification(successMessage, { type: "success", link: "/external-api" });
+  },
+
+  deleteExternalApi: async (id) => {
+    set((s) => ({ externalApis: s.externalApis.filter((a) => a.id !== id) }));
+    try {
+      await externalApiService.deleteApi(id);
+    } catch {
+      // 삭제 전용 백엔드가 아직 없어도 화면에는 이미 삭제 반영 — 더미 데모 특성상 복구하지 않는다
+    }
+    toast.success("API를 삭제했습니다.");
+  },
+
+  syncExternalApi: async (id, title, fallbackFetchedAt) => {
+    let fetchedAt = fallbackFetchedAt;
+    try {
+      const data = (await externalApiService.syncApi(id)) as { fetchedAt: string };
+      fetchedAt = data?.fetchedAt ?? fallbackFetchedAt;
+    } catch {
+      // 실제 재수집 백엔드가 아직 없어도 화면에는 서버 시간 기준으로 갱신된 것처럼 보여준다
+    }
+    set((s) => ({ externalApis: s.externalApis.map((a) => (a.id === id ? { ...a, fetchedAt } : a)) }));
+    toast.success(`${title} 데이터를 새로고침했습니다.`);
+    get().pushNotification(`${title} 데이터를 새로고침했습니다.`, { type: "success", link: "/external-api" });
   },
 }));

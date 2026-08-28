@@ -20,7 +20,8 @@ export default function DocumentImageViewerModal({ file, onClose }) {
   const navigate = useNavigate();
   const documentImagesMap = useAppState((s) => s.documentImages);
   const ensureDocumentImages = useAppState((s) => s.ensureDocumentImages);
-  const updateDocumentImage = useAppState((s) => s.updateDocumentImage);
+  const fetchDocumentImages = useAppState((s) => s.fetchDocumentImages);
+  const saveDocumentImage = useAppState((s) => s.saveDocumentImage);
 
   const images = documentImagesMap[file.id] ?? [];
   const [selectedId, setSelectedId] = useState(null);
@@ -34,6 +35,8 @@ export default function DocumentImageViewerModal({ file, onClose }) {
   useEffect(() => {
     const list = ensureDocumentImages(file);
     setSelectedId((cur) => cur ?? list[0]?.id ?? null);
+    // 서버에 실제 이미지 목록이 있으면 백그라운드에서 받아와 위 더미 목록을 교체한다.
+    fetchDocumentImages(file);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file.id]);
 
@@ -50,9 +53,9 @@ export default function DocumentImageViewerModal({ file, onClose }) {
     setDirty(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!draft) return;
-    updateDocumentImage(file.id, draft.id, draft);
+    await saveDocumentImage(file.id, draft.id, draft);
     setDirty(false);
     toast.success("변경사항을 저장했습니다.");
   };

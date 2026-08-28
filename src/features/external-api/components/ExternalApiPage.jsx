@@ -3,32 +3,56 @@ import { Navigate } from "react-router-dom";
 import { Search, Trash2, Pencil, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useAppState } from "@/core/AppState";
-import { DUMMY_EXTERNAL_APIS, ComboBoxInput, SortableHeaderCell, useSortableRows, startServerSyncedInterval } from "@/shared";
+import { ComboBoxInput, SortableHeaderCell, useSortableRows } from "@/shared";
 import "../styles/ExternalApiPage.css";
 
 const SOURCES = ["전체", "Naver", "정부24", "Google", "기타"];
 const FORM_SOURCES = SOURCES.slice(1);
+const DEFAULT_REFRESH_INTERVAL_MINUTES = 5;
 
-// 외부 API 목록을 자동으로 다시 불러오는 주기 — 서버(nginx) 시간 기준으로 동기화된다.
-const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5분
-
-const todayStr = () => new Date().toISOString().slice(0, 10);
+// 각 API가 갱신 주기를 지켰는지 확인하는 주기 — 개별 API의 갱신 주기(분 단위)와는 별개다.
+// 이 값보다 짧은 갱신 주기를 걸어도 실제로는 이 간격으로만 확인된다.
+const REFRESH_CHECK_INTERVAL_MS = 30 * 1000; // 30초
 
 const emptyForm = () => ({
   title: "",
   url: "",
   source: FORM_SOURCES[0],
   apiKey: "",
-  fetchedAt: todayStr(),
+  fetchedAt: new Date().toISOString(),
+  refreshIntervalMinutes: DEFAULT_REFRESH_INTERVAL_MINUTES,
 });
 
 // 표에는 API 키 전체를 노출하지 않고 끝 4자리만 보여준다.
 const maskApiKey = (key) => (key ? `•••• ${key.slice(-4)}` : "-");
 
+// <input type="datetime-local">에 넣을 수 있는 "YYYY-MM-DDTHH:mm" 형식으로 변환한다.
+const toDatetimeLocalValue = (iso) => {
+  const d = new Date(iso);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
+// 표에 보여줄 "YYYY-MM-DD HH:mm" 형식.
+const formatFetchedAt = (iso) => {
+  const d = new Date(iso);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
+const formatRefreshInterval = (minutes) => {
+  if (minutes % 1440 === 0) return `${minutes / 1440}일마다`;
+  if (minutes % 60 === 0) return `${minutes / 60}시간마다`;
+  return `${minutes}분마다`;
+};
+
 export default function ExternalApiPage() {
   const user = useAppState((s) => s.user);
-  const pushNotification = useAppState((s) => s.pushNotification);
-  const [apis, setApis] = useState(DUMMY_EXTERNAL_APIS);
+  const apis = useAppState((s) => s.externalApis);
+  const fetchExternalApis = useAppState((s) => s.fetchExternalApis);
+  const saveExternalApi = useAppState((s) => s.saveExternalApi);
+  const deleteExternalApi = useAppState((s) => s.deleteExternalApi);
+  const syncExternalApi = useAppState((s) => s.syncExternalApi);
   const [query, setQuery] = useState("");
   const [source, setSource] = useState("전체");
   const [editingId, setEditingId] = useState(null); // null이면 신규 등록 모드
@@ -46,21 +70,31 @@ export default function ExternalApiPage() {
 
   const { sorted: filtered, sortKey, sortDir, toggleSort } = useSortableRows(filteredBase, "fetchedAt", "desc");
 
-  const handleRefresh = () => {
+  // 최초 진입 시 서버에서 목록을 가져온다 (실패하면 스토어가 알아서 더미 목록으로 대체한다).
+  useEffect(() => {
+    fetchExternalApis();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleRefresh = async () => {
     setRefreshing(true);
-    setApis(DUMMY_EXTERNAL_APIS);
+    await fetchExternalApis();
     toast.success("API 목록을 새로고침했습니다.");
-    pushNotification("API 목록을 새로고침했습니다.", { type: "success", link: "/external-api" });
     setTimeout(() => setRefreshing(false), 400);
   };
 
-  // 서버 시간 기준으로 5분마다 자동 새로고침 — 클라이언트 시계가 틀리거나 탭이 백그라운드에 있어도
-  // 다음 실행 시점이 서버 Date 헤더로 매번 다시 보정된다.
+  // 30초마다 이 화면이 켜져 있는 클라이언트 시계 기준으로 각 API의 갱신 주기가 지났는지 확인해서,
+  // 지난 항목만 개별적으로 새로고침한다. (이 페이지가 열려있는 동안에만 동작한다.)
   useEffect(() => {
-    const stop = startServerSyncedInterval(AUTO_REFRESH_INTERVAL_MS, () => {
-      handleRefresh();
-    });
-    return stop;
+    const id = setInterval(() => {
+      const now = new Date();
+      const nowIso = now.toISOString();
+      useAppState.getState().externalApis.forEach((a) => {
+        const isDue = now.getTime() - new Date(a.fetchedAt).getTime() >= a.refreshIntervalMinutes * 60 * 1000;
+        if (isDue) syncExternalApi(a.id, a.title, nowIso);
+      });
+    }, REFRESH_CHECK_INTERVAL_MS);
+    return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -74,6 +108,7 @@ export default function ExternalApiPage() {
       source: api.source,
       apiKey: api.apiKey,
       fetchedAt: api.fetchedAt,
+      refreshIntervalMinutes: api.refreshIntervalMinutes,
     });
   };
 
@@ -82,29 +117,21 @@ export default function ExternalApiPage() {
     setForm(emptyForm());
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title.trim() || !form.url.trim() || !form.apiKey.trim() || !form.fetchedAt) return;
-    if (editingId) {
-      setApis((prev) =>
-        prev.map((a) =>
-          a.id === editingId
-            ? { ...a, ...form, title: form.title.trim(), url: form.url.trim(), apiKey: form.apiKey.trim() }
-            : a,
-        ),
-      );
-      toast.success("API 정보를 수정했습니다.");
-      pushNotification("API 정보를 수정했습니다.", { type: "success", link: "/external-api" });
-    } else {
-      setApis((prev) => [
-        { id: `${Date.now()}`, ...form, title: form.title.trim(), url: form.url.trim(), apiKey: form.apiKey.trim() },
-        ...prev,
-      ]);
-    }
+    if (!form.refreshIntervalMinutes || form.refreshIntervalMinutes < 1) return;
+    await saveExternalApi({
+      ...form,
+      id: editingId ?? undefined,
+      title: form.title.trim(),
+      url: form.url.trim(),
+      apiKey: form.apiKey.trim(),
+    });
     resetForm();
   };
 
-  const handleDelete = (id) => setApis((prev) => prev.filter((a) => a.id !== id));
+  const handleDelete = (id) => deleteExternalApi(id);
 
   return (
     <div className="external-api-page">
@@ -178,13 +205,26 @@ export default function ExternalApiPage() {
               />
             </label>
             <label className="ea-add-field">
+              <span>갱신 주기 (분)</span>
+              <input
+                className="ea-add-input"
+                type="number"
+                min="1"
+                step="1"
+                value={form.refreshIntervalMinutes}
+                onChange={(e) => setForm((f) => ({ ...f, refreshIntervalMinutes: Number(e.target.value) }))}
+                placeholder="예: 5"
+                required
+              />
+            </label>
+            <label className="ea-add-field">
               <span>데이터 가져온 날짜</span>
               <input
                 className="ea-add-input"
-                type="date"
-                value={form.fetchedAt}
+                type="datetime-local"
+                value={toDatetimeLocalValue(form.fetchedAt)}
                 disabled
-                title="실제로 데이터를 가져온 날짜가 자동으로 기록되며 직접 수정할 수 없습니다."
+                title="실제로 데이터를 가져온 시각이 자동으로 기록되며 직접 수정할 수 없습니다."
               />
             </label>
           </div>
@@ -201,6 +241,7 @@ export default function ExternalApiPage() {
           <SortableHeaderCell label="문서 타이틀" sortKey="title" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
           <SortableHeaderCell label="URL" sortKey="url" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
           <SortableHeaderCell label="API Key" sortKey="apiKey" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+          <SortableHeaderCell label="갱신 주기" sortKey="refreshIntervalMinutes" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
           <SortableHeaderCell label="가져온 날짜" sortKey="fetchedAt" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
           <span>관리</span>
         </div>
@@ -214,7 +255,8 @@ export default function ExternalApiPage() {
                 <span className="ea-row-title" title={api.title}>{api.title}</span>
                 <span className="ea-row-meta" title={api.url}>{api.url}</span>
                 <span className="ea-row-apikey">{maskApiKey(api.apiKey)}</span>
-                <span className="ea-row-date">{api.fetchedAt}</span>
+                <span className="ea-row-interval">{formatRefreshInterval(api.refreshIntervalMinutes)}</span>
+                <span className="ea-row-date">{formatFetchedAt(api.fetchedAt)}</span>
                 <span className="ea-row-actions">
                   <button className="ea-row-edit" onClick={() => openEditForm(api)} title="수정">
                     <Pencil size={14} />

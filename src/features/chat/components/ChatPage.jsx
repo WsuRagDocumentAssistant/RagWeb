@@ -17,7 +17,9 @@ export default function ChatPage() {
   const mergeTurn = useAppState((s) => s.mergeTurn);
   const choosePreference = useAppState((s) => s.choosePreference);
 
-  const messages = sessions.find((s) => s.id === activeSessionId)?.messages ?? [];
+  const activeSession = sessions.find((s) => s.id === activeSessionId);
+  const messages = activeSession?.messages ?? [];
+  const isLoadingHistory = activeSession?.messagesLoaded === false;
 
   const [isDragging, setIsDragging] = useState(false);
   const dragCounter = useRef(0);
@@ -98,6 +100,7 @@ export default function ChatPage() {
 
         <ChatMessages
           messages={messages}
+          isLoadingHistory={isLoadingHistory}
           selectedMessageId={selectedMessageId}
           onSelectMessage={handleSelectMessage}
           onMergeTurn={mergeTurn}

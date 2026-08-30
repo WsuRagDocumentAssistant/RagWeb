@@ -10,9 +10,13 @@ import "../styles/MainContents.css";
 export default function ProtectedRoute() {
   const user = useAppState((s) => s.user);
   const fetchFiles = useAppState((s) => s.fetchFiles);
+  const fetchSessions = useAppState((s) => s.fetchSessions);
 
   useEffect(() => {
-    if (user) fetchFiles();
+    if (user) {
+      fetchFiles();
+      fetchSessions();
+    }
   }, [user]);
 
   if (!user) return <Navigate to="/login" replace />;

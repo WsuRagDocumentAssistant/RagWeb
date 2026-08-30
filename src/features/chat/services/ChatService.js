@@ -25,3 +25,29 @@ export async function mergeResults({ query, answers, provider }) {
     payload: { query, answers, provider },
   });
 }
+
+/**
+ * 로그인한 사용자의 이전 대화 목록을 가져온다. 목록은 가볍게 유지하기 위해 메시지 내역은 포함하지 않는다
+ * (내역은 getSessionMessages로 클릭 시 별도 조회).
+ * @returns {Promise<{ sessions: { sessionId: string, title?: string, createdAt?: number }[] }>}
+ */
+export async function listSessions() {
+  return postTask("RAG", "LIST_SESSIONS", { token: getToken() });
+}
+
+/**
+ * 사이드바에서 특정 대화를 클릭했을 때 그 대화의 메시지 내역을 가져온다.
+ * @param {string} sessionId
+ * @returns {Promise<{ messages: any[] }>}
+ */
+export async function getSessionMessages(sessionId) {
+  return postTask("RAG", "GET_SESSION_MESSAGES", { token: getToken(), payload: { sessionId } });
+}
+
+/**
+ * 사이드바에서 대화를 삭제했을 때 서버에도 반영한다.
+ * @param {string} sessionId
+ */
+export async function deleteSession(sessionId) {
+  return postTask("RAG", "DELETE_SESSION", { token: getToken(), payload: { sessionId } });
+}

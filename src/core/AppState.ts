@@ -50,6 +50,7 @@ export interface ChatSession {
   title: string;
   messages: Message[];
   createdAt: number;
+  messagesLoaded?: boolean; // false면 목록 조회에서 메시지 내역이 아직 안 온 것 — 클릭 시 별도 조회 필요
 }
 
 export interface DocumentMetadata {
@@ -140,6 +141,8 @@ interface ChatSlice {
   chatLoading: boolean;
   chatError: string | null;
   selectedProviders: AIProvider[];
+  fetchSessions: () => Promise<void>;
+  fetchSessionMessages: (id: string) => Promise<void>;
   sendMessage: (text: string, attachmentUrl?: string) => Promise<void>;
   toggleProvider: (p: AIProvider) => void;
   mergeTurn: (turnId: string, messageIds: string[], mergerProvider: AIProvider) => Promise<void>;
@@ -273,6 +276,7 @@ const makeSession = (): ChatSession => ({
   title: "새 대화",
   messages: [],
   createdAt: Date.now(),
+  messagesLoaded: true,
 });
 
 const deriveTitle = (text: string) => {
@@ -358,6 +362,48 @@ export const useAppState = create<AppStore>((set, get) => ({
   chatLoading: false,
   chatError: null,
   selectedProviders: ["gpt"],
+
+  fetchSessions: async () => {
+    try {
+      // 목록 조회는 가벼워야 하므로 메시지 내역은 포함하지 않는다 — 실제 내역은 클릭 시 fetchSessionMessages로.
+      const data = await chatService.listSessions() as {
+        sessions: { sessionId: string; title?: string; createdAt?: number }[];
+      };
+      if (data?.sessions?.length) {
+        const sessions: ChatSession[] = data.sessions.map((s) => ({
+          id: s.sessionId,
+          backendSessionId: s.sessionId,
+          title: s.title ?? "새 대화",
+          messages: [],
+          createdAt: s.createdAt ?? Date.now(),
+          messagesLoaded: false,
+        }));
+        set({ sessions, activeSessionId: sessions[0]?.id ?? null });
+        persistSessions(sessions);
+        persistActiveSessionId(sessions[0]?.id ?? null);
+        // 화면에 바로 보이는 첫 대화는 곧바로 내역을 불러온다.
+        if (sessions[0]) get().fetchSessionMessages(sessions[0].id);
+      }
+    } catch {
+      // 서버 연결 실패 시 localStorage에 저장된 대화 목록을 그대로 사용
+    }
+  },
+
+  fetchSessionMessages: async (id) => {
+    const session = get().sessions.find((s) => s.id === id);
+    if (!session || session.messagesLoaded || !session.backendSessionId) return;
+    try {
+      const data = await chatService.getSessionMessages(session.backendSessionId) as { messages: Message[] };
+      set((s) => ({
+        sessions: s.sessions.map((sess) =>
+          sess.id === id ? { ...sess, messages: data.messages ?? [], messagesLoaded: true } : sess,
+        ),
+      }));
+      persistSessions(get().sessions);
+    } catch {
+      // 서버 연결 실패 시에는 로딩 표시 없이 빈 대화로 남겨두고, 다시 클릭하면 재시도한다.
+    }
+  },
 
   sendMessage: async (text, attachmentUrl) => {
     let { activeSessionId, sessions, selectedProviders } = get();
@@ -563,9 +609,11 @@ export const useAppState = create<AppStore>((set, get) => ({
   selectSession: (id) => {
     set({ activeSessionId: id });
     persistActiveSessionId(id);
+    get().fetchSessionMessages(id);
   },
 
   deleteSession: (id) => {
+    const target = get().sessions.find((sess) => sess.id === id);
     set((s) => {
       const remaining = s.sessions.filter((sess) => sess.id !== id);
       const activeSessionId = s.activeSessionId === id ? (remaining[0]?.id ?? null) : s.activeSessionId;
@@ -573,6 +621,9 @@ export const useAppState = create<AppStore>((set, get) => ({
     });
     persistSessions(get().sessions);
     persistActiveSessionId(get().activeSessionId);
+    if (target?.backendSessionId) {
+      chatService.deleteSession(target.backendSessionId).catch(() => {});
+    }
   },
 
   setChatError: (chatError) => set({ chatError }),

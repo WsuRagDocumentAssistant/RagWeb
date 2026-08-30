@@ -35,7 +35,7 @@ function groupIntoTurns(messages) {
   return turns;
 }
 
-export default function ChatMessages({ messages, selectedMessageId, onSelectMessage, onMergeTurn, onChoosePreference }) {
+export default function ChatMessages({ messages, isLoadingHistory, selectedMessageId, onSelectMessage, onMergeTurn, onChoosePreference }) {
   const bottomRef = useRef(null);
   const turns = useMemo(() => groupIntoTurns(messages), [messages]);
 
@@ -76,6 +76,15 @@ export default function ChatMessages({ messages, selectedMessageId, onSelectMess
     onMergeTurn?.(turnId, picker.selected, picker.merger);
     closeMergePicker(turnId);
   };
+
+  if (isLoadingHistory) {
+    return (
+      <div className="messages-empty">
+        <span className="messages-empty-icon">⏳</span>
+        <h2 className="messages-empty-title">대화 내역을 불러오는 중...</h2>
+      </div>
+    );
+  }
 
   if (messages.length === 0) {
     return (

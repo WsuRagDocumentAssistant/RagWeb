@@ -61,13 +61,74 @@
 
 ---
 
+## `result` 객체 요약표
+
+응답 봉투는 전부 `{ task_type, status, result, error_message }`로 동일하고, **`result` 안에 실제로
+들어가야 하는 객체/필드명**만 task_type별로 정리하면 아래와 같습니다. 상세 필드 설명과 예시는 각 기능
+섹션(아래)에 있고, 여기서는 "무슨 이름의 객체가 들어가는지"만 빠르게 참고하는 용도입니다.
+
+| task_type | `result` 형태 | 최상위 필드 |
+| --- | --- | --- |
+| `LOGIN` | 객체 | `access_token`, `user` (`{id, email, name, provider, created_at, role}`) |
+| `REGISTER` | **사용 안 함** | 클라이언트는 성공/실패 여부만 보고, 응답 본문은 읽지 않음 |
+| `LOGOUT` | **사용 안 함** | 응답 본문 읽지 않음 (실패해도 클라이언트는 무조건 로그아웃 처리) |
+| `SSO_LOGIN` | 객체 | `access_token`, `user` (`LOGIN`과 동일 구조) — 현재 호출부 없음 |
+| `USER_LIST` | 객체 | `users`: `{id, email, name, role}[]` |
+| `USER_SET_ROLE` | **사용 안 함** | 클라이언트가 낙관적으로 먼저 반영하고 응답은 무시 |
+| `USER_QUERY` | 객체 | `reply`, `sessionId`, `sources?`: `{id, name}[]` |
+| `MERGE_RESULTS` | 객체 | `reply` |
+| `FILE_UPLOAD` | 객체 | `fileId`(또는 `id`/`file_id`), `status?`, `chunks?` |
+| `FILE_LIST` | **배열 자체** | `{files: [...]}`가 아니라 `EmbeddingFile[]`을 그대로 반환 (다른 `_LIST`들과 다름, 주의) |
+| `FILE_DELETE` | **사용 안 함** | 응답 본문 읽지 않음 |
+| `FILE_DOWNLOAD` | 객체 | `url` |
+| `FILE_IMAGE_LIST` | 객체 | `images`: `DocumentImage[]` (`id, index, caption, majorTitle, midTitle, minorTitle, note, aiSummary, keyFacts[], keyPhrases[], imageUrl`) |
+| `FILE_IMAGE_SAVE` | **사용 안 함** | 클라이언트가 낙관적으로 먼저 반영하고 응답은 무시 |
+| `FILE_IMAGE_UPLOAD` | 객체 | `imageUrl` |
+| `DICTIONARY_LIST` | 객체 | `entries`: `{id, term, synonyms, created_at, updated_at}[]` |
+| `DICTIONARY_SAVE` | **사용 안 함** | 클라이언트가 이미 반영된 상태를 그대로 "저장됨"으로 안내, 응답은 무시 |
+| `EXTERNAL_API_LIST` | 객체 | `apis`: `{id, title, url, source, apiKey, fetchedAt, refreshIntervalMinutes}[]` |
+| `EXTERNAL_API_SAVE` | 객체 | `api`: `{id, title, url, source, apiKey, fetchedAt, refreshIntervalMinutes}` (id/fetchedAt은 서버가 채워서 반드시 반환) |
+| `EXTERNAL_API_DELETE` | **사용 안 함** | 응답 본문 읽지 않음 |
+| `EXTERNAL_API_SYNC` | 객체 | `fetchedAt` |
+
+**"사용 안 함"인 항목도 `status: "success"` / `"error"`는 여전히 확인합니다** — 실패 시 클라이언트가
+낙관적으로 반영해둔 값을 되돌리지는 않지만(더미 데모 특성상 그대로 둠), 정상 구현 시에는 실패하면
+`error_message`를 채워서 최소한 `status`는 정확히 내려주세요.
+
+---
+
 ## 인증 · 계정
 
-### `LOGIN` 응답에 `role` 포함 (변경)
-클라이언트의 모든 화면 권한(문서 등록·외부 API 등록·권한 관리 노출 여부)이 이 값 하나로 갈립니다.
-
+### `LOGIN`
+응답에 `role`이 포함되어야 합니다 (변경). 클라이언트의 모든 화면 권한(문서 등록·외부 API 등록·권한 관리
+노출 여부)이 이 값 하나로 갈립니다.
 ```json
+// 요청 payload
+{ "email": "user@wsu.ac.kr", "password": "..." }
+// 응답 result
 { "access_token": "...", "user": { "id": 1, "email": "...", "name": "...", "role": "admin" | "user" } }
+```
+
+### `REGISTER`
+```json
+// 요청 payload
+{ "email": "user@wsu.ac.kr", "password": "...", "name": "홍길동" }
+// 응답 result: 클라이언트는 내용을 사용하지 않고 성공 여부(status)만 봅니다. 실패 시 그대로 에러 표시.
+```
+가입 실패 시 더미 대체 없이 그대로 에러를 보여줍니다 (다른 기능과 달리 서버가 실제로 있어야 동작).
+
+### `SSO_LOGIN`
+```json
+// 요청 payload
+{ "sso_token": "..." }
+// 응답 result
+{ "access_token": "...", "user": { "id": 1, "email": "...", "name": "...", "role": "admin" | "user" } }
+```
+
+### `LOGOUT`
+```json
+// 요청 payload: 없음 (Authorization 헤더의 토큰만 사용)
+// 응답 result: 클라이언트는 결과를 기다리지 않고(fire-and-forget) 즉시 로컬 로그아웃 처리합니다.
 ```
 
 ### 참고 사항
@@ -117,6 +178,8 @@
   "reportType": "연간보고서",        // 보고서명
   "productionYear": "2026"          // 생산연도
 }
+// 응답 result
+{ "fileId": "...", "status": "ready" | "processing" | "error", "chunks": 42 }
 ```
 
 **중요**: `workCategory`, `task`, `department`, `reportType`은 사용자가 목록에 없는 값을 직접 입력해서
@@ -124,6 +187,26 @@
 
 ### `FILE_LIST` 응답도 동일 필드명으로 (변경)
 업로드와 조회가 같은 필드명을 쓰도록 맞춰주세요 (`EmbeddingFile`이 위 5개 필드를 그대로 포함).
+```json
+// 요청 payload: 없음
+// 응답 result
+{
+  "files": [
+    {
+      "id": "...", "name": "2025_Q3_회의록.pdf", "size": 245000, "mimeType": "application/pdf",
+      "status": "ready", "uploadedAt": 1735689600000, "chunks": 42,
+      "workCategory": "재정지원사업", "task": "...", "department": "...", "reportType": "...", "productionYear": "2026"
+    }
+  ]
+}
+```
+
+### `FILE_DELETE`
+```json
+// 요청 payload
+{ "fileId": "dummy-file-1" }
+// 응답 result: 없음 (성공 여부만 확인)
+```
 
 ### `FILE_DOWNLOAD` (신규)
 문서 목록의 "다운로드" 버튼. 원본 파일을 내려받을 수 있는 URL을 응답으로 돌려주면, 클라이언트가
@@ -249,18 +332,87 @@
 
 ## 검색어 관리
 
+파일: `src/features/dictionary/services/DictionaryService.js`
+
+### `DICTIONARY_LIST`
+```json
+// 요청 payload
+{ "search": "선택적 검색어" }
+// 응답 result
+{
+  "entries": [
+    { "id": 1, "term": "인공지능", "synonyms": "AI, 머신러닝", "created_at": "...", "updated_at": "..." }
+  ]
+}
+```
+
 ### `DICTIONARY_SAVE` 의미 변경
 화면에서 추가·삭제 버튼을 없애서, 이제 **기존 항목의 `term`/`synonyms`만 갱신하는 용도**로만 호출됩니다.
 새 검색어 생성이나 삭제 엔드포인트를 별도로 준비하실 필요는 없습니다.
+```json
+// 요청 payload — 화면에 있는 전체 목록을 그대로 보냄(수정 여부와 무관하게 전체 배열)
+{ "entries": [{ "id": 1, "term": "인공지능", "synonyms": "AI, 머신러닝" }] }
+// 응답 result: 클라이언트는 사용하지 않고 성공 여부만 봅니다.
+```
 
 ---
 
-## 채팅 · 알림 (참고 — 아직 서버 작업 불필요)
+## 채팅 (기존 — 상세 스펙 보강)
 
+파일: `src/features/chat/services/ChatService.js`
+
+화면에는 "모델 선택"(비교할 모델 체크박스, 최대 3개), "모델 병합"(고른 응답들을 하나로 합치기),
+"답변 선택"(여러 응답 중 더 나은 것 고르기) 기능이 이미 구현되어 있습니다.
+
+**한 턴에서 여러 모델의 답변을 받은 뒤, 사용자의 다음 행동에 따라 요청 여부/종류가 갈립니다:**
+- 답변 하나만 선택 → **서버 요청 없음.** 클라이언트가 로컬 state만 바꿔서 나머지 비교 답변을 화면에서
+  정리합니다 (`choosePreference`). 별도 task_type을 만들 필요가 없습니다.
+- 2개 이상 선택해서 병합 → **`MERGE_RESULTS` 요청.** 사용자가 체크한 답변들과 병합 수행 모델을 실어
+  보냅니다 (`mergeTurn`). 아래 스펙 참고.
+
+### `USER_QUERY`
+사용자가 모델 선택 체크박스에서 고른 각 모델(`claude`/`gemini`/`gpt`)마다 **개별 요청을 병렬로** 보냅니다.
+모델을 2개 이상 선택하면 화면에 나란히 비교 카드로 표시됩니다.
+```json
+// 요청 payload
+{ "query": "...", "provider": "gpt", "fileIds": undefined }
+// session_id: 이전 응답의 sessionId를 그대로 실어 보냄 (대화 맥락 유지용)
+// 응답 result
+{
+  "reply": "...",
+  "sessionId": "...",
+  "sources": [{ "id": "dummy-file-1", "name": "2025_Q3_회의록.pdf" }]
+}
+```
+- `provider`가 어떤 모델/엔드포인트를 호출할지는 서버에서 매핑해주세요 (클라이언트는 문자열만 전달).
+- `fileIds`는 현재 항상 `undefined`로 보내고 있습니다 — RAG 검색 대상 파일을 사용자가 직접 고르는 UI는
+  아직 없고, 서버가 임베딩된 전체 문서 중 알아서 관련 문서를 찾는 것으로 가정하고 있습니다.
 - **이미지 첨부 질의**: 채팅에 이미지를 첨부하면 base64로 브라우저에만 저장되고, `USER_QUERY` payload에는
   포함되지 않습니다. 이미지 기반 질의를 실제로 처리하려면 전송 방식을 별도로 협의해야 합니다.
-- **알림**: 완전히 로컬(`localStorage`) 상태입니다. 서버 푸시가 없고, 여러 기기·세션 간 동기화가 필요해지면
-  그때 별도 설계가 필요합니다.
+
+### `MERGE_RESULTS`
+"병합" 버튼으로 2개 이상의 응답과 병합에 사용할 모델을 고른 뒤 호출됩니다.
+```json
+// 요청 payload
+{
+  "query": "원래 질문",
+  "answers": [
+    { "provider": "gpt", "content": "..." },
+    { "provider": "claude", "content": "..." }
+  ],
+  "provider": "gpt"   // 병합 작업을 수행할 모델
+}
+// 응답 result
+{ "reply": "..." }
+```
+호출이 실패하면(아직 서버 미구현 등) 클라이언트가 두 답변을 단순히 이어 붙여서 대체 표시합니다.
+
+---
+
+## 알림 (참고 — 서버 작업 불필요)
+
+완전히 로컬(`localStorage`) 상태입니다. 서버 푸시가 없고, 여러 기기·세션 간 동기화가 필요해지면
+그때 별도 설계가 필요합니다.
 
 ---
 

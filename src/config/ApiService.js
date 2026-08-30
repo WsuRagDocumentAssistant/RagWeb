@@ -1,6 +1,6 @@
 import { TaskType } from "./TaskType";
 
-export const SERVER_URL = "https://lowest-similarly-chemical-sam.trycloudflare.com";
+export const SERVER_URL = "https://rag.wsu.ac.kr";
 
 // RAG_Router(Gateway)는 단일 엔드포인트만 가진다. 실제 분기는 task_type으로 이루어진다.
 const TASK_ENDPOINT = "/api/task";

@@ -556,7 +556,7 @@ export const useAppState = create<AppStore>((set, get) => ({
     try {
       const data = await chatService.mergeResults({
         query: userMsg?.content ?? "",
-        answers: turnAssistants.map((m) => ({ provider: m.provider as string, content: m.content })),
+        answers: turnAssistants.map((m) => ({ provider: m.provider as string, content: m.content, sources: m.sources })),
         provider: mergerProvider,
       });
       const sources: MessageSource[] = (data.sources as MessageSource[] | undefined) ?? combineSourcesFromAnswers();

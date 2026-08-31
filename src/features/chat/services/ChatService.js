@@ -16,7 +16,9 @@ export async function sendMessage({ message, provider, sessionId, fileIds }) {
 
 /**
  * 서로 다른 모델의 답변 여러 개를 하나로 병합해서 받아온다.
- * @param {{ query: string, answers: { provider: string, content: string }[], provider: string }} payload provider는 병합 작업을 수행할 모델
+ * answers마다 sources를 같이 보낸다 — 병합을 수행하는 모델이 각 답변이 어떤 문서를 참고했는지 알아야
+ * 병합 결과에서도 출처를 올바르게 표시/인용할 수 있기 때문이다.
+ * @param {{ query: string, answers: { provider: string, content: string, sources?: { id: string, name: string }[] }[], provider: string }} payload provider는 병합 작업을 수행할 모델
  * @returns {Promise<{ reply: string, sources?: { id: string, name: string }[] }>}
  */
 export async function mergeResults({ query, answers, provider }) {

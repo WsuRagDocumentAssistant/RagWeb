@@ -528,6 +528,14 @@ export const useAppState = create<AppStore>((set, get) => ({
     if (turnAssistants.length < 2) return;
     const userMsg = session.messages.find((m) => m.turnId === turnId && m.role === "user");
 
+    // 병합에 쓰인 원본 답변들의 출처를 id 기준으로 합쳐서, 서버가 sources를 안 줘도 최소한
+    // "이 답변들이 참고했던 문서"는 그대로 보이게 한다.
+    const combineSourcesFromAnswers = (): MessageSource[] => {
+      const byId = new Map<string, MessageSource>();
+      turnAssistants.forEach((m) => (m.sources ?? []).forEach((src) => byId.set(src.id, src)));
+      return Array.from(byId.values());
+    };
+
     const mergedMsg: Message = {
       id: genId("m"),
       role: "assistant",
@@ -551,13 +559,14 @@ export const useAppState = create<AppStore>((set, get) => ({
         answers: turnAssistants.map((m) => ({ provider: m.provider as string, content: m.content })),
         provider: mergerProvider,
       });
+      const sources: MessageSource[] = (data.sources as MessageSource[] | undefined) ?? combineSourcesFromAnswers();
       set((s) => ({
         sessions: s.sessions.map((sess) =>
           sess.id === session.id
             ? {
                 ...sess,
                 messages: sess.messages.map((m) =>
-                  m.id === mergedMsg.id ? { ...m, content: data.reply, isStreaming: false } : m,
+                  m.id === mergedMsg.id ? { ...m, content: data.reply, isStreaming: false, sources } : m,
                 ),
               }
             : sess,
@@ -576,7 +585,9 @@ export const useAppState = create<AppStore>((set, get) => ({
             ? {
                 ...sess,
                 messages: sess.messages.map((m) =>
-                  m.id === mergedMsg.id ? { ...m, content: fallback, isStreaming: false } : m,
+                  m.id === mergedMsg.id
+                    ? { ...m, content: fallback, isStreaming: false, sources: combineSourcesFromAnswers() }
+                    : m,
                 ),
               }
             : sess,

@@ -17,7 +17,7 @@ export async function sendMessage({ message, provider, sessionId, fileIds }) {
 /**
  * 서로 다른 모델의 답변 여러 개를 하나로 병합해서 받아온다.
  * @param {{ query: string, answers: { provider: string, content: string }[], provider: string }} payload provider는 병합 작업을 수행할 모델
- * @returns {Promise<{ reply: string }>}
+ * @returns {Promise<{ reply: string, sources?: { id: string, name: string }[] }>}
  */
 export async function mergeResults({ query, answers, provider }) {
   return postTask("RAG", "MERGE", {

@@ -680,18 +680,34 @@ export const useAppState = create<AppStore>((set, get) => ({
       get().pushNotification(`${file.name} 업로드가 완료되었습니다.`, { type: "success", link: "/documents" });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "업로드 실패";
-      // 서버 연결 실패 시에도 데모를 계속 볼 수 있도록 더미 결과(완료 처리)로 대체
-      const chunks = Math.max(1, Math.round(file.size / 4000));
-      set((s) => ({
-        files: s.files.map((f) =>
-          f.id === tempId ? { ...f, status: "ready", chunks } : f,
-        ),
-        fileLoading: false,
-        uploadProgress: 0,
-        fileError: msg,
-      }));
-      toast.success(`${file.name} 업로드 완료 (더미)`, { id: toastId });
-      get().pushNotification(`${file.name} 업로드가 완료되었습니다. (더미)`, { type: "success", link: "/documents" });
+      try {
+        // 타임아웃 등으로 업로드 응답을 못 받았어도 서버는 색인을 끝냈을 수 있다.
+        // 목록을 다시 읽어 서버 기준으로 맞추면 tmp-id로 남는 문제가 자연스럽게 정리된다.
+        // (fetchFiles()를 그대로 쓰지 않는 이유: 그건 실패 시 DUMMY_FILES로 통째로 대체해버려서,
+        //  방금 성공한 업로드까지 같이 지워버릴 수 있다.)
+        const files = (await fileService.listFiles()) as EmbeddingFile[];
+        const uploaded = files.some((f) => f.name === file.name);
+        set({ files, fileLoading: false, uploadProgress: 0, fileError: uploaded ? null : msg });
+        if (uploaded) {
+          toast.success(`${file.name} 업로드 완료`, { id: toastId });
+          get().pushNotification(`${file.name} 업로드가 완료되었습니다.`, { type: "success", link: "/documents" });
+        } else {
+          toast.error(`${file.name} 업로드에 실패했습니다.`, { id: toastId });
+        }
+      } catch {
+        // 서버 자체가 응답하지 않는 완전 오프라인 상태 — 데모를 계속 볼 수 있도록 더미 결과로 대체
+        const chunks = Math.max(1, Math.round(file.size / 4000));
+        set((s) => ({
+          files: s.files.map((f) =>
+            f.id === tempId ? { ...f, status: "ready", chunks } : f,
+          ),
+          fileLoading: false,
+          uploadProgress: 0,
+          fileError: msg,
+        }));
+        toast.success(`${file.name} 업로드 완료 (더미)`, { id: toastId });
+        get().pushNotification(`${file.name} 업로드가 완료되었습니다. (더미)`, { type: "success", link: "/documents" });
+      }
     }
   },
 

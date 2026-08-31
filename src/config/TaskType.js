@@ -21,6 +21,7 @@ export const TaskType = {
   FILE_IMAGE_SAVE: "FILE_IMAGE_SAVE", // 이미지 보기 모달의 "저장" 버튼: 이미지 설명 저장
   FILE_IMAGE_UPLOAD: "FILE_IMAGE_UPLOAD", // 이미지 보기 모달의 "이미지 변경" 버튼: 이미지 파일 교체
   FILE_DOWNLOAD: "FILE_DOWNLOAD", // 문서 목록의 "다운로드" 버튼
+  IMAGE_VECTORIZE: "IMAGE_VECTORIZE", // 이미지 편집기: PNG/JPG를 실제 벡터(선/도형 경로) SVG로 변환
 
   // DICTIONARY
   DICTIONARY_LIST: "DICTIONARY_LIST",

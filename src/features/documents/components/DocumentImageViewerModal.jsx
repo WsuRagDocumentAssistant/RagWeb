@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { X, Image as ImageIcon, Upload, PenSquare, Maximize2, Save } from "lucide-react";
 import { useAppState } from "@/core/AppState";
+import { SvgEditorService } from "@/features/svg-editor";
 import "../styles/DocumentImageViewerModal.css";
 
 const THUMB_COLORS = ["#eef0ff", "#e9f7ef", "#fff4e5", "#fdecec", "#e6f4ff"];
@@ -86,13 +87,32 @@ export default function DocumentImageViewerModal({ file, onClose }) {
     }
   };
 
-  const openInImageEditor = () => {
+  const openInImageEditor = async () => {
     if (!draft) return;
+    const fileName = `${file.name}_이미지${draft.index}.svg`;
+    if (draft.imageUrl) {
+      // blob: URL(방금 로컬에서 고른 이미지, 아직 서버에 없음)은 서버가 접근할 수 없으니 벡터화를 건너뛴다.
+      if (!draft.imageUrl.startsWith("blob:")) {
+        try {
+          const data = await SvgEditorService.vectorizeImage({ imageUrl: draft.imageUrl });
+          navigate("/image-editor", { state: { svgText: data.svg, fileName } });
+          return;
+        } catch {
+          // 벡터화 서버가 아직 없거나 실패 — 원본 이미지를 그대로 감싼 SVG로 대체(아래)
+        }
+      }
+      try {
+        const svgText = await SvgEditorService.wrapImageUrlAsSvg(draft.imageUrl);
+        navigate("/image-editor", { state: { svgText, fileName } });
+        return;
+      } catch {
+        toast.error("이미지를 불러오지 못해 임시 미리보기로 엽니다.");
+      }
+    }
+    // 실제 이미지 자체가 없을 때만(더미 데이터) 자리표시용 색상 박스로 대체한다.
     const color = THUMB_COLORS[draft.index % THUMB_COLORS.length];
     const svgText = buildPlaceholderSvg(color, draft.index, draft.caption);
-    navigate("/image-editor", {
-      state: { svgText, fileName: `${file.name}_이미지${draft.index}.svg` },
-    });
+    navigate("/image-editor", { state: { svgText, fileName } });
   };
 
   const previewStyle = draft?.imageUrl ? undefined : { backgroundColor: THUMB_COLORS[(draft?.index ?? 0) % THUMB_COLORS.length] };

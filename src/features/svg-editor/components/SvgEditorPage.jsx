@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import {
   readSvgFile,
   convertImageToSvg,
+  vectorizeImage,
   serializeSvgElement,
   downloadSvg,
 } from "../services/SvgEditorService";
@@ -364,14 +365,23 @@ export default function SvgEditorPage() {
       }
 
       if (isImage) {
-        toast.loading("이미지를 SVG로 변환 중입니다...", { id: "svg-convert" });
-        convertImageToSvg(file)
-          .then((svgText) => {
-            const svgName = file.name.replace(/\.[^.]+$/, ".svg");
-            loadSvgText(svgText, svgName);
-            toast.success("이미지를 SVG로 변환했습니다. (변환 로직은 추후 서버와 연동됩니다)", { id: "svg-convert" });
+        const svgName = file.name.replace(/\.[^.]+$/, ".svg");
+        toast.loading("이미지를 벡터로 변환 중입니다...", { id: "svg-convert" });
+        vectorizeImage({ file })
+          .then((data) => {
+            loadSvgText(data.svg, svgName);
+            toast.success("이미지를 벡터(SVG)로 변환했습니다.", { id: "svg-convert" });
           })
-          .catch((err) => toast.error(`변환 실패: ${err.message}`, { id: "svg-convert" }));
+          .catch(() => {
+            // 벡터화 서버가 아직 없거나 실패하면, 원본 이미지를 그대로 감싼 SVG로 대체한다
+            // (실제 선/도형 벡터화는 아니고 텍스트 편집 등 나머지 기능은 그대로 쓸 수 있음).
+            convertImageToSvg(file)
+              .then((svgText) => {
+                loadSvgText(svgText, svgName);
+                toast.success("이미지를 SVG로 열었습니다. (벡터 변환 서버 미연결 — 원본 이미지 그대로)", { id: "svg-convert" });
+              })
+              .catch((err) => toast.error(`변환 실패: ${err.message}`, { id: "svg-convert" }));
+          });
         return;
       }
 

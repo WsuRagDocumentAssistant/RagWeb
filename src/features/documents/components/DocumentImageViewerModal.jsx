@@ -22,6 +22,7 @@ export default function DocumentImageViewerModal({ file, onClose }) {
   const ensureDocumentImages = useAppState((s) => s.ensureDocumentImages);
   const fetchDocumentImages = useAppState((s) => s.fetchDocumentImages);
   const saveDocumentImage = useAppState((s) => s.saveDocumentImage);
+  const uploadDocumentImage = useAppState((s) => s.uploadDocumentImage);
 
   const images = documentImagesMap[file.id] ?? [];
   const [selectedId, setSelectedId] = useState(null);
@@ -39,6 +40,14 @@ export default function DocumentImageViewerModal({ file, onClose }) {
     fetchDocumentImages(file);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file.id]);
+
+  // 더미 목록이 실제 서버 목록으로 교체되면 id 체계가 달라져 기존 선택이 무효해질 수 있다 —
+  // 그 경우 선택을 잃고 "선택 안 됨" 상태로 남지 않도록 첫 번째 이미지로 다시 맞춰준다.
+  useEffect(() => {
+    if (images.length > 0 && !images.some((img) => img.id === selectedId)) {
+      setSelectedId(images[0].id);
+    }
+  }, [images, selectedId]);
 
   const selected = images.find((img) => img.id === selectedId) ?? null;
 
@@ -60,12 +69,21 @@ export default function DocumentImageViewerModal({ file, onClose }) {
     toast.success("변경사항을 저장했습니다.");
   };
 
-  const handleImageChange = (e) => {
+  const handleImageChange = async (e) => {
     const picked = e.target.files?.[0];
     e.target.value = "";
     if (!picked || !draft) return;
     if (draft.imageUrl) URL.revokeObjectURL(draft.imageUrl);
-    update({ imageUrl: URL.createObjectURL(picked) });
+    const previewUrl = URL.createObjectURL(picked);
+    const imageId = draft.id;
+    update({ imageUrl: previewUrl });
+    await uploadDocumentImage(file.id, imageId, picked, previewUrl);
+    // draft는 전역 상태를 구독하지 않는 편집 스냅샷이라 서버가 준 최종 URL로 직접 맞춰준다
+    // (다른 이미지로 넘어가지 않았을 때만 — 그 사이 넘어갔으면 이 draft는 이미 버려진 것).
+    const latest = useAppState.getState().documentImages[file.id]?.find((img) => img.id === imageId);
+    if (latest?.imageUrl && latest.imageUrl !== previewUrl) {
+      setDraft((d) => (d?.id === imageId ? { ...d, imageUrl: latest.imageUrl } : d));
+    }
   };
 
   const openInImageEditor = () => {

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { toast } from "sonner";
+import { resolveServerUrl } from "@/config/ApiService";
 import * as chatService from "@/features/chat/services/ChatService";
 import * as fileService from "@/features/files/services/FileService";
 import * as authService from "@/features/auth/services/AuthService";
@@ -168,6 +169,7 @@ interface FileSlice {
   fetchDocumentImages: (file: EmbeddingFile) => Promise<void>;
   updateDocumentImage: (fileId: string, imageId: string, changes: Partial<DocumentImage>) => void;
   saveDocumentImage: (fileId: string, imageId: string, changes: Partial<DocumentImage>) => Promise<void>;
+  uploadDocumentImage: (fileId: string, imageId: string, file: File, previewUrl: string) => Promise<void>;
 }
 
 interface AuthSlice {
@@ -729,11 +731,21 @@ export const useAppState = create<AppStore>((set, get) => ({
 
   downloadFile: async (id) => {
     const file = get().files.find((f) => f.id === id);
+    if (id.startsWith("tmp-")) {
+      // 업로드 응답을 아직 못 받아 임시 id가 남아있는 상태 — 서버는 이 id를 모른다.
+      toast.error("아직 업로드 처리 중인 문서입니다. 잠시 후 다시 시도해주세요.");
+      return;
+    }
     try {
-      const data = (await fileService.downloadFile(id)) as { url: string };
-      if (!data?.url) throw new Error("다운로드 URL이 없습니다.");
+      const data = (await fileService.downloadFile(id)) as { url: string | null };
+      if (!data?.url) {
+        // 색인만 되고 원본 파일이 없거나(파드 재시작 등) 사라진 경우 — 서버가 정상 응답한 것이므로
+        // 서버 연결 실패와는 다른 안내를 보여준다.
+        toast.error(`${file?.name ?? "파일"}의 원본 파일을 찾을 수 없습니다.`);
+        return;
+      }
       const a = document.createElement("a");
-      a.href = data.url;
+      a.href = resolveServerUrl(data.url);
       a.download = file?.name ?? "";
       a.click();
     } catch {
@@ -760,7 +772,17 @@ export const useAppState = create<AppStore>((set, get) => ({
     try {
       const data = (await documentImageService.listImages(file.id)) as { images: DocumentImage[] };
       if (data?.images?.length) {
-        set((s) => ({ documentImages: { ...s.documentImages, [file.id]: data.images } }));
+        // 설명 필드는 아직 서버에 없어 전부 null/[]로 오므로, 나머지 화면 로직이 기대하는
+        // 문자열/배열 형태로 맞춰준다. imageUrl은 게이트웨이 기준 상대 경로라 절대 URL로 바꾼다.
+        const images: DocumentImage[] = data.images.map((img) => ({
+          ...img,
+          imageUrl: resolveServerUrl(img.imageUrl ?? null) ?? undefined,
+          caption: img.caption ?? "",
+          aiSummary: img.aiSummary ?? "",
+          keyFacts: img.keyFacts ?? [],
+          keyPhrases: img.keyPhrases ?? [],
+        }));
+        set((s) => ({ documentImages: { ...s.documentImages, [file.id]: images } }));
       }
     } catch {
       // 서버 연결 실패 시 이미 채워둔 더미 이미지를 그대로 사용
@@ -785,6 +807,19 @@ export const useAppState = create<AppStore>((set, get) => ({
       await documentImageService.saveImage(fileId, imageId, changes);
     } catch {
       // 저장 전용 백엔드가 아직 없어도 화면에는 이미 반영되어 있으므로 조용히 무시
+    }
+  },
+
+  uploadDocumentImage: async (fileId, imageId, file, previewUrl) => {
+    // 낙관적으로 먼저 로컬 미리보기(blob URL)를 반영하고, 서버가 실제 URL을 주면 교체한다.
+    get().updateDocumentImage(fileId, imageId, { imageUrl: previewUrl });
+    try {
+      const data = (await documentImageService.uploadImage(fileId, imageId, file)) as { imageUrl?: string };
+      if (data?.imageUrl) {
+        get().updateDocumentImage(fileId, imageId, { imageUrl: resolveServerUrl(data.imageUrl) });
+      }
+    } catch {
+      // 이미지 교체 전용 백엔드가 아직 없어도 화면에는 이미 로컬 미리보기가 반영되어 있으므로 조용히 무시
     }
   },
 

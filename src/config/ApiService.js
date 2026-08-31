@@ -47,6 +47,18 @@ export function getTaskUrl() {
 }
 
 /**
+ * FILE_DOWNLOAD/FILE_IMAGE_LIST 등이 내려주는 "/api/documents/...", "/api/images/..." 같은
+ * (게이트웨이 기준) 상대 경로를 절대 URL로 만든다. 이미 http(s)/blob/data URL이면 그대로 둔다.
+ * @param {string | null | undefined} path
+ * @returns {string | null | undefined}
+ */
+export function resolveServerUrl(path) {
+  if (!path) return path;
+  if (/^(https?:|blob:|data:)/i.test(path)) return path;
+  return `${SERVER_URL}${path}`;
+}
+
+/**
  * @param {keyof typeof API_ENDPOINTS} serverType
  * @param {string} endpointKey
  */

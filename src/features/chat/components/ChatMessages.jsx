@@ -19,6 +19,9 @@ const MODEL_COLOR = {
   merged: "#4f46e5",
 };
 
+// 병합을 "수행"할 모델은 답변 비교에 쓰인 모델로 한정할 이유가 없다 — 항상 전체 목록에서 고를 수 있게 한다.
+const ALL_PROVIDERS = ["claude", "gemini", "gpt"];
+
 function groupIntoTurns(messages) {
   const turns = [];
   let current = null;
@@ -206,19 +209,19 @@ export default function ChatMessages({ messages, isLoadingHistory, selectedMessa
                         <div className="merge-picker-merger">
                           <span className="merge-picker-label">병합에 사용할 모델</span>
                           <div className="merge-picker-options">
-                            {compareAssistants.map((m) => (
+                            {ALL_PROVIDERS.map((provider) => (
                               <label
-                                key={m.id}
-                                className={`merge-picker-option ${pickerState.merger === m.provider ? "checked" : ""}`}
-                                style={{ "--accent": MODEL_COLOR[m.provider] ?? "#4f46e5" }}
+                                key={provider}
+                                className={`merge-picker-option ${pickerState.merger === provider ? "checked" : ""}`}
+                                style={{ "--accent": MODEL_COLOR[provider] ?? "#4f46e5" }}
                               >
                                 <input
                                   type="radio"
                                   name={`merger-${turnId}`}
-                                  checked={pickerState.merger === m.provider}
-                                  onChange={() => setMergeProvider(turnId, m.provider)}
+                                  checked={pickerState.merger === provider}
+                                  onChange={() => setMergeProvider(turnId, provider)}
                                 />
-                                {MODEL_LABEL[m.provider] ?? m.provider}
+                                {MODEL_LABEL[provider] ?? provider}
                               </label>
                             ))}
                           </div>

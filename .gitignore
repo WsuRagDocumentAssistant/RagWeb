@@ -42,3 +42,6 @@ Thumbs.db
 
 # personal config files
 .claude/
+
+# 내부 문서 (서버 연동 스펙 등) — 원격 저장소에 올리지 않음
+/docs/

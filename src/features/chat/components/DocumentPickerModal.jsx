@@ -11,13 +11,16 @@ export default function DocumentPickerModal({ initialSelected, onClose, onConfir
   const [appliedQuery, setAppliedQuery] = useState("");
   const [selected, setSelected] = useState(() => new Set(initialSelected ?? []));
 
+  // 임베딩이 끝난(ready) 문서만 검색 대상으로 고를 수 있다 — 업로드 중/실패 문서는 검색해도 의미가 없다.
+  const readyFiles = useMemo(() => files.filter((f) => f.status === "ready"), [files]);
+
   const runSearch = () => setAppliedQuery(queryInput);
 
   const filtered = useMemo(() => {
     const q = appliedQuery.trim().toLowerCase();
-    if (!q) return files;
-    return files.filter((f) => f.name.toLowerCase().includes(q));
-  }, [files, appliedQuery]);
+    if (!q) return readyFiles;
+    return readyFiles.filter((f) => f.name.toLowerCase().includes(q));
+  }, [readyFiles, appliedQuery]);
 
   const allFilteredSelected = filtered.length > 0 && filtered.every((f) => selected.has(f.id));
 

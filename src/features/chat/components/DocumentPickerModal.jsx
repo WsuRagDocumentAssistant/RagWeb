@@ -11,8 +11,12 @@ export default function DocumentPickerModal({ initialSelected, onClose, onConfir
   const [appliedQuery, setAppliedQuery] = useState("");
   const [selected, setSelected] = useState(() => new Set(initialSelected ?? []));
 
-  // 임베딩이 끝난(ready) 문서만 검색 대상으로 고를 수 있다 — 업로드 중/실패 문서는 검색해도 의미가 없다.
-  const readyFiles = useMemo(() => files.filter((f) => f.status === "ready"), [files]);
+  // 업로드 중/실패가 확실한 문서만 제외한다 — status를 "ready"로만 좁히면, 서버가 그 필드를
+  // 안 채워 보내는 경우(비어있거나 다른 값) 문서가 전부 안 보이는 문제가 생긴다.
+  const readyFiles = useMemo(
+    () => files.filter((f) => f.status !== "uploading" && f.status !== "processing" && f.status !== "error"),
+    [files],
+  );
 
   const runSearch = () => setAppliedQuery(queryInput);
 

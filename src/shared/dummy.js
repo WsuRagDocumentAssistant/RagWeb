@@ -12,8 +12,6 @@ export const DUMMY_ACCOUNTS = [
     password: "1234",
     name: "관리자",
     role: "admin",
-    provider: "dummy",
-    created_at: "2026-01-01T00:00:00.000Z",
   },
   {
     id: 2,
@@ -21,8 +19,6 @@ export const DUMMY_ACCOUNTS = [
     password: "1234",
     name: "일반 사용자",
     role: "user",
-    provider: "dummy",
-    created_at: "2026-01-01T00:00:00.000Z",
   },
   {
     id: 3,
@@ -30,8 +26,6 @@ export const DUMMY_ACCOUNTS = [
     password: "1234",
     name: "김민준 교수",
     role: "user",
-    provider: "dummy",
-    created_at: "2026-01-01T00:00:00.000Z",
   },
   {
     id: 4,
@@ -39,8 +33,6 @@ export const DUMMY_ACCOUNTS = [
     password: "1234",
     name: "이서연 조교",
     role: "user",
-    provider: "dummy",
-    created_at: "2026-01-01T00:00:00.000Z",
   },
 ];
 

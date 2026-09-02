@@ -90,11 +90,9 @@ export interface DocumentImage {
 export type UserRole = "admin" | "user";
 
 export interface AuthUser {
-  id: number;
-  email: string;
+  id: string; // user_id — 서버가 UUID 문자열로 발급
+  email: string; // login_id
   name?: string;
-  provider: string;
-  created_at: string;
   role: UserRole;
 }
 
@@ -868,11 +866,9 @@ export const useAppState = create<AppStore>((set, get) => ({
         // 현재 userDirectory(관리자 화면에서 수정한 최신 상태)에서 조회한다.
         const directoryEntry = get().userDirectory.find((u) => u.email === email);
         const user: AuthUser = {
-          id: account.id,
+          id: String(account.id),
           email: account.email,
           name: account.name,
-          provider: account.provider,
-          created_at: account.created_at,
           role: directoryEntry?.role ?? (account.role as UserRole),
         };
         const token = `dummy-token-${account.id}`;

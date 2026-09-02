@@ -5,17 +5,48 @@
   pointer-events: none;
 }
 
-.tutorial-dim-full {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(15, 15, 25, 0.6);
+@keyframes tutorial-fade-in-plain {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-.tutorial-spotlight {
+/* 대상 요소 둘레에 강조 링을 그리고, box-shadow의 큰 spread로 그 바깥만 살짝 음영 처리한다
+   (spread는 클릭을 막지 않으므로 바깥 화면도 계속 조작할 수 있다). */
+.tutorial-ring {
   position: fixed;
   border-radius: 12px;
-  box-shadow: 0 0 0 9999px rgba(15, 15, 25, 0.6);
-  transition: top 0.25s ease, left 0.25s ease, width 0.25s ease, height 0.25s ease;
+  border: 2px solid #4f46e5;
+  box-shadow:
+    0 0 0 9999px rgba(15, 15, 25, 0.42),
+    0 0 0 4px color-mix(in srgb, #4f46e5 18%, transparent),
+    0 4px 16px rgba(0, 0, 0, 0.12);
+  transition: top 0.3s ease, left 0.3s ease, width 0.3s ease, height 0.3s ease, box-shadow 0.3s ease;
+  animation: tutorial-fade-in-plain 0.2s ease;
+}
+
+/* 강조할 대상이 없는(가운데 안내) 스텝에서도 나머지 화면을 음영 처리한다 */
+.tutorial-dim-center {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 15, 25, 0.34);
+  animation: tutorial-fade-in-plain 0.2s ease;
+}
+
+.tutorial-pulse-dot {
+  position: fixed;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background-color: #4f46e5;
+  box-shadow: 0 0 0 4px color-mix(in srgb, #4f46e5 25%, transparent);
+  transition: top 0.3s ease, left 0.3s ease;
+  animation: tutorial-pulse 1.6s ease-out infinite;
+}
+
+@keyframes tutorial-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, #4f46e5 45%, transparent); }
+  70% { box-shadow: 0 0 0 10px color-mix(in srgb, #4f46e5 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, #4f46e5 0%, transparent); }
 }
 
 .tutorial-tooltip {
@@ -28,7 +59,9 @@
   background-color: var(--color-surface);
   color: var(--color-text);
   border: 1px solid var(--color-border);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+  transition: top 0.3s ease, left 0.3s ease, bottom 0.3s ease;
+  animation: tutorial-fade-in-plain 0.22s ease;
 }
 
 .tutorial-tooltip-center {
@@ -55,12 +88,27 @@
 }
 .tutorial-close:hover { background-color: var(--color-bg); color: var(--color-text); }
 
+.tutorial-tooltip-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.tutorial-tooltip-center .tutorial-tooltip-head { justify-content: center; }
+
 .tutorial-step-count {
-  display: inline-block;
   font-size: 11px;
   font-weight: 700;
   color: #4f46e5;
-  margin-bottom: 6px;
+}
+
+.tutorial-admin-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #b45309;
+  background-color: #fef3c7;
+  border-radius: 999px;
+  padding: 2px 8px;
 }
 
 .tutorial-tooltip h3 {
@@ -69,12 +117,25 @@
   margin-bottom: 6px;
   padding-right: 20px;
 }
+.tutorial-tooltip-center h3 { padding-right: 0; }
 
 .tutorial-tooltip p {
   font-size: 13px;
   color: var(--color-muted);
   line-height: 1.6;
   margin-bottom: 14px;
+}
+
+.tutorial-hint {
+  font-size: 12px;
+  font-weight: 600;
+  color: #4f46e5;
+  background-color: var(--color-accent-soft);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-top: -6px;
+  margin-bottom: 14px;
+  line-height: 1.5;
 }
 
 .tutorial-actions {
@@ -109,3 +170,4 @@
 
 .tutorial-btn-primary { background-color: #4f46e5; color: #fff; }
 .tutorial-btn-primary:hover { background-color: #4338ca; }
+.tutorial-btn-primary:disabled { background-color: var(--color-border); color: var(--color-muted); cursor: not-allowed; }

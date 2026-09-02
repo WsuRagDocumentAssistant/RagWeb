@@ -1,6 +1,8 @@
 // 튜토리얼 단계 정의. route가 현재 페이지와 다르면 오버레이가 자동으로 이동시키고,
 // target(CSS selector)이 있으면 그 요소를 화면 하이라이트(스포트라이트)로 강조한다.
 // target이 null이면 화면 가운데 안내만 표시한다. adminOnly는 관리자 계정일 때만 노출되는 스텝.
+// preClick(CSS selector 또는 selector 배열)이 있으면 target을 찾기 전에 순서대로 클릭한다
+// — 모달을 열거나(예: "이미지 보기" 버튼) 닫는(예: 취소 버튼) 데 사용한다.
 export const TUTORIAL_STEPS = [
   {
     id: "login-welcome",
@@ -52,8 +54,17 @@ export const TUTORIAL_STEPS = [
     description: "이 버튼으로 이미지를 붙여넣거나, \"검색 문서 선택\"으로 특정 문서 안에서만 답을 찾도록 범위를 좁힐 수 있습니다.",
   },
   {
+    id: "chat-document-picker",
+    route: "/chat",
+    preClick: [".attach-btn", ".attach-menu-item:nth-of-type(2)"],
+    target: ".dpm-modal",
+    title: "검색 문서 선택 화면",
+    description: "체크박스로 문서를 골라 그 문서 안에서만 답을 찾도록 검색 범위를 좁힐 수 있습니다. \"모든 문서 선택\"으로 전체 범위로 되돌릴 수도 있어요.",
+  },
+  {
     id: "chat-textarea",
     route: "/chat",
+    preClick: ".dpm-cancel-btn",
     target: ".chat-textarea",
     title: "질문 입력",
     description: "궁금한 내용을 입력하고 Enter(또는 전송 버튼)로 질문합니다.",
@@ -106,6 +117,21 @@ export const TUTORIAL_STEPS = [
     target: ".doc-table",
     title: "문서 목록 · 이미지 보기 · 다운로드",
     description: "각 문서의 상태를 확인하고, 페이지 이미지 보기·원본 다운로드·삭제를 할 수 있습니다.",
+  },
+  {
+    id: "documents-image-viewer",
+    route: "/documents",
+    preClick: '.doc-table-btn[title="이미지 보기"]',
+    target: ".div-thumb-list",
+    title: "페이지 썸네일 목록",
+    description: "\"이미지 보기\" 버튼을 누르면 열리는 화면입니다. 문서의 각 페이지를 썸네일로 보여주고, 클릭하면 오른쪽에서 크게 확인할 수 있어요.",
+  },
+  {
+    id: "documents-image-meta",
+    route: "/documents",
+    target: ".div-meta-col",
+    title: "이미지 설명 · 메타데이터 수정",
+    description: "AI가 추출한 문서 제목, 요약, 핵심 시각 정보, 주요 문구를 확인하고 직접 고쳐서 저장할 수 있습니다.",
   },
   {
     id: "nav-files",
@@ -191,8 +217,17 @@ export const TUTORIAL_STEPS = [
     description: "여기서 계정 정보를 확인하고, 화면 모드(밝게/어둡게)를 바꾸고, 로그아웃할 수 있습니다.",
   },
   {
+    id: "user-settings-modal",
+    route: "/chat",
+    preClick: ".user-info-btn",
+    target: ".settings-modal",
+    title: "설정 화면",
+    description: "내 계정 정보(이름·역할)를 확인하고, 화면 모드를 밝게/어둡게 바꾸거나 로그아웃할 수 있습니다.",
+  },
+  {
     id: "tutorial-end",
     route: "/chat",
+    preClick: ".settings-close-btn",
     target: null,
     title: "튜토리얼을 마쳤습니다",
     description: "언제든 사이드바의 \"튜토리얼\"에서 다시 볼 수 있어요.",

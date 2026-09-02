@@ -3,6 +3,7 @@ import { Navigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAppState } from "@/core/AppState";
 import { WoosongLogo } from "@/shared";
+import { useTutorialState } from "@/features/tutorial";
 import "../styles/LoginPage.css";
 
 export default function LoginPage() {
@@ -11,6 +12,7 @@ export default function LoginPage() {
   const register = useAppState((s) => s.register);
   const authLoading = useAppState((s) => s.authLoading);
   const authError = useAppState((s) => s.authError);
+  const startTutorial = useTutorialState((s) => s.start);
 
   // TEMP: SSO 연동 전까지 사용하는 임시 로그인/회원가입. SSO 연동 완료 시 이 state와 폼 전체 제거.
   const [mode, setMode] = useState("login"); // "login" | "register"
@@ -46,6 +48,9 @@ export default function LoginPage() {
         <WoosongLogo className="login-icon" />
         <h1 className="login-title">AI RAG Assistant</h1>
         <p className="login-desc">학교 계정으로 로그인해주세요.</p>
+        <button type="button" className="login-tutorial-link" onClick={startTutorial}>
+          처음이신가요? 기능 둘러보기
+        </button>
 
         {/* TEMP: SSO 연동 전까지 사용하는 임시 로그인/회원가입 폼. SSO 연동 완료 시 아래 전체 제거. */}
         <div className="temp-login-divider">

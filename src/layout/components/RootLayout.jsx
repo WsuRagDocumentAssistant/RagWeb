@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import { useAppState } from "@/core/AppState";
+import { TutorialOverlay } from "@/features/tutorial";
 
 export default function RootLayout() {
   const initializeAuth = useAppState((s) => s.initializeAuth);
@@ -10,5 +11,10 @@ export default function RootLayout() {
 
   if (!authInitialized) return null;
 
-  return <Outlet />;
+  return (
+    <>
+      <Outlet />
+      <TutorialOverlay />
+    </>
+  );
 }

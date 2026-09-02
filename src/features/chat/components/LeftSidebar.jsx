@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Plus, Trash2, MessageSquare, FileText, Globe, BookOpen, Upload, Image, ShieldCheck, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Plus, Trash2, MessageSquare, FileText, Globe, BookOpen, Upload, Image, ShieldCheck, PanelLeftClose, PanelLeftOpen, PlayCircle } from "lucide-react";
 import { useAppState } from "@/core/AppState";
+import { useTutorialState } from "@/features/tutorial";
 import "../styles/LeftSidebar.css";
 
 const COLLAPSED_KEY = "chat_sidebar_collapsed";
@@ -28,6 +29,12 @@ export default function LeftSidebar() {
   const sidebarOpen = useAppState((s) => s.sidebarOpen);
   const closeSidebar = useAppState((s) => s.closeSidebar);
   const openSettings = useAppState((s) => s.openSettings);
+
+  const tutorialStepIndex = useTutorialState((s) => s.stepIndex);
+  const tutorialFinished = useTutorialState((s) => s.finished);
+  const startTutorial = useTutorialState((s) => s.start);
+  const resumeTutorial = useTutorialState((s) => s.resume);
+  const tutorialInProgress = tutorialStepIndex > 0 && !tutorialFinished;
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -64,6 +71,12 @@ export default function LeftSidebar() {
     closeSidebar();
   };
 
+  const handleTutorialClick = () => {
+    if (tutorialInProgress) resumeTutorial();
+    else startTutorial();
+    closeSidebar();
+  };
+
   return (
     <>
       {sidebarOpen && <div className="sidebar-backdrop" onClick={closeSidebar} />}
@@ -94,6 +107,14 @@ export default function LeftSidebar() {
               {!isCollapsed && label}
             </button>
           ))}
+          <button
+            className="sidebar-nav-btn"
+            onClick={handleTutorialClick}
+            title={tutorialInProgress ? "튜토리얼 이어보기" : "튜토리얼 보기"}
+          >
+            <PlayCircle size={16} />
+            {!isCollapsed && (tutorialInProgress ? "튜토리얼 이어보기" : "튜토리얼 보기")}
+          </button>
         </div>
 
         <div className="sidebar-divider" />

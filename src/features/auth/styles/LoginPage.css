@@ -34,8 +34,19 @@
 .login-desc {
   font-size: 13px;
   color: var(--color-muted);
-  margin-bottom: 20px;
 }
+
+.login-tutorial-link {
+  margin-bottom: 20px;
+  padding: 4px;
+  border: none;
+  background: none;
+  color: #4f46e5;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.login-tutorial-link:hover { text-decoration: underline; }
 
 /* TEMP: SSO 연동 전까지 사용하는 임시 로그인 스타일. SSO 연동 완료 시 아래 전체 제거. */
 .temp-login-divider {

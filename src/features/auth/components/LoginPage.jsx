@@ -49,7 +49,7 @@ export default function LoginPage() {
 
         {/* TEMP: SSO 연동 전까지 사용하는 임시 로그인/회원가입 폼. SSO 연동 완료 시 아래 전체 제거. */}
         <div className="temp-login-divider">
-          <span>{mode === "login" ? "임시 로그인 (개발용)" : "임시 회원가입 (개발용)"}</span>
+          <span>{mode === "login" ? "로그인" : "임시 회원가입 (개발용)"}</span>
         </div>
         <form className="temp-login-form" onSubmit={handleTempSubmit}>
           {mode === "register" && (
@@ -80,7 +80,7 @@ export default function LoginPage() {
           />
           {authError && <p className="temp-login-error">{authError}</p>}
           <button type="submit" className="temp-login-btn" disabled={authLoading}>
-            {authLoading ? "처리 중..." : mode === "login" ? "임시 로그인" : "임시 회원가입"}
+            {authLoading ? "처리 중..." : mode === "login" ? "로그인" : "임시 회원가입"}
           </button>
           <button
             type="button"

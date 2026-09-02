@@ -1,6 +1,7 @@
-import React, { useState, useRef } from "react";
-import { ArrowUp, Loader2, Plus, X } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { ArrowUp, FileSearch, Loader2, Paperclip, Plus, X } from "lucide-react";
 import { useAppState } from "@/core/AppState";
+import DocumentPickerModal from "./DocumentPickerModal";
 import "../styles/ChatInput.css";
 
 const MODEL_LABEL = {
@@ -15,9 +16,24 @@ export default function ChatInput({ onSend, onUpload, isLoading, pendingImage, s
   const [text, setText] = useState("");
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
+  const attachMenuRef = useRef(null);
 
   const selectedProviders = useAppState((s) => s.selectedProviders);
   const toggleProvider = useAppState((s) => s.toggleProvider);
+  const selectedDocumentIds = useAppState((s) => s.selectedDocumentIds);
+  const setSelectedDocumentIds = useAppState((s) => s.setSelectedDocumentIds);
+
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  useEffect(() => {
+    if (!attachMenuOpen) return;
+    const handleClickOutside = (e) => {
+      if (attachMenuRef.current && !attachMenuRef.current.contains(e.target)) setAttachMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [attachMenuOpen]);
 
   const removePendingImage = () => {
     setPendingImage((prev) => {
@@ -80,11 +96,44 @@ export default function ChatInput({ onSend, onUpload, isLoading, pendingImage, s
           </button>
         </div>
       )}
+      {selectedDocumentIds.length > 0 && (
+        <div className="chat-doc-scope">
+          <FileSearch size={13} />
+          <span>선택한 문서 {selectedDocumentIds.length}개 안에서만 검색</span>
+          <button
+            className="chat-doc-scope-clear"
+            onClick={() => setSelectedDocumentIds([])}
+            title="검색 범위 해제"
+          >
+            <X size={12} />
+          </button>
+        </div>
+      )}
       <div className="input-row">
         <input ref={fileInputRef} type="file" style={{ display: "none" }} onChange={handleFileChange} />
-        <button className="attach-btn" onClick={() => fileInputRef.current?.click()} title="파일 첨부">
-          <Plus size={18} />
-        </button>
+        <div className="attach-menu-wrap" ref={attachMenuRef}>
+          <button className="attach-btn" onClick={() => setAttachMenuOpen((v) => !v)} title="추가">
+            <Plus size={18} />
+          </button>
+          {attachMenuOpen && (
+            <div className="attach-menu">
+              <button
+                className="attach-menu-item"
+                onClick={() => { setAttachMenuOpen(false); fileInputRef.current?.click(); }}
+              >
+                <Paperclip size={14} />
+                파일 또는 사진 추가
+              </button>
+              <button
+                className="attach-menu-item"
+                onClick={() => { setAttachMenuOpen(false); setPickerOpen(true); }}
+              >
+                <FileSearch size={14} />
+                검색 문서 선택
+              </button>
+            </div>
+          )}
+        </div>
         <textarea
           ref={textareaRef}
           className="chat-textarea"
@@ -116,6 +165,14 @@ export default function ChatInput({ onSend, onUpload, isLoading, pendingImage, s
           ))}
         </div>
       </div>
+
+      {pickerOpen && (
+        <DocumentPickerModal
+          initialSelected={selectedDocumentIds}
+          onClose={() => setPickerOpen(false)}
+          onConfirm={setSelectedDocumentIds}
+        />
+      )}
     </div>
   );
 }

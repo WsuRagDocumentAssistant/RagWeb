@@ -131,10 +131,12 @@ interface ChatSlice {
   chatLoading: boolean;
   chatError: string | null;
   selectedProviders: AIProvider[];
+  selectedDocumentIds: string[]; // "검색 문서 선택"으로 고른 문서 — 채팅 검색 범위를 좁히는 용도
   fetchSessions: () => Promise<void>;
   fetchSessionMessages: (id: string) => Promise<void>;
   sendMessage: (text: string, attachmentUrl?: string) => Promise<void>;
   toggleProvider: (p: AIProvider) => void;
+  setSelectedDocumentIds: (ids: string[]) => void;
   mergeTurn: (turnId: string, messageIds: string[], mergerProvider: AIProvider) => Promise<void>;
   choosePreference: (turnId: string, keepMessageId: string) => void;
   createSession: () => void;
@@ -341,6 +343,9 @@ export const useAppState = create<AppStore>((set, get) => ({
   chatLoading: false,
   chatError: null,
   selectedProviders: ["gpt"],
+  selectedDocumentIds: [],
+
+  setSelectedDocumentIds: (ids) => set({ selectedDocumentIds: ids }),
 
   fetchSessions: async () => {
     try {
@@ -396,6 +401,7 @@ export const useAppState = create<AppStore>((set, get) => ({
     }
 
     const sessionId = activeSessionId;
+    const fileIds = get().selectedDocumentIds;
     const providers = selectedProviders.length > 0 ? selectedProviders : (["gpt"] as AIProvider[]);
     const turnId = genId("turn");
     const userMsg: Message = { id: genId("u"), role: "user", content: text, createdAt: Date.now(), turnId, attachmentUrl };
@@ -432,6 +438,7 @@ export const useAppState = create<AppStore>((set, get) => ({
             message: text,
             provider: asstMsg.provider as AIProvider,
             sessionId: activeSession?.backendSessionId ?? undefined,
+            fileIds: fileIds.length > 0 ? fileIds : undefined,
           });
           const sources = data.sources as MessageSource[] | undefined;
           set((s) => ({

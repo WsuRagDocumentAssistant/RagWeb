@@ -1,0 +1,182 @@
+.dpm-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  padding: 24px;
+}
+
+.dpm-modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 520px;
+  height: 100%;
+  max-height: 640px;
+  border-radius: 16px;
+  background-color: var(--color-surface);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.dpm-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+.dpm-header h2 { font-size: 15px; font-weight: 700; color: var(--color-text); }
+.dpm-header p { margin-top: 4px; font-size: 11px; color: var(--color-muted); line-height: 1.5; }
+
+.dpm-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 6px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
+}
+.dpm-close-btn:hover { color: var(--color-text); background-color: var(--color-bg); }
+
+.dpm-toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 14px 20px 0;
+}
+
+.dpm-search {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background-color: var(--color-bg);
+  color: var(--color-muted);
+}
+.dpm-search input {
+  flex: 1;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: 13px;
+  color: var(--color-text);
+}
+.dpm-search input::placeholder { color: var(--color-muted); }
+
+.dpm-search-btn {
+  padding: 0 16px;
+  border: none;
+  border-radius: 10px;
+  background-color: #4f46e5;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.dpm-search-btn:hover { background-color: #4338ca; }
+
+.dpm-select-all {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: pointer;
+}
+.dpm-select-all input[type="checkbox"] { accent-color: #4f46e5; cursor: pointer; }
+.dpm-select-all-count {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.dpm-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dpm-empty {
+  padding: 24px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.dpm-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.dpm-item:hover { background-color: var(--color-bg); }
+.dpm-item.checked { background-color: var(--color-accent-soft); }
+
+.dpm-item input[type="checkbox"] { accent-color: #4f46e5; cursor: pointer; flex-shrink: 0; }
+.dpm-item-icon { flex-shrink: 0; color: var(--color-muted); }
+.dpm-item-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dpm-item-year { flex-shrink: 0; font-size: 11px; color: var(--color-muted); }
+
+.dpm-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--color-border);
+}
+
+.dpm-cancel-btn {
+  padding: 9px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.dpm-cancel-btn:hover { border-color: var(--color-muted); }
+
+.dpm-confirm-btn {
+  padding: 9px 18px;
+  border: none;
+  border-radius: 10px;
+  background-color: #4f46e5;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.dpm-confirm-btn:hover { background-color: #4338ca; }

@@ -37,12 +37,11 @@ export default function DocumentImageViewerModal({ file, onClose }) {
   useEffect(() => {
     const list = ensureDocumentImages(file);
     setSelectedId((cur) => cur ?? list[0]?.id ?? null);
-    // 서버에 실제 이미지 목록이 있으면 백그라운드에서 받아와 위 더미 목록을 교체한다.
     fetchDocumentImages(file);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file.id]);
 
-  // 더미 목록이 실제 서버 목록으로 교체되면 id 체계가 달라져 기존 선택이 무효해질 수 있다 —
+  // 목록이 나중에 채워지거나 바뀌면 기존 선택이 무효해질 수 있다 —
   // 그 경우 선택을 잃고 "선택 안 됨" 상태로 남지 않도록 첫 번째 이미지로 다시 맞춰준다.
   useEffect(() => {
     if (images.length > 0 && !images.some((img) => img.id === selectedId)) {
@@ -65,9 +64,13 @@ export default function DocumentImageViewerModal({ file, onClose }) {
 
   const handleSave = async () => {
     if (!draft) return;
-    await saveDocumentImage(file.id, draft.id, draft);
-    setDirty(false);
-    toast.success("변경사항을 저장했습니다.");
+    try {
+      await saveDocumentImage(file.id, draft.id, draft);
+      setDirty(false);
+      toast.success("변경사항을 저장했습니다.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "저장에 실패했습니다.");
+    }
   };
 
   const handleImageChange = async (e) => {
@@ -78,12 +81,16 @@ export default function DocumentImageViewerModal({ file, onClose }) {
     const previewUrl = URL.createObjectURL(picked);
     const imageId = draft.id;
     update({ imageUrl: previewUrl });
-    await uploadDocumentImage(file.id, imageId, picked, previewUrl);
-    // draft는 전역 상태를 구독하지 않는 편집 스냅샷이라 서버가 준 최종 URL로 직접 맞춰준다
-    // (다른 이미지로 넘어가지 않았을 때만 — 그 사이 넘어갔으면 이 draft는 이미 버려진 것).
-    const latest = useAppState.getState().documentImages[file.id]?.find((img) => img.id === imageId);
-    if (latest?.imageUrl && latest.imageUrl !== previewUrl) {
-      setDraft((d) => (d?.id === imageId ? { ...d, imageUrl: latest.imageUrl } : d));
+    try {
+      await uploadDocumentImage(file.id, imageId, picked, previewUrl);
+      // draft는 전역 상태를 구독하지 않는 편집 스냅샷이라 서버가 준 최종 URL로 직접 맞춰준다
+      // (다른 이미지로 넘어가지 않았을 때만 — 그 사이 넘어갔으면 이 draft는 이미 버려진 것).
+      const latest = useAppState.getState().documentImages[file.id]?.find((img) => img.id === imageId);
+      if (latest?.imageUrl && latest.imageUrl !== previewUrl) {
+        setDraft((d) => (d?.id === imageId ? { ...d, imageUrl: latest.imageUrl } : d));
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "이미지 업로드에 실패했습니다.");
     }
   };
 

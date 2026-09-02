@@ -1,6 +1,7 @@
 import React from "react";
-import { Bot, Menu, LogOut } from "lucide-react";
+import { Menu, LogOut } from "lucide-react";
 import { useAppState } from "@/core/AppState";
+import { WoosongLogo } from "@/shared";
 import FileNotifications from "./FileNotifications";
 import "../styles/Titlebar.css";
 
@@ -14,7 +15,7 @@ export default function Titlebar() {
         <Menu size={18} />
       </button>
       <div className="titlebar-brand">
-        <Bot size={20} className="titlebar-icon" />
+        <WoosongLogo withText={false} className="titlebar-icon" />
         <span className="titlebar-title">AI RAG Assistant</span>
       </div>
       <div className="titlebar-spacer" />

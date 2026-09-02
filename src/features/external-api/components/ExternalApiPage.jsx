@@ -78,8 +78,8 @@ export default function ExternalApiPage() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await fetchExternalApis();
-    toast.success("API 목록을 새로고침했습니다.");
+    const ok = await fetchExternalApis();
+    if (ok) toast.success("API 목록을 새로고침했습니다.");
     setTimeout(() => setRefreshing(false), 400);
   };
 
@@ -88,10 +88,9 @@ export default function ExternalApiPage() {
   useEffect(() => {
     const id = setInterval(() => {
       const now = new Date();
-      const nowIso = now.toISOString();
       useAppState.getState().externalApis.forEach((a) => {
         const isDue = now.getTime() - new Date(a.fetchedAt).getTime() >= a.refreshIntervalMinutes * 60 * 1000;
-        if (isDue) syncExternalApi(a.id, a.title, nowIso);
+        if (isDue) syncExternalApi(a.id, a.title);
       });
     }, REFRESH_CHECK_INTERVAL_MS);
     return () => clearInterval(id);

@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Bot } from "lucide-react";
 import { useAppState } from "@/core/AppState";
+import { WoosongLogo } from "@/shared";
 import "../styles/LoginPage.css";
 
 export default function LoginPage() {
@@ -43,7 +43,7 @@ export default function LoginPage() {
   return (
     <div className="login-page">
       <div className="login-card">
-        <Bot size={40} className="login-icon" />
+        <WoosongLogo className="login-icon" />
         <h1 className="login-title">AI RAG Assistant</h1>
         <p className="login-desc">학교 계정으로 로그인해주세요.</p>
 

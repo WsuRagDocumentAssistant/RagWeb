@@ -1,16 +1,16 @@
 # AI RAG Client
 
-RAG 서버와 연동하는 AI 채팅 웹 클라이언트입니다.
-파일을 업로드해 임베딩하고, AI에게 질문할 수 있습니다.
-동음이의어(단어) 사전을 조회할 수 있습니다.
+우송대학교 RAG(문서 기반 질의응답) 서버와 연동하는 웹 클라이언트입니다. 문서를 등록·임베딩하고,
+여러 AI 모델(GPT/Claude/Gemini)에게 동시에 질문해서 답변을 비교·병합할 수 있습니다.
 
 ## 기술 스택
 
 - **React 18** + **Vite 5**
-- **React Router v7** — URL 기반 라우팅 (`/chat`, `/documents`, `/prompt`, `/external-api`, `/files`)
-- **Tailwind CSS v4**
-- **Zustand v5** — 전역 상태 관리
-- **TypeScript** — 전역 상태(`AppState.ts`)만 적용
+- **React Router v7** — URL 기반 라우팅
+- **Tailwind CSS v4** — `src/index.css`의 `@theme` 토큰으로 라이트/다크 팔레트 정의
+- **Zustand v5** — 전역 상태 관리 (`src/core/AppState.ts`)
+- **TypeScript** — 전역 상태(`AppState.ts`)에만 적용, 나머지는 JS/JSX
+- **react-markdown** + **rehype-raw**/**rehype-sanitize** — 채팅 답변의 마크다운·인라인 HTML 렌더링
 - **lucide-react** — 아이콘
 - **sonner** — 토스트 알림
 
@@ -18,85 +18,128 @@ RAG 서버와 연동하는 AI 채팅 웹 클라이언트입니다.
 
 ```bash
 npm install
-npm run dev
+npm run dev      # 개발 서버
+npm run build    # 프로덕션 빌드 (dist/)
 ```
+
+`dist/`는 `npm run build`가 만드는 정적 빌드 산출물입니다(HTML/JS/CSS 번들) — 소스 코드가 아니라
+배포용 결과물이라 직접 수정하지 않고, `src/`를 고친 뒤 다시 빌드합니다.
+
+## 통신 아키텍처
+
+서버(게이트웨이)는 **단일 엔드포인트**(`POST /api/task`)만 가지며, 실제 기능 분기는 요청의 `task_type`
+문자열로 이루어집니다. HTTP 메서드(GET/POST/PUT/DELETE)에 대응하는 의미는 `task_type` 이름 규칙으로
+표현됩니다(`_LIST`=조회, `_SAVE`=등록/수정, `_DELETE`=삭제 등).
+
+```json
+// 요청
+{ "task_type": "FILE_LIST", "session_id": null, "payload": {} }
+// 응답
+{ "task_type": "FILE_LIST", "status": "success", "result": {}, "error_message": null }
+```
+
+- `src/config/TaskType.js` — 전체 task_type 상수 목록
+- `src/config/ApiService.js` — task_type 조회 헬퍼(`getTaskType`)와 공통 요청 함수(`postTask`), 상대
+  경로를 절대 URL로 바꾸는 `resolveServerUrl`
+- `src/features/*/services/*Service.js` — 기능별 통신 로직 (전부 `postTask` 기반)
+- 서버에 구현해야 하는 task_type과 요청/응답 스펙은 [`docs/SERVER_TASKS.md`](docs/SERVER_TASKS.md) 참고
+  (이 파일은 `.gitignore`에 등록되어 있어 원격 저장소에는 올라가지 않습니다)
+
+### 서버 연결 실패 시 동작
+
+**로그인만 예외적으로 더미 계정 폴백이 있습니다** — 서버가 꺼져 있어도 `src/shared/dummy.js`의
+`DUMMY_ACCOUNTS`(`admin@wsu.ac.kr` 등 4개 계정, 비밀번호 `1234`)로 로그인해서 화면 확인이 가능합니다.
+**그 외 모든 기능은 서버 요청이 실패하면 더미 데이터로 대체하지 않고 실패를 그대로 보여줍니다** —
+빈 목록, 에러 토스트, 채팅 답변 말풍선의 에러 표시 등으로 실패가 드러납니다.
+
+## 로그인 · 권한
+
+- 로그인 성공 응답의 `user.role`(`"admin"` | `"user"`) 하나로 화면 접근 권한이 갈립니다.
+- **관리자 전용**: 문서 등록(비정형) `/files`, 외부 API 등록(정형) `/external-api`, 권한 관리 `/admin`
+- **전체 사용자 공개**: 채팅 `/chat`, 문서 목록 `/documents`, 이미지 편집기 `/image-editor`,
+  검색어 관리 `/dictionary`
+- 권한 관리(`/admin`) 화면에서 관리자가 다른 계정의 역할을 실시간으로 바꿀 수 있습니다.
 
 ## 폴더 구조
 
 ```
 src/
 ├── config/
-│   └── ApiService.js        # API 엔드포인트 설정
+│   ├── TaskType.js          # task_type 상수 전체 목록
+│   └── ApiService.js        # postTask / getTaskType / resolveServerUrl
 ├── core/
-│   └── AppState.ts          # 전역 상태 (Zustand)
+│   └── AppState.ts          # 전역 상태 (Zustand, 유일한 TS 파일)
 ├── routes/
 │   └── router.jsx           # react-router 라우트 정의
 ├── shared/
-│   ├── components/          # 공유 컴포넌트 (MessageBubble, FileItem)
-│   ├── styles/              # 컴포넌트별 CSS
+│   ├── components/          # MessageBubble, ComboBoxInput, SortableHeaderCell, WoosongLogo
+│   ├── hooks/useSortableRows.js
 │   ├── utils/format.js
+│   ├── dummy.js              # DUMMY_ACCOUNTS(로그인 폴백) + 문서 등록 폼의 실제 분류 체계 데이터
 │   └── index.js
 ├── features/
-│   ├── auth/
-│   │   ├── components/      # LoginPage
-│   │   ├── services/        # AuthService.js
-│   │   ├── styles/
-│   │   └── index.js
-│   ├── chat/
-│   │   ├── components/      # ChatPage, ChatInput(모델 선택 포함), ChatMessages, ChatSessionSidebar
-│   │   ├── services/        # ChatService.js
-│   │   ├── styles/
-│   │   └── index.js
-│   ├── documents/
-│   │   ├── components/      # DocumentsPage (/documents, "문서 보기")
-│   │   ├── styles/
-│   │   └── index.js
-│   ├── prompt/
-│   │   ├── components/      # PromptPage (/prompt, "프롬프트 수정")
-│   │   ├── styles/
-│   │   └── index.js
-│   ├── external-api/
-│   │   ├── components/      # ExternalApiPage (/external-api, "외부 API 연동")
-│   │   ├── styles/
-│   │   └── index.js
-│   ├── files/
-│   │   ├── components/      # FileManagementPage (/files, "파일 임베딩")
-│   │   ├── services/        # FileService.js
-│   │   ├── styles/
-│   │   └── index.js
-│   └── dictionary/
-│       ├── components/      # DictionaryPanel (사이드바 "사전 보기" 버튼에서 여는 모달리스 팝업, 조회 전용)
-│       ├── services/        # DictionaryService.js
-│       ├── styles/
-│       └── index.js
+│   ├── auth/                 # LoginPage, AuthService.js
+│   ├── chat/                 # ChatPage, ChatInput(모델 선택), ChatMessages(비교/병합/선호), RightSidebar(출처), LeftSidebar
+│   ├── documents/             # DocumentsPage(문서 목록), DocumentImageViewerModal(페이지 이미지 뷰어·편집)
+│   ├── files/                 # FileManagementPage(문서 등록/비정형 업로드, 관리자 전용)
+│   ├── external-api/          # ExternalApiPage(외부 API 등록/정형, 관리자 전용)
+│   ├── dictionary/             # DictionaryPage(검색어 관리)
+│   ├── admin/                  # AdminUsersPage(권한 관리)
+│   ├── svg-editor/              # SvgEditorPage(이미지 편집기), SvgEditorService(로컬 IO + 서버 벡터화)
+│   ├── settings/                 # SettingsModal(계정 정보, 화면 모드)
+│   └── prompt/                    # PromptPage(라우트만 존재, 사이드바에는 비노출)
 └── layout/
     ├── components/          # RootLayout, ProtectedRoute, Titlebar, FileNotifications
-    ├── styles/
-    └── index.js
+    └── styles/
 ```
 
-## 사이드바 구성
+## 화면별 기능
 
-`ChatSessionSidebar`에 있는 네비게이션 순서:
+### 채팅 (`/chat`)
+- 모델 선택 체크박스(GPT/Claude/Gemini, 최대 3개)로 고른 모델마다 병렬로 질의
+- 2개 이상 비교 시 나란히 카드로 표시 → "어떤 응답이 더 나은가요?"로 하나 선택하거나, 2개 이상 골라
+  다른 모델에게 "병합" 요청 가능 (병합을 수행할 모델은 비교에 없던 모델도 선택 가능)
+- 답변을 클릭하면 우측 패널에 참고한 출처 문서 표시
+- 좌측 사이드바 대화 목록은 서버와 동기화(목록은 가볍게 제목만, 클릭 시 그 대화의 메시지 내역만 조회)
+- 파일/이미지를 드래그하거나 붙여넣어 채팅에 첨부 가능
+- 채팅 답변은 마크다운 + 일부 인라인 HTML(`<u>`, `<mark>` 등, XSS 방지를 위해 화이트리스트 처리)을 렌더링
 
-1. **새 채팅** — `/chat`으로 이동 + 새 세션 생성
-2. **문서 보기** (`/documents`) — 임베딩된 문서를 사업단/분류로 검색·필터링 (현재 목업 데이터)
-3. **프롬프트 수정** (`/prompt`) — 시스템 프롬프트 텍스트 + 답변에 반영되는 비중(슬라이더) 설정
-4. **외부 API 연동** (`/external-api`) — 외부 API 엔드포인트 등록/삭제, 상태 표시 (현재 목업 데이터)
-5. **사전 보기** — 클릭 시 사이드바 옆에 모달리스 패널이 열림 (조회 전용, 페이지 이동 없음)
-6. **파일 임베딩** (`/files`) — 파일 업로드 + 임베딩 진행 상태
+### 문서 목록 (`/documents`)
+- 등록된 문서 목록, 정렬 가능한 표
+- "이미지 보기"로 문서의 페이지 이미지들을 확인·설명 편집·이미지 교체
+- "다운로드"로 원본 파일 다운로드
+- 이미지를 "이미지 편집기에서 열기"로 보내서 벡터화 편집 가능
 
-그 아래로 채팅 세션 목록이 이어집니다.
+### 문서 등록/비정형 (`/files`, 관리자)
+- PDF 등 비정형 문서를 업로드해 임베딩. 업로드 시 업무구분/수행업무/수행부서/보고서명/생산연도 메타데이터 입력
+  (학교 서류분류 체계 기반 종속 드롭다운, 목록에 없는 값은 직접 입력해서 새 항목으로 등록 가능)
 
-## 동음이의어 사전 (Dictionary)
+### 외부 API 등록/정형 (`/external-api`, 관리자)
+- 공공데이터 등 정형 API 엔드포인트 등록/수정/삭제
+- API별로 자동 갱신 주기(분)를 설정하면, 화면이 열려 있는 동안 주기적으로 갱신 필요 여부를 확인해서
+  개별 갱신 요청을 보냄
 
-- 사이드바의 **사전 보기** 버튼으로 열리는 모달리스 패널 하나로만 제공 (조회 전용 — 등록/수정/삭제 없음)
-- 어느 화면에 있든 사이드바에서 바로 열 수 있고, 클릭 외부 감지로 자동 닫힘
-- 서버 API: `GET /dictionary/list` (`Authorization: Bearer` 토큰 필요)
+### 이미지 편집기 (`/image-editor`)
+- SVG 파일은 그대로 열고, PNG/JPG는 서버에 실제 벡터(선/도형) 변환을 요청 (서버 미연결 시 원본 이미지를
+  그대로 감싼 SVG로 대체)
+- 텍스트 요소를 클릭하면 내용/크기/위치를 상단 패널과 캔버스에서 동시 편집 (크기 조절/이동/삭제 핸들)
 
-## API 설정
+### 검색어 관리 (`/dictionary`)
+- 등록된 검색어(기준 단어 + 동의어)를 조회하고 내용 수정
 
-`src/config/ApiService.js`에서 서버 URL을 변경합니다.
+### 권한 관리 (`/admin`, 관리자)
+- 전체 계정 목록과 역할(관리자/일반 사용자)을 조회하고 변경
+
+## 디자인
+
+라이트/다크 모드 모두 `src/index.css`의 `@theme` 토큰(`--color-bg`, `--color-accent` 등)으로
+정의되어 있고, 대부분의 컴포넌트가 이 토큰을 참조합니다. 브랜드 컬러는 인디고 계열(`#4f46e5`)이고,
+로고는 `src/shared/components/WoosongLogo.jsx`(우송대학교 마크를 SVG로 재현)를 씁니다 — 실제 로고
+이미지 파일을 프로젝트에 추가하면 이 컴포넌트를 `<img>`로 교체하면 됩니다.
+
+## API 서버 주소 설정
+
+`src/config/ApiService.js`에서 변경합니다.
 
 ```js
 export const SERVER_URL = "https://your-server-url";

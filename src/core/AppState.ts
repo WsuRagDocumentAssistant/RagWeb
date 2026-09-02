@@ -8,16 +8,7 @@ import * as dictionaryService from "@/features/dictionary/services/DictionarySer
 import * as adminService from "@/features/admin/services/AdminService";
 import * as externalApiService from "@/features/external-api/services/ExternalApiService";
 import * as documentImageService from "@/features/documents/services/DocumentImageService";
-import {
-  getDummyChatReply,
-  getDummyMergedReply,
-  getDummyDocumentImages,
-  DUMMY_FILES,
-  DUMMY_DICTIONARY_ENTRIES,
-  DUMMY_SOURCE_FILES,
-  DUMMY_ACCOUNTS,
-  DUMMY_EXTERNAL_APIS,
-} from "@/shared";
+import { DUMMY_ACCOUNTS } from "@/shared";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 
@@ -232,10 +223,10 @@ interface NotificationSlice {
 interface ExternalApiSlice {
   externalApis: ExternalApi[];
   externalApiLoading: boolean;
-  fetchExternalApis: () => Promise<void>;
+  fetchExternalApis: () => Promise<boolean>;
   saveExternalApi: (api: Partial<ExternalApi> & { title: string; url: string; source: string; apiKey: string; refreshIntervalMinutes: number }) => Promise<void>;
   deleteExternalApi: (id: string) => Promise<void>;
-  syncExternalApi: (id: string, title: string, fallbackFetchedAt: string) => Promise<void>;
+  syncExternalApi: (id: string, title: string) => Promise<void>;
 }
 
 type AppStore = ChatSlice &
@@ -284,13 +275,6 @@ const deriveTitle = (text: string) => {
   return text.length > 20 ? `${text.slice(0, 20)}…` : text;
 };
 
-const MODEL_LABEL: Record<string, string> = {
-  claude: "Claude",
-  gpt: "GPT",
-  gemini: "Gemini",
-  local: "로컬 모델",
-};
-
 const MAX_COMPARE_PROVIDERS = 3;
 
 const loadSessions = (): ChatSession[] => {
@@ -320,12 +304,7 @@ const loadUserDirectory = (): DirectoryUser[] => {
   } catch {
     /* ignore */
   }
-  return DUMMY_ACCOUNTS.map(({ id, email, name, role }) => ({
-    id,
-    email,
-    name,
-    role: role as UserRole,
-  }));
+  return [];
 };
 
 const persistUserDirectory = (directory: DirectoryUser[]) => {
@@ -454,12 +433,7 @@ export const useAppState = create<AppStore>((set, get) => ({
             provider: asstMsg.provider as AIProvider,
             sessionId: activeSession?.backendSessionId ?? undefined,
           });
-          const readyFileSources = get().files
-            .filter((f) => f.status === "ready")
-            .slice(0, 2)
-            .map((f) => ({ id: f.id, name: f.name }));
-          const sources: MessageSource[] = (data.sources as MessageSource[] | undefined)
-            ?? (readyFileSources.length > 0 ? readyFileSources : DUMMY_SOURCE_FILES.slice(0, 1));
+          const sources = data.sources as MessageSource[] | undefined;
           set((s) => ({
             sessions: s.sessions.map((sess) =>
               sess.id === sessionId
@@ -474,20 +448,19 @@ export const useAppState = create<AppStore>((set, get) => ({
             ),
           }));
         } catch (err) {
-          // 서버 연결 실패 시에도 화면을 계속 확인할 수 있도록 더미 답변으로 대체
-          const dummy = getDummyChatReply(text, asstMsg.provider as string);
+          const errMsg = err instanceof Error ? err.message : "답변을 가져오지 못했습니다.";
           set((s) => ({
             sessions: s.sessions.map((sess) =>
               sess.id === sessionId
                 ? {
                     ...sess,
                     messages: sess.messages.map((m) =>
-                      m.id === asstMsg.id ? { ...m, content: dummy.reply, isStreaming: false, sources: dummy.sources } : m,
+                      m.id === asstMsg.id ? { ...m, isStreaming: false, error: errMsg } : m,
                     ),
                   }
                 : sess,
             ),
-            chatError: err instanceof Error ? err.message : "알 수 없는 오류",
+            chatError: errMsg,
           }));
         }
       }),
@@ -570,22 +543,15 @@ export const useAppState = create<AppStore>((set, get) => ({
             : sess,
         ),
       }));
-    } catch {
-      // 병합 전용 백엔드가 아직 없을 때를 대비한 클라이언트 측 대체 병합.
-      // 매칭되는 더미 시나리오가 있으면 그 병합 답변을 쓰고, 없으면 단순 이어붙이기로 대체.
-      const providers = turnAssistants.map((m) => m.provider as string);
-      const fallback = getDummyMergedReply(userMsg?.content, providers) ?? turnAssistants
-        .map((m) => `**${MODEL_LABEL[m.provider as string] ?? m.provider}**\n${m.content}`)
-        .join("\n\n---\n\n");
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : "병합에 실패했습니다.";
       set((s) => ({
         sessions: s.sessions.map((sess) =>
           sess.id === session.id
             ? {
                 ...sess,
                 messages: sess.messages.map((m) =>
-                  m.id === mergedMsg.id
-                    ? { ...m, content: fallback, isStreaming: false, sources: combineSourcesFromAnswers() }
-                    : m,
+                  m.id === mergedMsg.id ? { ...m, isStreaming: false, error: errMsg } : m,
                 ),
               }
             : sess,
@@ -650,8 +616,7 @@ export const useAppState = create<AppStore>((set, get) => ({
       const files = await fileService.listFiles();
       set({ files, fileError: null });
     } catch (err) {
-      // 서버 연결 실패 시 더미 파일 목록으로 대체
-      set({ files: DUMMY_FILES as EmbeddingFile[], fileError: err instanceof Error ? err.message : "파일 목록 조회 실패" });
+      set({ fileError: err instanceof Error ? err.message : "파일 목록 조회 실패" });
     }
   },
 
@@ -694,8 +659,6 @@ export const useAppState = create<AppStore>((set, get) => ({
       try {
         // 타임아웃 등으로 업로드 응답을 못 받았어도 서버는 색인을 끝냈을 수 있다.
         // 목록을 다시 읽어 서버 기준으로 맞추면 tmp-id로 남는 문제가 자연스럽게 정리된다.
-        // (fetchFiles()를 그대로 쓰지 않는 이유: 그건 실패 시 DUMMY_FILES로 통째로 대체해버려서,
-        //  방금 성공한 업로드까지 같이 지워버릴 수 있다.)
         const files = (await fileService.listFiles()) as EmbeddingFile[];
         const uploaded = files.some((f) => f.name === file.name);
         set({ files, fileLoading: false, uploadProgress: 0, fileError: uploaded ? null : msg });
@@ -706,18 +669,16 @@ export const useAppState = create<AppStore>((set, get) => ({
           toast.error(`${file.name} 업로드에 실패했습니다.`, { id: toastId });
         }
       } catch {
-        // 서버 자체가 응답하지 않는 완전 오프라인 상태 — 데모를 계속 볼 수 있도록 더미 결과로 대체
-        const chunks = Math.max(1, Math.round(file.size / 4000));
+        // 서버가 완전히 응답하지 않는 상태 — 실제로 실패한 것으로 표시한다.
         set((s) => ({
           files: s.files.map((f) =>
-            f.id === tempId ? { ...f, status: "ready", chunks } : f,
+            f.id === tempId ? { ...f, status: "error", errorMessage: msg } : f,
           ),
           fileLoading: false,
           uploadProgress: 0,
           fileError: msg,
         }));
-        toast.success(`${file.name} 업로드 완료 (더미)`, { id: toastId });
-        get().pushNotification(`${file.name} 업로드가 완료되었습니다. (더미)`, { type: "success", link: "/documents" });
+        toast.error(`${file.name} 업로드에 실패했습니다.`, { id: toastId });
       }
     }
   },
@@ -754,11 +715,11 @@ export const useAppState = create<AppStore>((set, get) => ({
         return;
       }
       const a = document.createElement("a");
-      a.href = resolveServerUrl(data.url);
+      // data.url이 truthy임을 위에서 이미 확인했으므로 resolveServerUrl도 항상 string을 반환한다.
+      a.href = resolveServerUrl(data.url) as string;
       a.download = file?.name ?? "";
       a.click();
     } catch {
-      // 더미 환경에는 원본 파일이 없어 대체할 데이터가 없으므로, 실패를 그대로 안내한다.
       toast.error(`${file?.name ?? "파일"}을 다운로드할 수 없습니다. (서버 연결 실패)`);
     }
   },
@@ -770,13 +731,11 @@ export const useAppState = create<AppStore>((set, get) => ({
   ensureDocumentImages: (file) => {
     const existing = get().documentImages[file.id];
     if (existing) return existing;
-    const generated = getDummyDocumentImages(file);
-    set((s) => ({ documentImages: { ...s.documentImages, [file.id]: generated } }));
-    return generated;
+    set((s) => ({ documentImages: { ...s.documentImages, [file.id]: [] } }));
+    return [];
   },
 
   fetchDocumentImages: async (file) => {
-    // 화면이 비어 보이지 않도록 먼저 더미(혹은 캐시된) 이미지를 채워두고, 서버 응답이 오면 교체한다.
     get().ensureDocumentImages(file);
     try {
       const data = (await documentImageService.listImages(file.id)) as { images: DocumentImage[] };
@@ -794,7 +753,7 @@ export const useAppState = create<AppStore>((set, get) => ({
         set((s) => ({ documentImages: { ...s.documentImages, [file.id]: images } }));
       }
     } catch {
-      // 서버 연결 실패 시 이미 채워둔 더미 이미지를 그대로 사용
+      // 서버 연결 실패 시 빈 목록으로 남겨둔다.
     }
   },
 
@@ -810,25 +769,17 @@ export const useAppState = create<AppStore>((set, get) => ({
   },
 
   saveDocumentImage: async (fileId, imageId, changes) => {
-    // 낙관적으로 먼저 반영해서 화면에는 바로 저장된 것처럼 보이게 한다.
+    // 낙관적으로 먼저 반영해서 화면에는 바로 저장된 것처럼 보이게 하고, 실패하면 호출한 쪽에서 안내한다.
     get().updateDocumentImage(fileId, imageId, changes);
-    try {
-      await documentImageService.saveImage(fileId, imageId, changes);
-    } catch {
-      // 저장 전용 백엔드가 아직 없어도 화면에는 이미 반영되어 있으므로 조용히 무시
-    }
+    await documentImageService.saveImage(fileId, imageId, changes);
   },
 
   uploadDocumentImage: async (fileId, imageId, file, previewUrl) => {
     // 낙관적으로 먼저 로컬 미리보기(blob URL)를 반영하고, 서버가 실제 URL을 주면 교체한다.
     get().updateDocumentImage(fileId, imageId, { imageUrl: previewUrl });
-    try {
-      const data = (await documentImageService.uploadImage(fileId, imageId, file)) as { imageUrl?: string };
-      if (data?.imageUrl) {
-        get().updateDocumentImage(fileId, imageId, { imageUrl: resolveServerUrl(data.imageUrl) });
-      }
-    } catch {
-      // 이미지 교체 전용 백엔드가 아직 없어도 화면에는 이미 로컬 미리보기가 반영되어 있으므로 조용히 무시
+    const data = (await documentImageService.uploadImage(fileId, imageId, file)) as { imageUrl?: string };
+    if (data?.imageUrl) {
+      get().updateDocumentImage(fileId, imageId, { imageUrl: resolveServerUrl(data.imageUrl) });
     }
   },
 
@@ -925,7 +876,7 @@ export const useAppState = create<AppStore>((set, get) => ({
         persistUserDirectory(data.users);
       }
     } catch {
-      // 서버 연결 실패 시 이미 로드해둔 로컬/더미 목록을 그대로 사용
+      // 서버 연결 실패 시 이미 로드해둔 로컬 목록을 그대로 사용
     }
   },
 
@@ -938,8 +889,8 @@ export const useAppState = create<AppStore>((set, get) => ({
     });
     try {
       await adminService.setUserRole(email, role);
-    } catch {
-      // 서버 연결 실패 시에도 화면에는 이미 반영되어 있으므로 조용히 무시
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "권한 변경에 실패했습니다.");
     }
   },
 
@@ -975,8 +926,7 @@ export const useAppState = create<AppStore>((set, get) => ({
       const data = await dictionaryService.listEntries(search) as { entries: DictionaryEntry[] };
       set({ dictEntries: data.entries ?? [], dictLoading: false });
     } catch (err) {
-      // 서버 연결 실패 시 더미 사전 항목으로 대체
-      set({ dictEntries: DUMMY_DICTIONARY_ENTRIES, dictLoading: false, dictError: err instanceof Error ? err.message : "사전 목록 조회 실패" });
+      set({ dictLoading: false, dictError: err instanceof Error ? err.message : "사전 목록 조회 실패" });
     }
   },
 
@@ -994,10 +944,8 @@ export const useAppState = create<AppStore>((set, get) => ({
       await dictionaryService.saveEntries(get().dictEntries);
       toast.success("검색어를 저장했습니다.");
       get().pushNotification("검색어를 저장했습니다.", { type: "success", link: "/dictionary" });
-    } catch {
-      // 저장 전용 백엔드가 아직 없어도 화면에는 이미 반영돼 있으므로 저장된 것으로 안내
-      toast.success("검색어를 저장했습니다. (임시 저장)");
-      get().pushNotification("검색어를 저장했습니다. (임시 저장)", { type: "success", link: "/dictionary" });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "검색어 저장에 실패했습니다.");
     }
     set({ dictSaving: false });
   },
@@ -1058,7 +1006,7 @@ export const useAppState = create<AppStore>((set, get) => ({
   },
 
   // ── 외부 API 등록 (정형) ───────────────────────────────────────────────────
-  externalApis: DUMMY_EXTERNAL_APIS as ExternalApi[],
+  externalApis: [],
   externalApiLoading: false,
 
   fetchExternalApis: async () => {
@@ -1066,15 +1014,16 @@ export const useAppState = create<AppStore>((set, get) => ({
     try {
       const data = (await externalApiService.listApis()) as { apis: ExternalApi[] };
       set({ externalApis: data.apis ?? [], externalApiLoading: false });
-    } catch {
-      // 서버 연결 실패 시 더미 목록으로 대체
-      set({ externalApis: DUMMY_EXTERNAL_APIS as ExternalApi[], externalApiLoading: false });
+      return true;
+    } catch (err) {
+      set({ externalApiLoading: false });
+      toast.error(err instanceof Error ? err.message : "외부 API 목록 조회에 실패했습니다.");
+      return false;
     }
   },
 
   saveExternalApi: async (api) => {
     const isEdit = !!api.id;
-    const prevFetchedAt = isEdit ? get().externalApis.find((a) => a.id === api.id)?.fetchedAt : undefined;
     const successMessage = isEdit ? "API 정보를 수정했습니다." : "API를 등록했습니다.";
     try {
       const data = (await externalApiService.saveApi(api)) as { api: ExternalApi };
@@ -1085,47 +1034,34 @@ export const useAppState = create<AppStore>((set, get) => ({
           : [saved, ...s.externalApis],
       }));
       toast.success(successMessage);
-    } catch {
-      // 등록/수정 전용 백엔드가 아직 없어도 화면에는 반영되도록 더미 결과로 대체
-      const fallback: ExternalApi = {
-        id: api.id ?? genId("ext-api"),
-        title: api.title,
-        url: api.url,
-        source: api.source,
-        apiKey: api.apiKey,
-        refreshIntervalMinutes: api.refreshIntervalMinutes,
-        fetchedAt: prevFetchedAt ?? new Date().toISOString(),
-      };
-      set((s) => ({
-        externalApis: isEdit
-          ? s.externalApis.map((a) => (a.id === fallback.id ? fallback : a))
-          : [fallback, ...s.externalApis],
-      }));
-      toast.success(`${successMessage} (더미)`);
+      get().pushNotification(successMessage, { type: "success", link: "/external-api" });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : `${successMessage.replace("했습니다.", "")}에 실패했습니다.`);
     }
-    get().pushNotification(successMessage, { type: "success", link: "/external-api" });
   },
 
   deleteExternalApi: async (id) => {
+    const prev = get().externalApis;
     set((s) => ({ externalApis: s.externalApis.filter((a) => a.id !== id) }));
     try {
       await externalApiService.deleteApi(id);
-    } catch {
-      // 삭제 전용 백엔드가 아직 없어도 화면에는 이미 삭제 반영 — 더미 데모 특성상 복구하지 않는다
+      toast.success("API를 삭제했습니다.");
+    } catch (err) {
+      set({ externalApis: prev });
+      toast.error(err instanceof Error ? err.message : "API 삭제에 실패했습니다.");
     }
-    toast.success("API를 삭제했습니다.");
   },
 
-  syncExternalApi: async (id, title, fallbackFetchedAt) => {
-    let fetchedAt = fallbackFetchedAt;
+  syncExternalApi: async (id, title) => {
     try {
       const data = (await externalApiService.syncApi(id)) as { fetchedAt: string };
-      fetchedAt = data?.fetchedAt ?? fallbackFetchedAt;
-    } catch {
-      // 실제 재수집 백엔드가 아직 없어도 화면에는 서버 시간 기준으로 갱신된 것처럼 보여준다
+      set((s) => ({
+        externalApis: s.externalApis.map((a) => (a.id === id ? { ...a, fetchedAt: data.fetchedAt } : a)),
+      }));
+      toast.success(`${title} 데이터를 새로고침했습니다.`);
+      get().pushNotification(`${title} 데이터를 새로고침했습니다.`, { type: "success", link: "/external-api" });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : `${title} 데이터 새로고침에 실패했습니다.`);
     }
-    set((s) => ({ externalApis: s.externalApis.map((a) => (a.id === id ? { ...a, fetchedAt } : a)) }));
-    toast.success(`${title} 데이터를 새로고침했습니다.`);
-    get().pushNotification(`${title} 데이터를 새로고침했습니다.`, { type: "success", link: "/external-api" });
   },
 }));

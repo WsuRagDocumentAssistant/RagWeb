@@ -15,7 +15,7 @@ export default function Titlebar() {
         <Menu size={18} />
       </button>
       <div className="titlebar-brand">
-        <WoosongLogo withText={false} className="titlebar-icon" />
+        <WoosongLogo className="titlebar-icon" />
         <span className="titlebar-title">AI RAG Assistant</span>
       </div>
       <div className="titlebar-spacer" />

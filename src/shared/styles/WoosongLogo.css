@@ -1,0 +1,17 @@
+.woosong-logo-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #ffffff;
+  border-radius: 8px;
+  padding: 3px 8px;
+  line-height: 0;
+  flex-shrink: 0;
+}
+
+.woosong-logo-chip img {
+  display: block;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+}

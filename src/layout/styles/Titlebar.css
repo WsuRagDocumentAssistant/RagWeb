@@ -32,7 +32,7 @@
   gap: 8px;
 }
 
-.titlebar-icon { width: 28px; height: 28px; flex-shrink: 0; }
+.titlebar-icon { height: 32px; flex-shrink: 0; }
 
 .titlebar-title {
   font-size: 15px;

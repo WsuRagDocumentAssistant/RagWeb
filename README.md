@@ -9,7 +9,7 @@
 - **React Router v7** — URL 기반 라우팅
 - **Tailwind CSS v4** — `src/index.css`의 `@theme` 토큰으로 라이트/다크 팔레트 정의
 - **Zustand v5** — 전역 상태 관리 (`src/core/AppState.ts`)
-- **TypeScript** — 전역 상태(`AppState.ts`)에만 적용, 나머지는 JS/JSX
+- **TypeScript** — 전역 상태(`AppState.ts`, `features/tutorial/TutorialAppState.ts`)에만 적용, 나머지는 JS/JSX
 - **react-markdown** + **rehype-raw**/**rehype-sanitize** — 채팅 답변의 마크다운·인라인 HTML 렌더링
 - **lucide-react** — 아이콘
 - **sonner** — 토스트 알림
@@ -24,6 +24,13 @@ npm run build    # 프로덕션 빌드 (dist/)
 
 `dist/`는 `npm run build`가 만드는 정적 빌드 산출물입니다(HTML/JS/CSS 번들) — 소스 코드가 아니라
 배포용 결과물이라 직접 수정하지 않고, `src/`를 고친 뒤 다시 빌드합니다.
+
+## 개발 시 주의사항
+
+- 개발자는 **`src/` 폴더 아래만 수정**합니다. 그 외 루트 설정 파일(`vite.config.js`, `package.json`,
+  `Dockerfile`, `nginx.conf`, `k8s/`, `tsconfig.json` 등)은 빌드·배포 전반에 영향을 주므로 임의로
+  수정하지 않습니다.
+- `src/` 바깥에서 수정이 필요한 부분이 있다면 직접 고치지 말고 먼저 문의합니다.
 
 ## 통신 아키텍처
 
@@ -42,8 +49,7 @@ npm run build    # 프로덕션 빌드 (dist/)
 - `src/config/ApiService.js` — task_type 조회 헬퍼(`getTaskType`)와 공통 요청 함수(`postTask`), 상대
   경로를 절대 URL로 바꾸는 `resolveServerUrl`
 - `src/features/*/services/*Service.js` — 기능별 통신 로직 (전부 `postTask` 기반)
-- 서버에 구현해야 하는 task_type과 요청/응답 스펙은 [`docs/SERVER_TASKS.md`](docs/SERVER_TASKS.md) 참고
-  (이 파일은 `.gitignore`에 등록되어 있어 원격 저장소에는 올라가지 않습니다)
+- 서버에 구현해야 하는 task_type과 요청/응답 스펙은 (제공한 한글 문서 [통신모듈.hwpx]) 참고
 
 ### 서버 연결 실패 시 동작
 
@@ -62,15 +68,33 @@ npm run build    # 프로덕션 빌드 (dist/)
 
 ## 폴더 구조
 
+### 루트
+
+```
+.
+├── src/                # 소스 코드 — 개발자가 수정하는 대상 (아래 참고)
+├── docs/               # SERVER_TASKS.md 등 서버 연동 문서 (.gitignore 대상)
+├── dist/               # npm run build 산출물 (빌드로 생성, 직접 수정 금지)
+├── k8s/                # 쿠버네티스 배포 매니페스트
+├── index.html          # Vite 엔트리 HTML
+├── vite.config.js       # Vite 빌드/alias(@ → src) 설정
+├── tsconfig.json        # AppState.ts / TutorialAppState.ts용 TS 설정
+├── Dockerfile / nginx.conf  # 컨테이너 빌드 · nginx 정적 서빙 설정
+└── package.json
+```
+
+### `src/`
+
 ```
 src/
 ├── config/
 │   ├── TaskType.js          # task_type 상수 전체 목록
 │   └── ApiService.js        # postTask / getTaskType / resolveServerUrl
 ├── core/
-│   └── AppState.ts          # 전역 상태 (Zustand, 유일한 TS 파일)
+│   └── AppState.ts          # 전역 상태 (Zustand)
 ├── routes/
 │   └── router.jsx           # react-router 라우트 정의
+├── assets/                  # 정적 이미지 리소스 (우송대학교 로고 등)
 ├── shared/
 │   ├── components/          # MessageBubble, ComboBoxInput, SortableHeaderCell, WoosongLogo
 │   ├── hooks/useSortableRows.js
@@ -87,6 +111,7 @@ src/
 │   ├── admin/                  # AdminUsersPage(권한 관리)
 │   ├── svg-editor/              # SvgEditorPage(이미지 편집기), SvgEditorService(로컬 IO + 서버 벡터화)
 │   ├── settings/                 # SettingsModal(계정 정보, 화면 모드)
+│   ├── tutorial/                  # 화면 하이라이트 튜토리얼(TutorialOverlay, TutorialAppState.ts, 더미 데모 데이터)
 │   └── prompt/                    # PromptPage(라우트만 존재, 사이드바에는 비노출)
 └── layout/
     ├── components/          # RootLayout, ProtectedRoute, Titlebar, FileNotifications
@@ -130,17 +155,10 @@ src/
 ### 권한 관리 (`/admin`, 관리자)
 - 전체 계정 목록과 역할(관리자/일반 사용자)을 조회하고 변경
 
-## 디자인
-
-라이트/다크 모드 모두 `src/index.css`의 `@theme` 토큰(`--color-bg`, `--color-accent` 등)으로
-정의되어 있고, 대부분의 컴포넌트가 이 토큰을 참조합니다. 브랜드 컬러는 인디고 계열(`#4f46e5`)이고,
-로고는 `src/shared/components/WoosongLogo.jsx`(우송대학교 마크를 SVG로 재현)를 씁니다 — 실제 로고
-이미지 파일을 프로젝트에 추가하면 이 컴포넌트를 `<img>`로 교체하면 됩니다.
-
-## API 서버 주소 설정
-
-`src/config/ApiService.js`에서 변경합니다.
-
-```js
-export const SERVER_URL = "https://your-server-url";
-```
+### 튜토리얼 (사이드바 "튜토리얼 보기")
+- 화면 요소를 하이라이트(스포트라이트)로 짚어가며 로그인부터 전체 기능을 순서대로 안내
+- 로그인 스텝에서는 데모 계정(`admin@wsu.ac.kr`)으로 값을 채우고 자동 로그인까지 진행
+- 관리자 전용 기능도 건너뛰지 않고 전부 보여주되 "관리자 전용 기능" 배지로 구분
+- 검색 문서 선택/이미지 보기/병합 결과처럼 실제 데이터가 없으면 비어 보일 수 있는 화면은 실제 서버
+  데이터 대신 `features/tutorial/data/tutorialDummyData.js`의 더미 데이터로 항상 동일하게 시연
+- 진행 상태(`tutorial_step_index`, `tutorial_done`)는 `localStorage`에 저장되어 다음 방문 시 이어서 볼 수 있음

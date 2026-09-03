@@ -54,13 +54,17 @@
   pointer-events: auto;
   width: 320px;
   max-width: calc(100vw - 32px);
+  /* JS의 TOOLTIP_MAX_HEIGHT 상수와 맞춰야 한다 — 위치 계산이 이 값을 실제 높이의
+     상한으로 가정하고 화면 안에 들어오도록 clamp하기 때문. 내용이 더 길면 스크롤한다. */
+  max-height: 260px;
+  overflow-y: auto;
   padding: 16px;
   border-radius: 14px;
   background-color: var(--color-surface);
   color: var(--color-text);
   border: 1px solid var(--color-border);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
-  transition: top 0.3s ease, left 0.3s ease, bottom 0.3s ease;
+  transition: top 0.3s ease, left 0.3s ease;
   animation: tutorial-fade-in-plain 0.22s ease;
 }
 
@@ -69,6 +73,14 @@
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
+}
+
+/* 대상이 화면 대부분을 차지해 위/아래 어디에도 안전하게 붙일 공간이 없는 스텝 —
+   링과 겹치지 않도록 화면 왼쪽 가운데에 고정해서 보여준다. */
+.tutorial-tooltip-side {
+  top: 50%;
+  left: 24px;
+  transform: translateY(-50%);
 }
 
 .tutorial-close {
@@ -171,3 +183,56 @@
 .tutorial-btn-primary { background-color: #4f46e5; color: #fff; }
 .tutorial-btn-primary:hover { background-color: #4338ca; }
 .tutorial-btn-primary:disabled { background-color: var(--color-border); color: var(--color-muted); cursor: not-allowed; }
+
+/* 병합 결과 예시처럼, 기존 모달이 없는 튜토리얼 전용 데모 화면을 띄우는 배경/패널 */
+.tutorial-demo-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background-color: rgba(0, 0, 0, 0.45);
+}
+
+.tutorial-demo-panel {
+  width: 100%;
+  max-width: 640px;
+  max-height: 84vh;
+  overflow-y: auto;
+  border-radius: 16px;
+  background-color: var(--color-surface);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  padding: 18px 0;
+}
+
+.tutorial-merge-question {
+  margin: 0 16px 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tutorial-merge-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 12px 8px;
+}
+
+.tutorial-merge-source-tag {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-muted);
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 3px 8px;
+}

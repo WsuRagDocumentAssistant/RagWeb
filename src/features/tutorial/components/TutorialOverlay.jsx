@@ -1,15 +1,28 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
 import { useAppState } from "@/core/AppState";
 import { useTutorialState } from "../TutorialAppState";
 import { TUTORIAL_STEPS } from "../data/tutorialSteps";
+import TutorialDocumentPickerDemo from "./TutorialDocumentPickerDemo";
+import TutorialImageViewerDemo from "./TutorialImageViewerDemo";
+import TutorialMergeDemo from "./TutorialMergeDemo";
 import "../styles/TutorialOverlay.css";
+
+const DEMO_COMPONENTS = {
+  documentPicker: TutorialDocumentPickerDemo,
+  imageViewer: TutorialImageViewerDemo,
+  merge: TutorialMergeDemo,
+};
 
 const FIND_RETRY_MS = 150;
 const FIND_RETRY_MAX = 20; // 최대 약 3초까지 대상 요소가 마운트되길 재시도
 const RECHECK_MS = 300; // 대상이 사라졌는지(모달 닫힘 등) 주기적으로 재확인
 const TOOLTIP_WIDTH = 320;
+const TOOLTIP_MAX_HEIGHT = 260; // 내용이 다 들어갈 만큼 넉넉히 띄워줄 때 쓰는 높이
+const TOOLTIP_MIN_HEIGHT = 140; // 이보다 좁으면 링 근처에 붙이지 않고 화면 옆(side)으로 뺀다
+const TOOLTIP_GAP = 14;
+const VIEWPORT_MARGIN = 16;
 const RING_PAD = 6;
 
 // 튜토리얼 데모용 계정 — 로그인 스텝에서 이 계정으로 화면에 값을 채워 보여주고, 실제로 로그인까지 시켜준다.
@@ -29,6 +42,12 @@ function fillReactInput(selector, value) {
 function readRect(el) {
   const r = el.getBoundingClientRect();
   return { top: r.top, left: r.left, width: r.width, height: r.height };
+}
+
+function sameRect(a, b) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return a.top === b.top && a.left === b.left && a.width === b.width && a.height === b.height;
 }
 
 // 관리자 전용 화면(admin/files/external-api)도 건너뛰지 않고 전부 보여준다 — 대신
@@ -54,6 +73,16 @@ export default function TutorialOverlay() {
   const step = active ? steps[stepIndex] ?? null : null;
 
   const [rect, setRect] = useState(null);
+  const lastRectRef = useRef(null);
+
+  // 값이 실제로 달라졌을 때만 상태를 갱신한다 — 매번 새 객체를 만들어 setRect하면
+  // (좌표가 그대로여도) rect의 참조가 계속 바뀌어, rect에 의존하는 다른 effect(툴팁 위치
+  // 보정 등)의 디바운스 타이머가 원인이 되어 매번 취소돼서 절대 실행되지 못하는 문제가 있다.
+  const commitRect = (next) => {
+    if (sameRect(lastRectRef.current, next)) return;
+    lastRectRef.current = next;
+    setRect(next);
+  };
 
   // 로그인 관련 스텝을 보여줄 때, 데모 계정 값을 실제 입력창에 채워서 보여준다(시각적 데모용).
   useEffect(() => {
@@ -112,7 +141,7 @@ export default function TutorialOverlay() {
     const recheck = () => {
       if (!resolvedThisStep || !step?.target) return;
       const el = document.querySelector(step.target);
-      setRect(el ? readRect(el) : null);
+      commitRect(el ? readRect(el) : null);
     };
     window.addEventListener("resize", recheck);
     window.addEventListener("scroll", recheck, true);
@@ -129,21 +158,21 @@ export default function TutorialOverlay() {
 
       if (!step || !step.target) {
         resolvedThisStep = true;
-        setRect(null);
+        commitRect(null);
         return;
       }
       const el = await waitForElement(step.target);
       if (cancelled) return;
       if (!el) {
         resolvedThisStep = true;
-        setRect(null);
+        commitRect(null);
         return;
       }
       el.scrollIntoView({ block: "center", behavior: "smooth" });
       await new Promise((r) => setTimeout(r, 220));
       if (cancelled) return;
       resolvedThisStep = true;
-      setRect(readRect(el));
+      commitRect(readRect(el));
     })();
 
     return () => {
@@ -181,59 +210,76 @@ export default function TutorialOverlay() {
       }
     : null;
 
-  const tooltipStyle = (() => {
-    if (!ringStyle) return null;
-    const spaceBelow = window.innerHeight - (ringStyle.top + ringStyle.height);
-    const left = Math.min(Math.max(ringStyle.left, 16), window.innerWidth - TOOLTIP_WIDTH - 16);
-    if (spaceBelow > 190) {
-      return { top: ringStyle.top + ringStyle.height + 14, left };
+  // 링 아래(또는 위)에 어느 정도 공간만 있으면 그만큼 붙여서 가깝게 보여준다 — 이상적인
+  // 높이(TOOLTIP_MAX_HEIGHT)가 다 안 들어가도, 최소 높이(TOOLTIP_MIN_HEIGHT)만 확보되면
+  // 그 공간에 맞춰(넘치는 내용은 스크롤) 링 근처에 놓는다. 화면 왼쪽 고정("side" 모드)은
+  // 대상이 화면 대부분을 차지해 위/아래 어디에도 그 최소 공간조차 없을 때만 쓰는
+  // 최후의 수단이다 — 공간이 있는데도 항상 멀리 떨어뜨릴 필요는 없다.
+  const tooltipPlacement = (() => {
+    if (!ringStyle) return { mode: "center" };
+    const left = Math.min(Math.max(ringStyle.left, VIEWPORT_MARGIN), window.innerWidth - TOOLTIP_WIDTH - VIEWPORT_MARGIN);
+    const usableBelow = window.innerHeight - (ringStyle.top + ringStyle.height) - TOOLTIP_GAP - VIEWPORT_MARGIN;
+    const usableAbove = ringStyle.top - TOOLTIP_GAP - VIEWPORT_MARGIN;
+    if (usableBelow >= TOOLTIP_MIN_HEIGHT && usableBelow >= usableAbove) {
+      const maxHeight = Math.min(TOOLTIP_MAX_HEIGHT, usableBelow);
+      return { mode: "anchored", style: { top: ringStyle.top + ringStyle.height + TOOLTIP_GAP, left, maxHeight } };
     }
-    return { bottom: window.innerHeight - ringStyle.top + 14, left };
+    if (usableAbove >= TOOLTIP_MIN_HEIGHT) {
+      const maxHeight = Math.min(TOOLTIP_MAX_HEIGHT, usableAbove);
+      return { mode: "anchored", style: { top: ringStyle.top - maxHeight - TOOLTIP_GAP, left, maxHeight } };
+    }
+    return { mode: "side" };
   })();
+  const tooltipModeClass = tooltipPlacement.mode === "anchored" ? "" : `tutorial-tooltip-${tooltipPlacement.mode}`;
+
+  const DemoComponent = step.demo ? DEMO_COMPONENTS[step.demo] : null;
 
   return (
-    <div className="tutorial-root">
-      {ringStyle ? (
-        <React.Fragment key="ring">
-          <div className="tutorial-ring" style={ringStyle} />
-          <span className="tutorial-pulse-dot" style={{ top: ringStyle.top - 5, left: ringStyle.left - 5 }} />
-        </React.Fragment>
-      ) : (
-        <div key="dim" className="tutorial-dim-center" />
-      )}
-      <div
-        key="tooltip"
-        className={`tutorial-tooltip ${tooltipStyle ? "" : "tutorial-tooltip-center"}`}
-        style={tooltipStyle ?? undefined}
-      >
-        <button className="tutorial-close" onClick={stop} title="튜토리얼 닫기">
-          <X size={14} />
-        </button>
-        <div className="tutorial-tooltip-head">
-          <span className="tutorial-step-count">{stepIndex + 1} / {steps.length}</span>
-          {step.adminOnly && <span className="tutorial-admin-badge">관리자 전용 기능</span>}
-        </div>
-        <h3>{step.title}</h3>
-        <p>{step.description}</p>
-        {awaitingRealLogin && (
-          <p className="tutorial-hint">
-            아래 버튼을 누르면 데모 계정({DEMO_ACCOUNT.email})으로 자동 로그인합니다.
-          </p>
+    <>
+      {DemoComponent && <DemoComponent />}
+      <div className="tutorial-root">
+        {ringStyle ? (
+          <React.Fragment key="ring">
+            <div className="tutorial-ring" style={ringStyle} />
+            <span className="tutorial-pulse-dot" style={{ top: ringStyle.top - 5, left: ringStyle.left - 5 }} />
+          </React.Fragment>
+        ) : (
+          <div key="dim" className="tutorial-dim-center" />
         )}
-        <div className="tutorial-actions">
-          <button className="tutorial-btn tutorial-btn-ghost" onClick={stop}>건너뛰기</button>
-          <div className="tutorial-nav-btns">
-            <button className="tutorial-btn tutorial-btn-outline" onClick={goPrev} disabled={isFirst}>이전</button>
-            <button
-              className="tutorial-btn tutorial-btn-primary"
-              onClick={handlePrimary}
-              disabled={awaitingRealLogin && authLoading}
-            >
-              {isLast ? "완료" : awaitingRealLogin ? (authLoading ? "로그인 중..." : "로그인하고 계속") : "다음"}
-            </button>
+        <div
+          key="tooltip"
+          className={`tutorial-tooltip ${tooltipModeClass}`}
+          style={tooltipPlacement.style}
+        >
+          <button className="tutorial-close" onClick={stop} title="튜토리얼 닫기">
+            <X size={14} />
+          </button>
+          <div className="tutorial-tooltip-head">
+            <span className="tutorial-step-count">{stepIndex + 1} / {steps.length}</span>
+            {step.adminOnly && <span className="tutorial-admin-badge">관리자 전용 기능</span>}
+          </div>
+          <h3>{step.title}</h3>
+          <p>{step.description}</p>
+          {awaitingRealLogin && (
+            <p className="tutorial-hint">
+              아래 버튼을 누르면 데모 계정({DEMO_ACCOUNT.email})으로 자동 로그인합니다.
+            </p>
+          )}
+          <div className="tutorial-actions">
+            <button className="tutorial-btn tutorial-btn-ghost" onClick={stop}>건너뛰기</button>
+            <div className="tutorial-nav-btns">
+              <button className="tutorial-btn tutorial-btn-outline" onClick={goPrev} disabled={isFirst}>이전</button>
+              <button
+                className="tutorial-btn tutorial-btn-primary"
+                onClick={handlePrimary}
+                disabled={awaitingRealLogin && authLoading}
+              >
+                {isLast ? "완료" : awaitingRealLogin ? (authLoading ? "로그인 중..." : "로그인하고 계속") : "다음"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

@@ -3,6 +3,9 @@
 // target이 null이면 화면 가운데 안내만 표시한다. adminOnly는 관리자 계정일 때만 노출되는 스텝.
 // preClick(CSS selector 또는 selector 배열)이 있으면 target을 찾기 전에 순서대로 클릭한다
 // — 모달을 열거나(예: "이미지 보기" 버튼) 닫는(예: 취소 버튼) 데 사용한다.
+// demo가 있으면 실제 화면 대신 TutorialOverlay가 그 이름에 맞는 데모 컴포넌트를 직접 띄운다 —
+// 실제 서버 데이터(문서/이미지가 하나도 없는 계정 등)에 좌우되지 않고 항상 같은 예시를
+// 보여주기 위한 것으로, 데이터는 tutorialDummyData.js에 정의되어 있다.
 export const TUTORIAL_STEPS = [
   {
     id: "login-welcome",
@@ -56,7 +59,7 @@ export const TUTORIAL_STEPS = [
   {
     id: "chat-document-picker",
     route: "/chat",
-    preClick: [".attach-btn", ".attach-menu-item:nth-of-type(2)"],
+    demo: "documentPicker",
     target: ".dpm-modal",
     title: "검색 문서 선택 화면",
     description: "체크박스로 문서를 골라 그 문서 안에서만 답을 찾도록 검색 범위를 좁힐 수 있습니다. \"모든 문서 선택\"으로 전체 범위로 되돌릴 수도 있어요.",
@@ -64,7 +67,6 @@ export const TUTORIAL_STEPS = [
   {
     id: "chat-textarea",
     route: "/chat",
-    preClick: ".dpm-cancel-btn",
     target: ".chat-textarea",
     title: "질문 입력",
     description: "궁금한 내용을 입력하고 Enter(또는 전송 버튼)로 질문합니다.",
@@ -82,6 +84,14 @@ export const TUTORIAL_STEPS = [
     target: null,
     title: "답변 비교 · 병합 · 선호 선택",
     description: "모델을 2개 이상 골라 질문하면 답변이 카드로 나란히 뜹니다. 그중 하나를 \"선택\"하거나, 2개 이상 골라 다른 모델에게 \"병합\"을 맡길 수 있어요.",
+  },
+  {
+    id: "chat-merge-demo",
+    route: "/chat",
+    demo: "merge",
+    target: ".tutorial-merge-demo",
+    title: "병합 결과 예시",
+    description: "여러 모델의 답변을 골라 \"병합\"하면, 하나로 합쳐진 답변과 그 답변이 참고한 문서 출처가 함께 표시됩니다.",
   },
   {
     id: "chat-sources",
@@ -121,7 +131,7 @@ export const TUTORIAL_STEPS = [
   {
     id: "documents-image-viewer",
     route: "/documents",
-    preClick: '.doc-table-btn[title="이미지 보기"]',
+    demo: "imageViewer",
     target: ".div-thumb-list",
     title: "페이지 썸네일 목록",
     description: "\"이미지 보기\" 버튼을 누르면 열리는 화면입니다. 문서의 각 페이지를 썸네일로 보여주고, 클릭하면 오른쪽에서 크게 확인할 수 있어요.",
@@ -129,6 +139,7 @@ export const TUTORIAL_STEPS = [
   {
     id: "documents-image-meta",
     route: "/documents",
+    demo: "imageViewer",
     target: ".div-meta-col",
     title: "이미지 설명 · 메타데이터 수정",
     description: "AI가 추출한 문서 제목, 요약, 핵심 시각 정보, 주요 문구를 확인하고 직접 고쳐서 저장할 수 있습니다.",

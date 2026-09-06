@@ -26,7 +26,7 @@ const VIEWPORT_MARGIN = 16;
 const RING_PAD = 6;
 
 // 튜토리얼 데모용 계정 — 로그인 스텝에서 이 계정으로 화면에 값을 채워 보여주고, 실제로 로그인까지 시켜준다.
-const DEMO_ACCOUNT = { email: "admin@wsu.ac.kr", password: "1234" };
+const DEMO_ACCOUNT = { email: "123456789", password: "1234" };
 
 const EMAIL_SELECTOR = 'input[placeholder="학번/교번"]';
 const PASSWORD_SELECTOR = 'input[placeholder="비밀번호"]';

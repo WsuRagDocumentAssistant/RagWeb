@@ -63,6 +63,7 @@ export default function TutorialOverlay() {
 
   const user = useAppState((s) => s.user);
   const login = useAppState((s) => s.login);
+  const logout = useAppState((s) => s.logout);
   const authLoading = useAppState((s) => s.authLoading);
 
   const navigate = useNavigate();
@@ -195,7 +196,9 @@ export default function TutorialOverlay() {
   const awaitingRealLogin = isLoginGateStep && !user;
 
   const handlePrimary = () => {
-    if (isLast) { finish(); return; }
+    // 둘러보기는 데모 계정으로 자동 로그인해서 진행한 것이므로, 끝나면 그 세션을 남겨두지
+    // 않고 로그아웃시켜 실제 계정으로 다시 로그인할 수 있도록 로그인 화면으로 돌려보낸다.
+    if (isLast) { finish(); logout(); return; }
     if (awaitingRealLogin) { login(DEMO_ACCOUNT.email, DEMO_ACCOUNT.password); return; }
     goNext();
   };

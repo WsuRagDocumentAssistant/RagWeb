@@ -5,6 +5,9 @@ import { create } from "zustand";
 
 const STEP_KEY = "tutorial_step_index";
 const DONE_KEY = "tutorial_done";
+const ROLE_KEY = "tutorial_role";
+
+export type TutorialRole = "admin" | "user";
 
 const loadStepIndex = (): number => {
   const raw = localStorage.getItem(STEP_KEY);
@@ -16,11 +19,14 @@ const persistStepIndex = (index: number) => {
   localStorage.setItem(STEP_KEY, String(index));
 };
 
+const loadRole = (): TutorialRole => (localStorage.getItem(ROLE_KEY) === "user" ? "user" : "admin");
+
 interface TutorialState {
   active: boolean; // 지금 화면에 오버레이가 떠 있는지
   stepIndex: number; // 마지막으로 본(혹은 보고 있는) 스텝 — 새로고침해도 유지됨
   finished: boolean; // 끝까지 완료했는지
-  start: () => void; // 처음부터 다시 시작
+  role: TutorialRole; // 일반 사용자 둘러보기인지 관리자 둘러보기인지 — 관리자 전용 스텝 노출 여부에 쓰임
+  start: (role: TutorialRole) => void; // 처음부터 다시 시작
   resume: () => void; // 저장된 스텝부터 이어보기
   stop: () => void; // 오버레이만 닫기 (진행 상태는 그대로 저장됨)
   finish: () => void; // 마지막 스텝에서 "완료"
@@ -33,11 +39,13 @@ export const useTutorialState = create<TutorialState>((set, get) => ({
   active: false,
   stepIndex: loadStepIndex(),
   finished: localStorage.getItem(DONE_KEY) === "1",
+  role: loadRole(),
 
-  start: () => {
+  start: (role) => {
     localStorage.removeItem(DONE_KEY);
+    localStorage.setItem(ROLE_KEY, role);
     persistStepIndex(0);
-    set({ active: true, stepIndex: 0, finished: false });
+    set({ active: true, stepIndex: 0, finished: false, role });
   },
 
   resume: () => {

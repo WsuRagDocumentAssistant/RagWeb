@@ -157,7 +157,7 @@ export const TUTORIAL_STEPS = [
     route: "/chat",
     target: '.sidebar-nav-btn[title="문서 등록 (비정형)"]',
     title: "문서 등록 (관리자)",
-    description: "PDF 등 비정형 문서를 업로드해서 임베딩(RAG 지식)으로 등록하는 화면입니다.",
+    description: "PDF 등 비정형 문서를 등록하는 화면으로 이동합니다.",
     adminOnly: true,
   },
   {
@@ -173,7 +173,7 @@ export const TUTORIAL_STEPS = [
     route: "/chat",
     target: '.sidebar-nav-btn[title="외부 API 등록 (정형)"]',
     title: "외부 API 등록 (관리자)",
-    description: "공공데이터 등 외부 API를 등록해서 주기적으로 데이터를 가져오게 하는 화면입니다.",
+    description: "공공데이터 등 외부 API를 등록하는 화면으로 이동합니다.",
     adminOnly: true,
   },
   {
@@ -189,7 +189,7 @@ export const TUTORIAL_STEPS = [
     route: "/chat",
     target: '.sidebar-nav-btn[title="이미지 편집기"]',
     title: "이미지 편집기",
-    description: "문서 이미지나 새 이미지를 열어 텍스트를 추가·편집할 수 있는 화면입니다.",
+    description: "이미지를 열어 텍스트를 편집하는 화면으로 이동합니다.",
   },
   {
     id: "image-editor-page",

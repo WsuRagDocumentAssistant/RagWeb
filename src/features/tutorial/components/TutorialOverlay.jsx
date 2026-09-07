@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
 import { useAppState } from "@/core/AppState";
@@ -25,7 +25,11 @@ const VIEWPORT_MARGIN = 16;
 const RING_PAD = 6;
 
 // 튜토리얼 데모용 계정 — 로그인 스텝에서 이 계정으로 화면에 값을 채워 보여주고, 실제로 로그인까지 시켜준다.
-const DEMO_ACCOUNT = { email: "123456789", password: "1234" };
+// 둘 다 실서버에 등록된 데모 계정(각각 admin/user 역할)이다.
+const DEMO_ACCOUNTS = {
+  admin: { email: "123456789", password: "1234" },
+  user: { email: "test@wsu.ac.kr", password: "1234" },
+};
 
 const EMAIL_SELECTOR = 'input[placeholder="학번/교번"]';
 const PASSWORD_SELECTOR = 'input[placeholder="비밀번호"]';
@@ -49,12 +53,14 @@ function sameRect(a, b) {
   return a.top === b.top && a.left === b.left && a.width === b.width && a.height === b.height;
 }
 
-// 관리자 전용 화면(admin/files/external-api)도 건너뛰지 않고 전부 보여준다 — 대신
-// "관리자 전용" 배지를 달아서, 일반 사용자 계정에는 없는 기능임을 설명한다.
-// 실제로 스텝을 순서대로 밟아보려면 admin@wsu.ac.kr / 1234 계정으로 로그인하면 된다.
+// 로그인 화면에서 고른 역할(관리자/일반 사용자)에 따라 관리자 전용 화면(admin/files/external-api)을
+// 아예 건너뛴다 — "관리자 전용" 배지는 관리자 둘러보기에서 그 스텝이 관리자만 볼 수 있는
+// 화면임을 표시하는 용도로 남아 있다. 실제로 스텝을 순서대로 밟아보려면 로그인 화면의
+// "기능 둘러보기"에서 역할을 선택하면 된다.
 export default function TutorialOverlay() {
   const active = useTutorialState((s) => s.active);
   const stepIndex = useTutorialState((s) => s.stepIndex);
+  const role = useTutorialState((s) => s.role);
   const goNext = useTutorialState((s) => s.next);
   const goPrev = useTutorialState((s) => s.prev);
   const goToStep = useTutorialState((s) => s.goToStep);
@@ -69,7 +75,11 @@ export default function TutorialOverlay() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const steps = TUTORIAL_STEPS;
+  const DEMO_ACCOUNT = DEMO_ACCOUNTS[role];
+  const steps = useMemo(
+    () => (role === "user" ? TUTORIAL_STEPS.filter((s) => !s.adminOnly) : TUTORIAL_STEPS),
+    [role],
+  );
   const step = active ? steps[stepIndex] ?? null : null;
 
   const [rect, setRect] = useState(null);

@@ -137,6 +137,14 @@ export const TUTORIAL_STEPS = [
     description: "\"이미지 보기\" 버튼을 누르면 열리는 화면입니다. 문서의 각 페이지를 썸네일로 보여주고, 클릭하면 오른쪽에서 크게 확인할 수 있어요.",
   },
   {
+    id: "documents-image-editor-link",
+    route: "/documents",
+    demo: "imageViewer",
+    target: ".div-viewer-actions",
+    title: "이미지 편집기로 열기",
+    description: "\"이미지 편집기에서 열기\"를 누르면 이 페이지 이미지를 이미지 편집기로 바로 가져가 벡터화된 상태에서 텍스트를 추가·수정할 수 있습니다. \"이미지 변경\"으로 원본 이미지를 다른 파일로 교체할 수도 있어요.",
+  },
+  {
     id: "documents-image-meta",
     route: "/documents",
     demo: "imageViewer",
@@ -241,6 +249,6 @@ export const TUTORIAL_STEPS = [
     preClick: ".settings-close-btn",
     target: null,
     title: "튜토리얼을 마쳤습니다",
-    description: "언제든 사이드바의 \"튜토리얼\"에서 다시 볼 수 있어요.",
+    description: "다시 보고 싶으시면 로그아웃 후 로그인 화면의 \"기능 둘러보기\"를 눌러주세요.",
   },
 ];

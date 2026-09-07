@@ -134,6 +134,13 @@
 .session-item:hover { color: var(--color-text); background-color: var(--color-bg); }
 .session-item.active { color: #4f46e5; background-color: var(--color-accent-soft); }
 
+.chat-session-sidebar.collapsed .session-item {
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+}
+
 .session-icon { flex-shrink: 0; }
 
 .session-title {

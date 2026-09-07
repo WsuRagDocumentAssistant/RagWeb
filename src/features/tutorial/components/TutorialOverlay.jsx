@@ -20,7 +20,6 @@ const FIND_RETRY_MAX = 20; // 최대 약 3초까지 대상 요소가 마운트�
 const RECHECK_MS = 300; // 대상이 사라졌는지(모달 닫힘 등) 주기적으로 재확인
 const TOOLTIP_WIDTH = 320;
 const TOOLTIP_MAX_HEIGHT = 260; // 내용이 다 들어갈 만큼 넉넉히 띄워줄 때 쓰는 높이
-const TOOLTIP_MIN_HEIGHT = 140; // 이보다 좁으면 링 근처에 붙이지 않고 화면 옆(side)으로 뺀다
 const TOOLTIP_GAP = 14;
 const VIEWPORT_MARGIN = 16;
 const RING_PAD = 6;
@@ -210,23 +209,22 @@ export default function TutorialOverlay() {
       }
     : null;
 
-  // 링 아래(또는 위)에 어느 정도 공간만 있으면 그만큼 붙여서 가깝게 보여준다 — 이상적인
-  // 높이(TOOLTIP_MAX_HEIGHT)가 다 안 들어가도, 최소 높이(TOOLTIP_MIN_HEIGHT)만 확보되면
-  // 그 공간에 맞춰(넘치는 내용은 스크롤) 링 근처에 놓는다. 화면 왼쪽 고정("side" 모드)은
-  // 대상이 화면 대부분을 차지해 위/아래 어디에도 그 최소 공간조차 없을 때만 쓰는
-  // 최후의 수단이다 — 공간이 있는데도 항상 멀리 떨어뜨릴 필요는 없다.
+  // 위/아래로 번갈아 붙이면 스텝이 바뀔 때마다 시선이 위아래로 왔다갔다 해서 어지럽다 —
+  // 항상 가로 방향(왼쪽 우선, 없으면 오른쪽)으로만 붙여서 "설명을 먼저 읽고 오른쪽의
+  // 대상을 본다"는 흐름을 유지한다. 세로 위치는 링의 세로 중심에 맞추되 화면 밖으로
+  // 넘치지 않게 clamp한다. 대상이 화면 가로 대부분을 차지해 좌/우 어디에도 붙일 공간이
+  // 없을 때만("side" 모드) 화면 왼쪽 고정 위치로 뺀다.
   const tooltipPlacement = (() => {
     if (!ringStyle) return { mode: "center" };
-    const left = Math.min(Math.max(ringStyle.left, VIEWPORT_MARGIN), window.innerWidth - TOOLTIP_WIDTH - VIEWPORT_MARGIN);
-    const usableBelow = window.innerHeight - (ringStyle.top + ringStyle.height) - TOOLTIP_GAP - VIEWPORT_MARGIN;
-    const usableAbove = ringStyle.top - TOOLTIP_GAP - VIEWPORT_MARGIN;
-    if (usableBelow >= TOOLTIP_MIN_HEIGHT && usableBelow >= usableAbove) {
-      const maxHeight = Math.min(TOOLTIP_MAX_HEIGHT, usableBelow);
-      return { mode: "anchored", style: { top: ringStyle.top + ringStyle.height + TOOLTIP_GAP, left, maxHeight } };
+    const usableLeft = ringStyle.left - TOOLTIP_GAP - VIEWPORT_MARGIN;
+    const usableRight = window.innerWidth - (ringStyle.left + ringStyle.width) - TOOLTIP_GAP - VIEWPORT_MARGIN;
+    const idealTop = ringStyle.top + ringStyle.height / 2 - TOOLTIP_MAX_HEIGHT / 2;
+    const top = Math.min(Math.max(idealTop, VIEWPORT_MARGIN), window.innerHeight - TOOLTIP_MAX_HEIGHT - VIEWPORT_MARGIN);
+    if (usableLeft >= TOOLTIP_WIDTH) {
+      return { mode: "anchored", style: { top, left: ringStyle.left - TOOLTIP_WIDTH - TOOLTIP_GAP } };
     }
-    if (usableAbove >= TOOLTIP_MIN_HEIGHT) {
-      const maxHeight = Math.min(TOOLTIP_MAX_HEIGHT, usableAbove);
-      return { mode: "anchored", style: { top: ringStyle.top - maxHeight - TOOLTIP_GAP, left, maxHeight } };
+    if (usableRight >= TOOLTIP_WIDTH) {
+      return { mode: "anchored", style: { top, left: ringStyle.left + ringStyle.width + TOOLTIP_GAP } };
     }
     return { mode: "side" };
   })();

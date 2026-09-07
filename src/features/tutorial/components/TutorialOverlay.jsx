@@ -195,12 +195,19 @@ export default function TutorialOverlay() {
   const isLoginGateStep = step.route === "/login" && nextRoute && nextRoute !== "/login";
   const awaitingRealLogin = isLoginGateStep && !user;
 
+  // 둘러보기는 데모 계정으로 자동 로그인해서 진행한 것이므로, 끝까지 마치든 중간에
+  // 건너뛰든(건너뛰기/닫기 버튼) 그 세션을 남겨두지 않고 로그아웃시켜 로그인 화면으로
+  // 돌려보낸다 — 둘러보기는 로그아웃 상태(로그인 화면)에서만 시작할 수 있으므로, 진행
+  // 중 로그인돼 있다면 그건 항상 이 데모 로그인 때문이다.
   const handlePrimary = () => {
-    // 둘러보기는 데모 계정으로 자동 로그인해서 진행한 것이므로, 끝나면 그 세션을 남겨두지
-    // 않고 로그아웃시켜 실제 계정으로 다시 로그인할 수 있도록 로그인 화면으로 돌려보낸다.
     if (isLast) { finish(); logout(); return; }
     if (awaitingRealLogin) { login(DEMO_ACCOUNT.email, DEMO_ACCOUNT.password); return; }
     goNext();
+  };
+
+  const handleStop = () => {
+    stop();
+    logout();
   };
 
   const ringStyle = rect
@@ -252,7 +259,7 @@ export default function TutorialOverlay() {
           className={`tutorial-tooltip ${tooltipModeClass}`}
           style={tooltipPlacement.style}
         >
-          <button className="tutorial-close" onClick={stop} title="튜토리얼 닫기">
+          <button className="tutorial-close" onClick={handleStop} title="튜토리얼 닫기">
             <X size={14} />
           </button>
           <div className="tutorial-tooltip-head">
@@ -267,7 +274,7 @@ export default function TutorialOverlay() {
             </p>
           )}
           <div className="tutorial-actions">
-            <button className="tutorial-btn tutorial-btn-ghost" onClick={stop}>건너뛰기</button>
+            <button className="tutorial-btn tutorial-btn-ghost" onClick={handleStop}>건너뛰기</button>
             <div className="tutorial-nav-btns">
               <button className="tutorial-btn tutorial-btn-outline" onClick={goPrev} disabled={isFirst}>이전</button>
               <button

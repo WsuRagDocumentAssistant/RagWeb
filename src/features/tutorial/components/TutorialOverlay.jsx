@@ -216,6 +216,11 @@ export default function TutorialOverlay() {
   };
 
   const handleStop = () => {
+    // 로그인 전(로그인 스텝 진행 중) 건너뛰면 로그인 화면이 그대로 남아있는데, 데모 계정으로
+    // 채워둔 입력값이 화면에 남아있지 않도록 지운다 — 아직 로그인 전이라 logout()만으로는
+    // (LoginPage 자체 state라) 지워지지 않는다.
+    fillReactInput(EMAIL_SELECTOR, "");
+    fillReactInput(PASSWORD_SELECTOR, "");
     stop();
     logout();
   };

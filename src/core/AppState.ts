@@ -536,6 +536,7 @@ export const useAppState = create<AppStore>((set, get) => ({
         query: userMsg?.content ?? "",
         answers: turnAssistants.map((m) => ({ provider: m.provider as string, content: m.content, sources: m.sources })),
         provider: mergerProvider,
+        sessionId: session.backendSessionId ?? undefined,
       });
       const sources: MessageSource[] = (data.sources as MessageSource[] | undefined) ?? combineSourcesFromAnswers();
       set((s) => ({

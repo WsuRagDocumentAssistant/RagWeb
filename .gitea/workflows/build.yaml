@@ -25,10 +25,12 @@ jobs:
         run: |
           echo "${{ secrets.CD_KUBE_CONFIG_B64 }}" | base64 -d > kubeconfig.yaml
           export KUBECONFIG=kubeconfig.yaml
-          curl -fsSL --retry 3 --retry-delay 2 -o kubectl "https://dl.k8s.io/release/v1.31.0/bin/linux/amd64/kubectl"
+          CURL_OPTS="-fsSL --retry 5 --retry-all-errors --retry-delay 3 --connect-timeout 10"
+
+          curl $CURL_OPTS -o kubectl "https://dl.k8s.io/release/v1.31.0/bin/linux/amd64/kubectl"
           chmod +x kubectl && mv kubectl /usr/local/bin/
 
-          curl -fsSL --retry 3 --retry-delay 2 -o helm.tar.gz "https://get.helm.sh/helm-v3.15.0-linux-amd64.tar.gz"
+          curl $CURL_OPTS -o helm.tar.gz "https://get.helm.sh/helm-v3.15.0-linux-amd64.tar.gz"
           tar xzf helm.tar.gz
 
           ./linux-amd64/helm upgrade rag-web k8s -n rag-system --reuse-values --set-string image.tag=${{ gitea.sha }}

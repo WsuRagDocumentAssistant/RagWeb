@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { X, Image as ImageIcon, Upload, PenSquare, Maximize2, Save } from "lucide-react";
+import { X, Image as ImageIcon, Upload, PenSquare, Download, Maximize2, Save } from "lucide-react";
 import { useAppState } from "@/core/AppState";
 import { SvgEditorService } from "@/features/svg-editor";
 import "../styles/DocumentImageViewerModal.css";
@@ -122,6 +122,23 @@ export default function DocumentImageViewerModal({ file, onClose }) {
     navigate("/image-editor", { state: { svgText, fileName } });
   };
 
+  const handleDownloadImage = async () => {
+    if (!draft?.imageUrl) return;
+    try {
+      const res = await fetch(draft.imageUrl);
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      const ext = draft.imageUrl.split("?")[0].split(".").pop() || "png";
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${file.name}_이미지${draft.index}.${ext}`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch {
+      toast.error("이미지를 다운로드하지 못했습니다.");
+    }
+  };
+
   const previewStyle = draft?.imageUrl ? undefined : { backgroundColor: THUMB_COLORS[(draft?.index ?? 0) % THUMB_COLORS.length] };
 
   return (
@@ -188,6 +205,9 @@ export default function DocumentImageViewerModal({ file, onClose }) {
                   </button>
                   <button className="div-action-btn" onClick={openInImageEditor}>
                     <PenSquare size={13} /> 이미지 편집기에서 열기
+                  </button>
+                  <button className="div-action-btn" onClick={handleDownloadImage} disabled={!draft.imageUrl}>
+                    <Download size={13} /> 이미지 다운로드
                   </button>
                 </div>
               </>

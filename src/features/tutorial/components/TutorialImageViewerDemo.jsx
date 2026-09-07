@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, Image as ImageIcon, Upload, PenSquare, Maximize2, Save } from "lucide-react";
+import { X, Image as ImageIcon, Upload, PenSquare, Download, Maximize2, Save } from "lucide-react";
 import {
   TUTORIAL_DUMMY_IMAGE_FILE_NAME,
   TUTORIAL_DUMMY_IMAGES,
@@ -63,6 +63,7 @@ export default function TutorialImageViewerDemo() {
             <div className="div-viewer-actions">
               <button className="div-action-btn"><Upload size={13} /> 이미지 변경</button>
               <button className="div-action-btn"><PenSquare size={13} /> 이미지 편집기에서 열기</button>
+              <button className="div-action-btn"><Download size={13} /> 이미지 다운로드</button>
             </div>
           </div>
 

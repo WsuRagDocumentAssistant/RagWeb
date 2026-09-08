@@ -131,6 +131,7 @@ export default function ChatMessages({ messages, isLoadingHistory, selectedMessa
                           "compare-card",
                           m.preferred && "preferred",
                           chosenMsg && !m.preferred && "dimmed",
+                          m.id === selectedMessageId && "selected",
                         ].filter(Boolean).join(" ")}
                         style={{ "--accent": accent }}
                       >
@@ -252,7 +253,10 @@ export default function ChatMessages({ messages, isLoadingHistory, selectedMessa
 
                 {mergedMsg && (
                   <div className="compare-merged">
-                    <div className="compare-card" style={{ "--accent": MODEL_COLOR.merged }}>
+                    <div
+                      className={["compare-card", mergedMsg.id === selectedMessageId && "selected"].filter(Boolean).join(" ")}
+                      style={{ "--accent": MODEL_COLOR.merged }}
+                    >
                       <div className="compare-card-header">
                         <span className="compare-card-label">
                           {MODEL_LABEL.merged}

@@ -430,49 +430,55 @@ export const useAppState = create<AppStore>((set, get) => ({
     }));
     persistSessions(get().sessions);
 
-    await Promise.all(
-      asstMsgs.map(async (asstMsg) => {
-        try {
-          const activeSession = get().sessions.find((sess) => sess.id === sessionId);
-          const data = await chatService.sendMessage({
-            message: text,
-            provider: asstMsg.provider as AIProvider,
-            sessionId: activeSession?.backendSessionId ?? undefined,
-            fileIds: fileIds.length > 0 ? fileIds : undefined,
-            image: attachmentUrl,
-          });
-          const sources = data.sources as MessageSource[] | undefined;
-          set((s) => ({
-            sessions: s.sessions.map((sess) =>
-              sess.id === sessionId
-                ? {
-                    ...sess,
-                    backendSessionId: data.sessionId ?? sess.backendSessionId,
-                    messages: sess.messages.map((m) =>
-                      m.id === asstMsg.id ? { ...m, content: data.reply, isStreaming: false, sources } : m,
-                    ),
+    // 모델을 여러 개 비교하는 경우에도 provider를 배열로 실어 요청 한 번만 보낸다 — 서버가 모델별로
+    // 나눠 호출하고 그 결과를 answers 배열로 묶어 돌려준다.
+    try {
+      const activeSession = get().sessions.find((sess) => sess.id === sessionId);
+      const data = await chatService.sendMessage({
+        message: text,
+        provider: providers,
+        sessionId: activeSession?.backendSessionId ?? undefined,
+        fileIds: fileIds.length > 0 ? fileIds : undefined,
+        image: attachmentUrl,
+      });
+      const answers = data.answers as { provider: string; content: string; sources?: MessageSource[] }[] | undefined;
+      set((s) => ({
+        sessions: s.sessions.map((sess) =>
+          sess.id === sessionId
+            ? {
+                ...sess,
+                backendSessionId: data.sessionId ?? sess.backendSessionId,
+                messages: sess.messages.map((m) => {
+                  const asstMsg = asstMsgs.find((a) => a.id === m.id);
+                  if (!asstMsg) return m;
+                  const answer = answers?.find((a) => a.provider === asstMsg.provider);
+                  // answers가 없으면(구버전 서버 응답) 단일 모델 응답으로 보고 reply/sources를 그대로 쓴다.
+                  if (!answer) {
+                    if (answers) return { ...m, isStreaming: false, error: "답변을 가져오지 못했습니다." };
+                    return { ...m, content: data.reply, isStreaming: false, sources: data.sources as MessageSource[] | undefined };
                   }
-                : sess,
-            ),
-          }));
-        } catch (err) {
-          const errMsg = err instanceof Error ? err.message : "답변을 가져오지 못했습니다.";
-          set((s) => ({
-            sessions: s.sessions.map((sess) =>
-              sess.id === sessionId
-                ? {
-                    ...sess,
-                    messages: sess.messages.map((m) =>
-                      m.id === asstMsg.id ? { ...m, isStreaming: false, error: errMsg } : m,
-                    ),
-                  }
-                : sess,
-            ),
-            chatError: errMsg,
-          }));
-        }
-      }),
-    );
+                  return { ...m, content: answer.content, isStreaming: false, sources: answer.sources };
+                }),
+              }
+            : sess,
+        ),
+      }));
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : "답변을 가져오지 못했습니다.";
+      set((s) => ({
+        sessions: s.sessions.map((sess) =>
+          sess.id === sessionId
+            ? {
+                ...sess,
+                messages: sess.messages.map((m) =>
+                  asstMsgs.some((a) => a.id === m.id) ? { ...m, isStreaming: false, error: errMsg } : m,
+                ),
+              }
+            : sess,
+        ),
+        chatError: errMsg,
+      }));
+    }
 
     set({ chatLoading: false });
     persistSessions(get().sessions);

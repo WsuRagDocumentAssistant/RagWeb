@@ -4,8 +4,13 @@ const getToken = () => localStorage.getItem("auth_token");
 
 /**
  * image는 채팅에 첨부한 이미지의 base64 data URL이다(원본 파일 그대로, 서버 업로드 없이 요청에 실어 보냄).
- * @param {{ message: string, provider: string, sessionId?: string, fileIds?: string[], image?: string }} payload
- * @returns {Promise<{ reply: string, sessionId: string, sources?: { id: string, name: string }[] }>}
+ * provider는 비교할 모델이 여럿이면 배열로 한 번에 보낸다 — 서버가 한 요청 안에서 모델별로 각각
+ * 호출하고 그 결과를 answers 배열로 묶어 돌려준다(모델별로 따로 요청을 보내지 않음).
+ * @param {{ message: string, provider: string | string[], sessionId?: string, fileIds?: string[], image?: string }} payload
+ * @returns {Promise<{
+ *   reply: string, sessionId: string, sources?: { id: string, name: string }[],
+ *   answers?: { provider: string, content: string, sources?: { id: string, name: string }[] }[],
+ * }>}
  */
 export async function sendMessage({ message, provider, sessionId, fileIds, image }) {
   return postTask("RAG", "CHAT", {

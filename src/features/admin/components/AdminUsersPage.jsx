@@ -16,7 +16,7 @@ export default function AdminUsersPage() {
   const fetchUserDirectory = useAppState((s) => s.fetchUserDirectory);
   const setUserRole = useAppState((s) => s.setUserRole);
 
-  // 서버에서 최신 계정 목록을 가져온다 (실패하면 스토어가 로컬/더미 목록을 그대로 둔다).
+  // 서버에서 최신 계정 목록을 가져온다 (실패하면 기존에 로드해둔 로컬 목록을 그대로 둔다).
   useEffect(() => {
     fetchUserDirectory();
     // eslint-disable-next-line react-hooks/exhaustive-deps

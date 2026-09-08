@@ -70,7 +70,7 @@ export default function ExternalApiPage() {
 
   const { sorted: filtered, sortKey, sortDir, toggleSort } = useSortableRows(filteredBase, "fetchedAt", "desc");
 
-  // 최초 진입 시 서버에서 목록을 가져온다 (실패하면 스토어가 알아서 더미 목록으로 대체한다).
+  // 최초 진입 시 서버에서 목록을 가져온다 (실패하면 에러 토스트를 띄우고 목록은 비워둔다).
   useEffect(() => {
     fetchExternalApis();
     // eslint-disable-next-line react-hooks/exhaustive-deps

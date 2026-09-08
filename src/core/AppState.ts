@@ -439,6 +439,7 @@ export const useAppState = create<AppStore>((set, get) => ({
             provider: asstMsg.provider as AIProvider,
             sessionId: activeSession?.backendSessionId ?? undefined,
             fileIds: fileIds.length > 0 ? fileIds : undefined,
+            image: attachmentUrl,
           });
           const sources = data.sources as MessageSource[] | undefined;
           set((s) => ({
@@ -537,6 +538,9 @@ export const useAppState = create<AppStore>((set, get) => ({
         answers: turnAssistants.map((m) => ({ provider: m.provider as string, content: m.content, sources: m.sources })),
         provider: mergerProvider,
         sessionId: session.backendSessionId ?? undefined,
+        // 이 턴의 원래 질문에 첨부됐던 이미지 — 병합 모델도 개별 답변들이 참고했던 것과 같은
+        // 이미지를 보고 병합할 수 있도록 텍스트 답변과 동일하게 실어 보낸다.
+        image: userMsg?.attachmentUrl,
       });
       const sources: MessageSource[] = (data.sources as MessageSource[] | undefined) ?? combineSourcesFromAnswers();
       set((s) => ({

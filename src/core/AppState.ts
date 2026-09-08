@@ -555,6 +555,16 @@ export const useAppState = create<AppStore>((set, get) => ({
             : sess,
         ),
       }));
+      // 병합이 끝나면 그 자체로 이 턴의 최종 답변이 확정된 것이므로 별도의 "선택" 없이 바로 저장한다.
+      chatService
+        .saveAnswer({
+          sessionId: session.backendSessionId ?? undefined,
+          query: userMsg?.content ?? "",
+          provider: mergerProvider,
+          content: data.reply,
+          sources,
+        })
+        .catch(() => {});
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : "병합에 실패했습니다.";
       set((s) => ({
@@ -586,6 +596,21 @@ export const useAppState = create<AppStore>((set, get) => ({
       })),
     }));
     persistSessions(get().sessions);
+
+    const session = get().sessions.find((sess) => sess.messages.some((m) => m.id === keepMessageId));
+    const userMsg = session?.messages.find((m) => m.turnId === turnId && m.role === "user");
+    const chosenMsg = session?.messages.find((m) => m.id === keepMessageId);
+    if (session && chosenMsg) {
+      chatService
+        .saveAnswer({
+          sessionId: session.backendSessionId ?? undefined,
+          query: userMsg?.content ?? "",
+          provider: chosenMsg.provider as string,
+          content: chosenMsg.content,
+          sources: chosenMsg.sources,
+        })
+        .catch(() => {});
+    }
   },
 
   createSession: () => {

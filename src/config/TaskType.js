@@ -14,6 +14,7 @@ export const TaskType = {
   CHAT_SESSION_LIST: "CHAT_SESSION_LIST", // 좌측 사이드바 대화 목록 조회 (제목만, 메시지 내역 제외)
   CHAT_SESSION_MESSAGES: "CHAT_SESSION_MESSAGES", // 사이드바에서 대화를 클릭했을 때 그 대화의 메시지 내역 조회
   CHAT_SESSION_DELETE: "CHAT_SESSION_DELETE", // 좌측 사이드바 대화 삭제 버튼
+  CHAT_ANSWER_SAVE: "CHAT_ANSWER_SAVE", // 다중 모델 비교/병합에서 최종 답변이 정해졌을 때(선택 또는 병합 완료) 서버에 저장
   FILE_UPLOAD: "FILE_UPLOAD",
   FILE_LIST: "FILE_LIST",
   FILE_DELETE: "FILE_DELETE",

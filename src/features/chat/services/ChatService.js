@@ -59,3 +59,16 @@ export async function getSessionMessages(sessionId) {
 export async function deleteSession(sessionId) {
   return postTask("RAG", "DELETE_SESSION", { sessionId, token: getToken(), payload: { sessionId } });
 }
+
+/**
+ * 다중 모델 비교에서 사용자가 답변 하나를 선택하거나, 병합이 끝나서 최종 답변이 정해졌을 때
+ * 그 답변을 대화 내역에 저장하도록 서버에 알린다. sessionId를 요청 봉투(session_id)에도 함께 싣는다.
+ * @param {{ sessionId?: string, query: string, provider: string, content: string, sources?: { id: string, name: string }[] }} payload provider는 사용자가 고른(또는 병합을 수행한) 모델
+ */
+export async function saveAnswer({ sessionId, query, provider, content, sources }) {
+  return postTask("RAG", "SAVE_ANSWER", {
+    sessionId,
+    token: getToken(),
+    payload: { sessionId, query, provider, content, sources },
+  });
+}

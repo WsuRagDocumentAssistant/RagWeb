@@ -274,7 +274,7 @@ export default function TutorialOverlay() {
           className={`tutorial-tooltip ${tooltipModeClass}`}
           style={tooltipPlacement.style}
         >
-          <button className="tutorial-close" onClick={handleStop} title="튜토리얼 닫기">
+          <button className="tutorial-close" onClick={handleStop} title="둘러보기 닫기">
             <X size={14} />
           </button>
           <div className="tutorial-tooltip-head">

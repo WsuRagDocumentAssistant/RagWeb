@@ -248,7 +248,7 @@ export const TUTORIAL_STEPS = [
     route: "/chat",
     preClick: ".settings-close-btn",
     target: null,
-    title: "튜토리얼을 마쳤습니다",
+    title: "둘러보기를 마쳤습니다",
     description: "다시 보고 싶으시면 로그아웃 후 로그인 화면의 \"기능 둘러보기\"를 눌러주세요.",
   },
 ];

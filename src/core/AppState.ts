@@ -21,6 +21,18 @@ export interface MessageSource {
   name: string;
 }
 
+// 사용자가 "그림을 찾아달라"고 한 질의에 대해 서버가 문서에서 찾아 돌려주는 이미지.
+// url은 FILE_DOWNLOAD 등과 같은 상대 경로라 resolveServerUrl로 절대 경로로 바꿔서 저장한다.
+export interface MessageImage {
+  id: string;
+  url: string;
+  name: string;
+  caption?: string | null;
+  aiSummary?: string | null;
+  documentId?: string;
+  documentTitle?: string;
+}
+
 export interface Message {
   id: string;
   role: MessageRole;
@@ -29,6 +41,7 @@ export interface Message {
   isStreaming?: boolean;
   error?: string;
   sources?: MessageSource[];
+  images?: MessageImage[]; // 그림 검색 질의일 때만 채워짐 (최대 2장)
   provider?: AIProvider | "merged";
   turnId?: string;
   preferred?: boolean;
@@ -441,27 +454,48 @@ export const useAppState = create<AppStore>((set, get) => ({
         fileIds: fileIds.length > 0 ? fileIds : undefined,
         image: attachmentUrl,
       });
-      const answers = data.answers as { provider: string; content: string; sources?: MessageSource[] }[] | undefined;
+      const answers = data.answers as { provider: string | null; content: string; sources?: MessageSource[] }[] | undefined;
+      const rawImages = data.images as MessageImage[] | undefined;
+      const images: MessageImage[] | undefined = rawImages?.length
+        ? rawImages.map((img) => ({ ...img, url: resolveServerUrl(img.url) as string }))
+        : undefined;
+      // 사용자가 그림을 찾아달라고 한 질의면 서버는 모델을 부르지 않고 provider: null인 답변
+      // 하나만 내려준다 — 비교할 대상이 없으므로, 선택한 모델 수와 무관하게 메시지 하나로 합친다.
+      const isImageAnswer = !!answers && answers.length === 1 && answers[0].provider == null;
+
       set((s) => ({
-        sessions: s.sessions.map((sess) =>
-          sess.id === sessionId
-            ? {
-                ...sess,
-                backendSessionId: data.sessionId ?? sess.backendSessionId,
-                messages: sess.messages.map((m) => {
-                  const asstMsg = asstMsgs.find((a) => a.id === m.id);
-                  if (!asstMsg) return m;
-                  const answer = answers?.find((a) => a.provider === asstMsg.provider);
-                  // answers가 없으면(구버전 서버 응답) 단일 모델 응답으로 보고 reply/sources를 그대로 쓴다.
-                  if (!answer) {
-                    if (answers) return { ...m, isStreaming: false, error: "답변을 가져오지 못했습니다." };
-                    return { ...m, content: data.reply, isStreaming: false, sources: data.sources as MessageSource[] | undefined };
-                  }
-                  return { ...m, content: answer.content, isStreaming: false, sources: answer.sources };
-                }),
+        sessions: s.sessions.map((sess) => {
+          if (sess.id !== sessionId) return sess;
+          if (isImageAnswer) {
+            const keepId = asstMsgs[0].id;
+            return {
+              ...sess,
+              backendSessionId: data.sessionId ?? sess.backendSessionId,
+              messages: sess.messages
+                .filter((m) => m.id === keepId || !asstMsgs.some((a) => a.id === m.id))
+                .map((m) =>
+                  m.id === keepId
+                    ? { ...m, provider: undefined, content: answers[0].content, isStreaming: false, sources: answers[0].sources, images }
+                    : m,
+                ),
+            };
+          }
+          return {
+            ...sess,
+            backendSessionId: data.sessionId ?? sess.backendSessionId,
+            messages: sess.messages.map((m) => {
+              const asstMsg = asstMsgs.find((a) => a.id === m.id);
+              if (!asstMsg) return m;
+              const answer = answers?.find((a) => a.provider === asstMsg.provider);
+              // answers가 없으면(구버전 서버 응답) 단일 모델 응답으로 보고 reply/sources를 그대로 쓴다.
+              if (!answer) {
+                if (answers) return { ...m, isStreaming: false, error: "답변을 가져오지 못했습니다." };
+                return { ...m, content: data.reply, isStreaming: false, sources: data.sources as MessageSource[] | undefined };
               }
-            : sess,
-        ),
+              return { ...m, content: answer.content, isStreaming: false, sources: answer.sources };
+            }),
+          };
+        }),
       }));
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : "답변을 가져오지 못했습니다.";

@@ -61,6 +61,26 @@ export default function MessageBubble({ message, isSelected, onSelect }) {
                   {message.content}
                 </ReactMarkdown>
               </div>
+              {message.images && message.images.length > 0 && (
+                <div className="bubble-images">
+                  {message.images.map((img) => (
+                    <a
+                      key={img.id}
+                      href={img.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="bubble-image-item"
+                      onClick={(e) => e.stopPropagation()}
+                      title={img.aiSummary || img.caption || img.name}
+                    >
+                      <img src={img.url} alt={img.aiSummary || img.caption || img.name} />
+                      {(img.aiSummary || img.caption) && (
+                        <span className="bubble-image-caption">{img.aiSummary || img.caption}</span>
+                      )}
+                    </a>
+                  ))}
+                </div>
+              )}
             </>
           )}
         </div>

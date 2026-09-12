@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
-import { Check, Copy, Loader2 } from "lucide-react";
+import { Check, Copy, Loader2, X } from "lucide-react";
 import "../styles/MessageBubble.css";
 
 // AI 답변에 <u>/<mark>처럼 강조용 원본 HTML 태그가 섞여 오는 경우가 있어 렌더링해줘야 하지만,
@@ -15,10 +15,21 @@ const sanitizeSchema = {
 
 export default function MessageBubble({ message, isSelected, onSelect }) {
   const [copied, setCopied] = useState(false);
+  const [zoomedImage, setZoomedImage] = useState(null);
   const isUser = message.role === "user";
   const hasError = !!message.error;
   const isClickable = !isUser && !message.isStreaming && !hasError && !!onSelect;
   const canCopy = !message.isStreaming && !hasError && !!message.content;
+
+  // 확대된 그림은 ESC로도 닫을 수 있어야 한다.
+  useEffect(() => {
+    if (!zoomedImage) return;
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") setZoomedImage(null);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [zoomedImage]);
 
   const handleCopy = async (e) => {
     e.stopPropagation();
@@ -32,6 +43,7 @@ export default function MessageBubble({ message, isSelected, onSelect }) {
   };
 
   return (
+    <>
     <div className={`bubble-row ${isUser ? "flex-row-reverse" : ""}`}>
       <div className={`bubble-col ${isUser ? "items-end" : "items-start"}`}>
         <div
@@ -64,20 +76,18 @@ export default function MessageBubble({ message, isSelected, onSelect }) {
               {message.images && message.images.length > 0 && (
                 <div className="bubble-images">
                   {message.images.map((img) => (
-                    <a
+                    <button
                       key={img.id}
-                      href={img.url}
-                      target="_blank"
-                      rel="noreferrer"
+                      type="button"
                       className="bubble-image-item"
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(e) => { e.stopPropagation(); setZoomedImage(img); }}
                       title={img.aiSummary || img.caption || img.name}
                     >
                       <img src={img.url} alt={img.aiSummary || img.caption || img.name} />
                       {(img.aiSummary || img.caption) && (
                         <span className="bubble-image-caption">{img.aiSummary || img.caption}</span>
                       )}
-                    </a>
+                    </button>
                   ))}
                 </div>
               )}
@@ -93,5 +103,28 @@ export default function MessageBubble({ message, isSelected, onSelect }) {
         )}
       </div>
     </div>
+    {zoomedImage && (
+      <div className="bubble-image-lightbox" onClick={() => setZoomedImage(null)}>
+        <button
+          type="button"
+          className="bubble-image-lightbox-close"
+          onClick={() => setZoomedImage(null)}
+          title="닫기"
+        >
+          <X size={20} />
+        </button>
+        <img
+          src={zoomedImage.url}
+          alt={zoomedImage.aiSummary || zoomedImage.caption || zoomedImage.name}
+          onClick={(e) => e.stopPropagation()}
+        />
+        {(zoomedImage.aiSummary || zoomedImage.caption) && (
+          <p className="bubble-image-lightbox-caption" onClick={(e) => e.stopPropagation()}>
+            {zoomedImage.aiSummary || zoomedImage.caption}
+          </p>
+        )}
+      </div>
+    )}
+    </>
   );
 }

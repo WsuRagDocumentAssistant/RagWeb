@@ -63,7 +63,13 @@ export default function MessageBubble({ message, isSelected, onSelect }) {
           ) : (
             <>
               {message.attachmentUrl && (
-                <img src={message.attachmentUrl} alt="첨부 이미지" className="bubble-attachment" />
+                <button
+                  type="button"
+                  className="bubble-attachment-btn"
+                  onClick={(e) => { e.stopPropagation(); setZoomedImage({ url: message.attachmentUrl, name: "첨부 이미지" }); }}
+                >
+                  <img src={message.attachmentUrl} alt="첨부 이미지" className="bubble-attachment" />
+                </button>
               )}
               <div className="markdown-body">
                 <ReactMarkdown

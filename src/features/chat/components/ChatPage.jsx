@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { UploadCloud } from "lucide-react";
+import { Loader2, UploadCloud } from "lucide-react";
 import { useAppState } from "@/core/AppState";
 import { formatBytes } from "@/shared";
 import { ALLOWED_IMAGE_TYPES, MAX_ATTACHMENT_SIZE } from "../attachmentRules";
@@ -106,6 +106,13 @@ export default function ChatPage() {
           <div className="chat-dropzone-overlay">
             <UploadCloud size={32} />
             <p>여기에 파일을 놓아 업로드</p>
+          </div>
+        )}
+
+        {activeSession?.compacting && (
+          <div className="chat-compact-banner">
+            <Loader2 size={13} className="animate-spin" />
+            대화 맥락을 정리하는 중입니다...
           </div>
         )}
 

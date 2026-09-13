@@ -15,6 +15,7 @@ export const TaskType = {
   CHAT_SESSION_MESSAGES: "CHAT_SESSION_MESSAGES", // 사이드바에서 대화를 클릭했을 때 그 대화의 메시지 내역 조회
   CHAT_SESSION_DELETE: "CHAT_SESSION_DELETE", // 좌측 사이드바 대화 삭제 버튼
   CHAT_ANSWER_SAVE: "CHAT_ANSWER_SAVE", // 다중 모델 비교/병합에서 최종 답변이 정해졌을 때(선택 또는 병합 완료) 서버에 저장
+  SESSION_COMPACT_STATUS: "SESSION_COMPACT_STATUS", // 20턴마다 서버가 백그라운드로 돌리는 대화 압축의 진행 상태 조회 (폴링)
   FILE_UPLOAD: "FILE_UPLOAD", // 접수 즉시 { jobId, status: "processing" } 응답 — 색인 완료는 JOB_STATUS로 조회
   JOB_STATUS: "JOB_STATUS", // FILE_UPLOAD가 접수한 색인 작업의 진행 상태 조회 (폴링)
   FILE_LIST: "FILE_LIST",

@@ -66,6 +66,7 @@ export interface ChatSession {
   messages: Message[];
   createdAt: number;
   messagesLoaded?: boolean; // false면 목록 조회에서 메시지 내역이 아직 안 온 것 — 클릭 시 별도 조회 필요
+  compacting?: boolean; // 서버가 20턴마다 대화 맥락을 백그라운드로 압축하는 동안 true
 }
 
 export interface DocumentMetadata {
@@ -356,6 +357,40 @@ const initialActiveSessionId = (() => {
   return initialSessions[0]?.id ?? null;
 })();
 
+// 서버가 20턴마다 백그라운드로 대화를 압축하는 동안 SESSION_COMPACT_STATUS를 2~3초 간격으로 물어본다.
+// SSE/WebSocket 없이 순수 폴링만으로 처리한다 — FILE_UPLOAD의 JOB_STATUS 폴링과 같은 패턴.
+// 여기서 useAppState를 참조하지만, 실제 호출은 항상 이 모듈이 다 로드된 뒤(비동기 콜백)에만 일어나므로
+// 아래 선언보다 앞에 있어도 문제없다.
+const COMPACT_POLL_MS = 2500;
+
+const setSessionCompacting = (sessionId: string, compacting: boolean) => {
+  useAppState.setState((s) => ({
+    sessions: s.sessions.map((sess) => (sess.backendSessionId === sessionId ? { ...sess, compacting } : sess)),
+  }));
+};
+
+function pollSessionCompaction(sessionId: string) {
+  setSessionCompacting(sessionId, true);
+
+  const poll = () => {
+    setTimeout(async () => {
+      let data: { status: string };
+      try {
+        data = await chatService.getCompactStatus(sessionId);
+      } catch {
+        poll(); // 일시적 네트워크 오류 — done을 받은 게 아니므로 계속 재시도
+        return;
+      }
+      if (data.status === "compacting") {
+        poll();
+        return;
+      }
+      setSessionCompacting(sessionId, false);
+    }, COMPACT_POLL_MS);
+  };
+  poll();
+}
+
 // ─── AppState ─────────────────────────────────────────────────────────────────
 
 export const useAppState = create<AppStore>((set, get) => ({
@@ -507,6 +542,8 @@ export const useAppState = create<AppStore>((set, get) => ({
           };
         }),
       }));
+      const turn = data.turn as { count: number; compacting: boolean } | null | undefined;
+      if (turn?.compacting && data.sessionId) pollSessionCompaction(data.sessionId);
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : "답변을 가져오지 못했습니다.";
       set((s) => ({
@@ -610,6 +647,9 @@ export const useAppState = create<AppStore>((set, get) => ({
             : sess,
         ),
       }));
+      const turn = data.turn as { count: number; compacting: boolean } | null | undefined;
+      if (turn?.compacting && session.backendSessionId) pollSessionCompaction(session.backendSessionId);
+
       // 병합이 끝나면 그 자체로 이 턴의 최종 답변이 확정된 것이므로 별도의 "선택" 없이 바로 저장한다.
       chatService
         .saveAnswer({
@@ -618,6 +658,10 @@ export const useAppState = create<AppStore>((set, get) => ({
           provider: mergerProvider,
           content: data.reply,
           sources,
+        })
+        .then((saveData) => {
+          const t = saveData.turn as { count: number; compacting: boolean } | null | undefined;
+          if (t?.compacting && session.backendSessionId) pollSessionCompaction(session.backendSessionId);
         })
         .catch(() => {});
     } catch (err) {
@@ -663,6 +707,10 @@ export const useAppState = create<AppStore>((set, get) => ({
           provider: chosenMsg.provider as string,
           content: chosenMsg.content,
           sources: chosenMsg.sources,
+        })
+        .then((data) => {
+          const turn = data.turn as { count: number; compacting: boolean } | null | undefined;
+          if (turn?.compacting && session.backendSessionId) pollSessionCompaction(session.backendSessionId);
         })
         .catch(() => {});
     }

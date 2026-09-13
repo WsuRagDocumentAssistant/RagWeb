@@ -23,11 +23,15 @@ function toImagePayload(dataUrl) {
  * 호출하고 그 결과를 answers 배열로 묶어 돌려준다(모델별로 따로 요청을 보내지 않음).
  * 사용자가 그림을 찾아달라고 한 질의면 서버가 모델을 부르지 않고 answers를 하나만(provider: null)
  * 내려주며, 그 대신 images에 문서에서 찾은 그림(최대 2장)이 실려 온다.
+ * turn은 이 세션의 누적 턴 정보다 — 비교 질의(provider 배열)처럼 아직 대화에 저장되지 않은 응답은
+ * turn: null이고, 병합(mergeResults)이나 선택(saveAnswer)에서 실제 턴 번호가 온다.
+ * turn.compacting이 true면 서버가 이 턴(20의 배수)에서 대화 압축을 막 시작한 것 — SESSION_COMPACT_STATUS로 폴링해야 한다.
  * @param {{ message: string, provider: string | string[], sessionId?: string, fileIds?: string[], image?: string, file?: { name: string, mimeType: string, content: string } }} payload
  * @returns {Promise<{
  *   reply: string, sessionId: string, sources?: { id: string, name: string }[],
  *   answers?: { provider: string | null, content: string, sources?: { id: string, name: string }[] }[],
  *   images?: { id: string, url: string, name: string, caption?: string | null, aiSummary?: string | null, documentId?: string, documentTitle?: string }[],
+ *   turn?: { count: number, compacting: boolean } | null,
  * }>}
  */
 export async function sendMessage({ message, provider, sessionId, fileIds, image, file }) {
@@ -45,7 +49,7 @@ export async function sendMessage({ message, provider, sessionId, fileIds, image
  * 첨부됐던 것(USER_QUERY에 보낸 것과 동일)으로, 병합 모델도 원본 질문이 참고한 이미지·파일을
  * 텍스트 답변들과 마찬가지로 함께 볼 수 있어야 한다.
  * @param {{ query: string, answers: { provider: string, content: string, sources?: { id: string, name: string }[] }[], provider: string, sessionId?: string, image?: string, file?: { name: string, mimeType: string, content: string } }} payload provider는 병합 작업을 수행할 모델
- * @returns {Promise<{ reply: string, sources?: { id: string, name: string }[] }>}
+ * @returns {Promise<{ reply: string, sources?: { id: string, name: string }[], turn?: { count: number, compacting: boolean } | null }>}
  */
 export async function mergeResults({ query, answers, provider, sessionId, image, file }) {
   return postTask("RAG", "MERGE", {
@@ -87,6 +91,7 @@ export async function deleteSession(sessionId) {
  * 다중 모델 비교에서 사용자가 답변 하나를 선택하거나, 병합이 끝나서 최종 답변이 정해졌을 때
  * 그 답변을 대화 내역에 저장하도록 서버에 알린다. sessionId를 요청 봉투(session_id)에도 함께 싣는다.
  * @param {{ sessionId?: string, query: string, provider: string, content: string, sources?: { id: string, name: string }[] }} payload provider는 사용자가 고른(또는 병합을 수행한) 모델
+ * @returns {Promise<{ turn?: { count: number, compacting: boolean } | null }>}
  */
 export async function saveAnswer({ sessionId, query, provider, content, sources }) {
   return postTask("RAG", "SAVE_ANSWER", {
@@ -94,4 +99,15 @@ export async function saveAnswer({ sessionId, query, provider, content, sources 
     token: getToken(),
     payload: { sessionId, query, provider, content, sources },
   });
+}
+
+/**
+ * 20턴마다 서버가 백그라운드로 돌리는 대화 압축이 끝났는지 확인한다(폴링). 모르는 세션·압축한 적
+ * 없는 세션·서버 재시작 뒤·압축 실패 등은 전부 done으로 온다 — 클라이언트는 done을 받으면 그냥
+ * 폴링을 멈추면 된다.
+ * @param {string} sessionId
+ * @returns {Promise<{ status: "compacting" | "done" }>}
+ */
+export async function getCompactStatus(sessionId) {
+  return postTask("RAG", "COMPACT_STATUS", { token: getToken(), payload: { sessionId } });
 }

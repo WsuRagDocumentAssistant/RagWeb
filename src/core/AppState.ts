@@ -717,8 +717,67 @@ export const useAppState = create<AppStore>((set, get) => ({
       uploadProgress: 0,
       fileError: null,
     }));
+    // 색인이 끝날 때까지 JOB_STATUS를 2~3초 간격으로 물어본다. ready/error는 서버가 한 번만 주고
+    // (돌려주면서 지움) 같은 jobId로 다시 물으면 unknown이 오므로, 받는 즉시 멈춘다.
+    const JOB_POLL_MS = 2500;
+    const pollJob = (jobId: string) => {
+      setTimeout(async () => {
+        let data: { status: string; result?: { fileId?: string; id?: string; file_id?: string; status?: string; chunks?: number }; error?: string };
+        try {
+          data = await fileService.getJobStatus(jobId);
+        } catch {
+          pollJob(jobId); // 일시적 네트워크 오류 — unknown을 받은 게 아니므로 실패로 단정하지 않고 계속 재시도
+          return;
+        }
+        if (data.status === "processing") {
+          pollJob(jobId);
+          return;
+        }
+        if (data.status === "ready") {
+          const result = data.result ?? {};
+          const fileId = result.fileId ?? result.id ?? result.file_id ?? tempId;
+          const fileStatus = (result.status ?? "ready") as EmbeddingFileStatus;
+          const chunks = result.chunks ?? Math.max(1, Math.round(file.size / 4000));
+          set((s) => ({
+            files: s.files.map((f) => (f.id === tempId ? { ...f, id: fileId, status: fileStatus, chunks } : f)),
+          }));
+          toast.success(`${file.name} 업로드 완료`, { id: toastId });
+          get().pushNotification(`${file.name} 업로드가 완료되었습니다.`, { type: "success", link: "/documents" });
+          return;
+        }
+        // error 또는 unknown(서버 재시작 등으로 진행 상황을 잃은 경우) — 둘 다 실패로 안내한다.
+        const msg =
+          data.status === "error"
+            ? (data.error ?? "문서 색인에 실패했습니다.")
+            : "서버와의 연결이 끊겨 업로드 상태를 확인할 수 없습니다. 다시 업로드해주세요.";
+        set((s) => ({
+          files: s.files.map((f) => (f.id === tempId ? { ...f, status: "error", errorMessage: msg } : f)),
+        }));
+        toast.error(msg, { id: toastId });
+      }, JOB_POLL_MS);
+    };
+
     try {
-      const data = await fileService.uploadFile(file, (progress) => set({ uploadProgress: progress }), metadata) as any;
+      const data = (await fileService.uploadFile(file, (progress) => set({ uploadProgress: progress }), metadata)) as {
+        jobId?: string;
+        fileId?: string;
+        id?: string;
+        file_id?: string;
+        status?: string;
+        chunks?: number;
+      };
+      set({ fileLoading: false, uploadProgress: 0 });
+
+      if (data.jobId) {
+        // 신규 접수·조회 방식 — 접수만 되고 색인은 아직이므로 "처리 중"으로 표시하고 폴링을 시작한다.
+        set((s) => ({
+          files: s.files.map((f) => (f.id === tempId ? { ...f, status: "processing" } : f)),
+        }));
+        pollJob(data.jobId);
+        return;
+      }
+
+      // 접수·조회 방식 이전의 구버전 서버 응답(색인까지 끝나고 즉시 옴) — 그대로 처리한다.
       const fileId = data.fileId ?? data.id ?? data.file_id ?? tempId;
       const fileStatus = (data.status ?? "ready") as EmbeddingFileStatus;
       const chunks = data.chunks ?? Math.max(1, Math.round(file.size / 4000));
@@ -726,8 +785,6 @@ export const useAppState = create<AppStore>((set, get) => ({
         files: s.files.map((f) =>
           f.id === tempId ? { ...f, id: fileId, status: fileStatus, chunks } : f,
         ),
-        fileLoading: false,
-        uploadProgress: 0,
       }));
       toast.success(`${file.name} 업로드 완료`, { id: toastId });
       get().pushNotification(`${file.name} 업로드가 완료되었습니다.`, { type: "success", link: "/documents" });

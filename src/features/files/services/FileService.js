@@ -14,10 +14,11 @@ function readFileAsBase64(file) {
 
 /**
  * 업로드 진행률(onProgress)을 받아야 해서 fetch 대신 XHR로 같은 task_type 봉투를 보낸다.
+ * 색인이 끝날 때까지 기다리지 않고 접수 즉시(1초 안) 응답한다 — 결과는 jobId로 JOB_STATUS를 폴링해서 받는다.
  * @param {File} file
  * @param {(progress: number) => void} [onProgress]
  * @param {{ workCategory?: string, task?: string, department?: string, reportType?: string, productionYear?: string }} [metadata]
- * @returns {Promise<{ fileId: string, status: string, chunks?: number }>}
+ * @returns {Promise<{ jobId: string, status: "processing" }>}
  */
 export function uploadFile(file, onProgress, metadata) {
   return readFileAsBase64(file).then(
@@ -57,6 +58,21 @@ export function uploadFile(file, onProgress, metadata) {
         xhr.send(body);
       }),
   );
+}
+
+/**
+ * FILE_UPLOAD가 접수한 색인 작업의 진행 상태를 조회한다. ready/error는 한 번만 오고(서버가 그 즉시
+ * 지움) 같은 jobId로 다시 물으면 unknown이 온다 — 받는 즉시 폴링을 멈춰야 한다.
+ * @param {string} jobId
+ * @returns {Promise<
+ *   | { status: "processing" }
+ *   | { status: "ready", result: { fileId: string, status: string, chunks?: number } }
+ *   | { status: "error", error: string }
+ *   | { status: "unknown" }
+ * >}
+ */
+export async function getJobStatus(jobId) {
+  return postTask("RAG", "JOB_STATUS", { token: getToken(), payload: { jobId } });
 }
 
 /** @returns {Promise<any[]>} */

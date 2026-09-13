@@ -305,14 +305,20 @@ const MAX_COMPARE_PROVIDERS = 3;
 const loadSessions = (): ChatSession[] => {
   try {
     const raw = localStorage.getItem(SESSIONS_KEY);
-    return raw ? (JSON.parse(raw) as ChatSession[]) : [];
+    if (!raw) return [];
+    const sessions = JSON.parse(raw) as ChatSession[];
+    // compacting은 이 탭이 살아있는 동안의 폴링 상태일 뿐이라 저장하지 않는다 — 새로고침 직후에는
+    // 그 폴링을 이어갈 수 없으므로, 예전에 true로 저장된 값이 남아 배너가 영영 안 사라지는 걸 막는다.
+    return sessions.map((s) => (s.compacting ? { ...s, compacting: false } : s));
   } catch {
     return [];
   }
 };
 
 const persistSessions = (sessions: ChatSession[]) => {
-  localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
+  // compacting은 폴링 중에만 의미 있는 일시적 상태라 localStorage에는 저장하지 않는다(위 loadSessions 참고).
+  const toPersist = sessions.map(({ compacting, ...rest }) => rest);
+  localStorage.setItem(SESSIONS_KEY, JSON.stringify(toPersist));
 };
 
 const persistActiveSessionId = (id: string | null) => {

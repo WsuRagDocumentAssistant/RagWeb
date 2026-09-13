@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { ArrowUp, File as FileIcon, FileSearch, Loader2, Paperclip, Plus, X } from "lucide-react";
 import { useAppState } from "@/core/AppState";
 import { formatBytes } from "@/shared";
+import { ALLOWED_IMAGE_TYPES, MAX_ATTACHMENT_SIZE } from "../attachmentRules";
 import DocumentPickerModal from "./DocumentPickerModal";
 import "../styles/ChatInput.css";
 
@@ -13,10 +14,6 @@ const MODEL_LABEL = {
 };
 
 const CHECKABLE_PROVIDERS = ["claude", "gemini", "gpt"];
-
-// 이미지·파일 첨부는 인라인 base64로 요청에 실리므로, 요청 본문이 지나치게 커지지 않도록
-// 전송 전에 클라이언트에서 먼저 상한을 건다(서버에는 별도 상한이 없음).
-const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024; // 10MB
 
 function readAsDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -100,6 +97,10 @@ export default function ChatInput({ onSend, isLoading, pendingImage, setPendingI
     }
     // 이미지는 문서 등록(임베딩)이 아니라 채팅 메시지에 붙는 첨부 미리보기로만 사용한다.
     if (file.type.startsWith("image/")) {
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+        toast.error(`이미지는 PNG/JPEG/GIF/WEBP만 첨부할 수 있습니다. (${file.name})`);
+        return;
+      }
       setPendingImage((prev) => {
         if (prev) URL.revokeObjectURL(prev.previewUrl);
         return { file, previewUrl: URL.createObjectURL(file) };

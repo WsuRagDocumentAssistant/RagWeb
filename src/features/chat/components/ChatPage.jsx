@@ -1,6 +1,9 @@
 import React, { useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { UploadCloud } from "lucide-react";
 import { useAppState } from "@/core/AppState";
+import { formatBytes } from "@/shared";
+import { ALLOWED_IMAGE_TYPES, MAX_ATTACHMENT_SIZE } from "../attachmentRules";
 import ChatInput from "./ChatInput";
 import ChatMessages from "./ChatMessages";
 import RightSidebar from "./RightSidebar";
@@ -73,12 +76,19 @@ export default function ChatPage() {
     setIsDragging(false);
     const files = Array.from(e.dataTransfer.files ?? []);
     const imageFile = files.find((f) => f.type.startsWith("image/"));
-    // 이미지는 문서 등록(임베딩)이 아니라 채팅 첨부 미리보기로만 사용한다.
+    // 이미지는 문서 등록(임베딩)이 아니라 채팅 첨부 미리보기로만 사용한다. "+" 버튼으로 고를 때와
+    // 동일하게 형식·크기 제한을 지킨다.
     if (imageFile) {
-      setPendingImage((prev) => {
-        if (prev) URL.revokeObjectURL(prev.previewUrl);
-        return { file: imageFile, previewUrl: URL.createObjectURL(imageFile) };
-      });
+      if (!ALLOWED_IMAGE_TYPES.includes(imageFile.type)) {
+        toast.error(`이미지는 PNG/JPEG/GIF/WEBP만 첨부할 수 있습니다. (${imageFile.name})`);
+      } else if (imageFile.size > MAX_ATTACHMENT_SIZE) {
+        toast.error(`첨부 파일은 ${formatBytes(MAX_ATTACHMENT_SIZE)}까지만 가능합니다. (${imageFile.name})`);
+      } else {
+        setPendingImage((prev) => {
+          if (prev) URL.revokeObjectURL(prev.previewUrl);
+          return { file: imageFile, previewUrl: URL.createObjectURL(imageFile) };
+        });
+      }
     }
     files.filter((f) => f !== imageFile).forEach((file) => uploadFile(file));
   };

@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { ArrowUp, File as FileIcon, FileSearch, Loader2, Paperclip, Plus, X } from "lucide-react";
 import { useAppState } from "@/core/AppState";
 import { formatBytes } from "@/shared";
-import { ALLOWED_IMAGE_TYPES, MAX_ATTACHMENT_SIZE } from "../attachmentRules";
+import { ALLOWED_IMAGE_TYPES, MAX_ATTACHMENT_SIZE, isAllowedQueryFile } from "../attachmentRules";
 import DocumentPickerModal from "./DocumentPickerModal";
 import "../styles/ChatInput.css";
 
@@ -108,6 +108,10 @@ export default function ChatInput({ onSend, isLoading, pendingImage, setPendingI
       return;
     }
     // 이미지가 아닌 파일도 문서 등록(임베딩)이 아니라, 이 질문에만 첨부되는 참고 자료로 다룬다.
+    if (!isAllowedQueryFile(file)) {
+      toast.error(`파일은 PDF만 첨부할 수 있습니다. (${file.name})`);
+      return;
+    }
     setPendingFile({ file });
   };
 
@@ -153,7 +157,13 @@ export default function ChatInput({ onSend, isLoading, pendingImage, setPendingI
         </div>
       )}
       <div className="input-row">
-        <input ref={fileInputRef} type="file" style={{ display: "none" }} onChange={handleFileChange} />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,.pdf"
+          style={{ display: "none" }}
+          onChange={handleFileChange}
+        />
         <div className="attach-menu-wrap" ref={attachMenuRef}>
           <button className="attach-btn" onClick={() => setAttachMenuOpen((v) => !v)} title="추가">
             <Plus size={18} />

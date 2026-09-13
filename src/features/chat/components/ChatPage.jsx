@@ -109,13 +109,6 @@ export default function ChatPage() {
           </div>
         )}
 
-        {activeSession?.compacting && (
-          <div className="chat-compact-banner">
-            <Loader2 size={13} className="animate-spin" />
-            대화 맥락을 정리하는 중입니다...
-          </div>
-        )}
-
         <ChatMessages
           messages={messages}
           isLoadingHistory={isLoadingHistory}
@@ -124,6 +117,13 @@ export default function ChatPage() {
           onMergeTurn={mergeTurn}
           onChoosePreference={choosePreference}
         />
+
+        {activeSession?.compacting && (
+          <div className="chat-compact-banner">
+            <Loader2 size={18} className="animate-spin" />
+            대화 맥락을 정리하는 중입니다...
+          </div>
+        )}
 
         <ChatInput
           onSend={sendMessage}

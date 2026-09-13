@@ -3,40 +3,55 @@ import { postTask } from "@/config/ApiService";
 const getToken = () => localStorage.getItem("auth_token");
 
 /**
- * image는 채팅에 첨부한 이미지의 base64 data URL이다(원본 파일 그대로, 서버 업로드 없이 요청에 실어 보냄).
+ * 로컬에서 들고 있는 base64 data URL(`data:image/png;base64,....`)을 요청에 실을 모양
+ * `{ mimeType, content }`(content는 data URL 접두어 없는 순수 base64)로 바꾼다.
+ * @param {string | undefined} dataUrl
+ */
+function toImagePayload(dataUrl) {
+  if (!dataUrl) return undefined;
+  const match = /^data:([^;]+);base64,([\s\S]*)$/.exec(dataUrl);
+  if (!match) return undefined;
+  return { mimeType: match[1], content: match[2] };
+}
+
+/**
+ * image는 채팅에 첨부한 이미지다(원본 파일 그대로, 서버 업로드 없이 요청에 실어 보냄). 로컬 미리보기는
+ * data URL로 들고 있다가, 요청 시에는 `{ mimeType, content }`(content는 순수 base64)로 바꿔서 보낸다.
+ * file은 이미지가 아닌 첨부 파일로, 문서 등록(임베딩)과 무관하게 이 질문에만 참고자료로 실어 보낸다
+ * (content는 마찬가지로 data URL 접두어 없는 순수 base64). 이미지·파일 모두 최대 1개씩이다.
  * provider는 비교할 모델이 여럿이면 배열로 한 번에 보낸다 — 서버가 한 요청 안에서 모델별로 각각
  * 호출하고 그 결과를 answers 배열로 묶어 돌려준다(모델별로 따로 요청을 보내지 않음).
  * 사용자가 그림을 찾아달라고 한 질의면 서버가 모델을 부르지 않고 answers를 하나만(provider: null)
  * 내려주며, 그 대신 images에 문서에서 찾은 그림(최대 2장)이 실려 온다.
- * @param {{ message: string, provider: string | string[], sessionId?: string, fileIds?: string[], image?: string }} payload
+ * @param {{ message: string, provider: string | string[], sessionId?: string, fileIds?: string[], image?: string, file?: { name: string, mimeType: string, content: string } }} payload
  * @returns {Promise<{
  *   reply: string, sessionId: string, sources?: { id: string, name: string }[],
  *   answers?: { provider: string | null, content: string, sources?: { id: string, name: string }[] }[],
  *   images?: { id: string, url: string, name: string, caption?: string | null, aiSummary?: string | null, documentId?: string, documentTitle?: string }[],
  * }>}
  */
-export async function sendMessage({ message, provider, sessionId, fileIds, image }) {
+export async function sendMessage({ message, provider, sessionId, fileIds, image, file }) {
   return postTask("RAG", "CHAT", {
     sessionId,
     token: getToken(),
-    payload: { query: message, provider, fileIds, image },
+    payload: { query: message, provider, fileIds, image: toImagePayload(image), file },
   });
 }
 
 /**
  * 서로 다른 모델의 답변 여러 개를 하나로 병합해서 받아온다.
  * answers마다 sources를 같이 보낸다 — 병합을 수행하는 모델이 각 답변이 어떤 문서를 참고했는지 알아야
- * 병합 결과에서도 출처를 올바르게 표시/인용할 수 있기 때문이다. image는 이 턴의 원래 질문에 첨부됐던
- * 이미지(USER_QUERY에 보낸 것과 동일한 base64 data URL)로, 병합 모델도 원본 질문이 참고한 이미지를
+ * 병합 결과에서도 출처를 올바르게 표시/인용할 수 있기 때문이다. image/file은 이 턴의 원래 질문에
+ * 첨부됐던 것(USER_QUERY에 보낸 것과 동일)으로, 병합 모델도 원본 질문이 참고한 이미지·파일을
  * 텍스트 답변들과 마찬가지로 함께 볼 수 있어야 한다.
- * @param {{ query: string, answers: { provider: string, content: string, sources?: { id: string, name: string }[] }[], provider: string, sessionId?: string, image?: string }} payload provider는 병합 작업을 수행할 모델
+ * @param {{ query: string, answers: { provider: string, content: string, sources?: { id: string, name: string }[] }[], provider: string, sessionId?: string, image?: string, file?: { name: string, mimeType: string, content: string } }} payload provider는 병합 작업을 수행할 모델
  * @returns {Promise<{ reply: string, sources?: { id: string, name: string }[] }>}
  */
-export async function mergeResults({ query, answers, provider, sessionId, image }) {
+export async function mergeResults({ query, answers, provider, sessionId, image, file }) {
   return postTask("RAG", "MERGE", {
     sessionId,
     token: getToken(),
-    payload: { query, answers, provider, image },
+    payload: { query, answers, provider, image: toImagePayload(image), file },
   });
 }
 

@@ -10,10 +10,6 @@ const SOURCES = ["전체", "Naver", "정부24", "Google", "기타"];
 const FORM_SOURCES = SOURCES.slice(1);
 const DEFAULT_REFRESH_INTERVAL_MINUTES = 5;
 
-// 각 API가 갱신 주기를 지켰는지 확인하는 주기 — 개별 API의 갱신 주기(분 단위)와는 별개다.
-// 이 값보다 짧은 갱신 주기를 걸어도 실제로는 이 간격으로만 확인된다.
-const REFRESH_CHECK_INTERVAL_MS = 30 * 1000; // 30초
-
 const emptyForm = () => ({
   title: "",
   url: "",
@@ -52,7 +48,6 @@ export default function ExternalApiPage() {
   const fetchExternalApis = useAppState((s) => s.fetchExternalApis);
   const saveExternalApi = useAppState((s) => s.saveExternalApi);
   const deleteExternalApi = useAppState((s) => s.deleteExternalApi);
-  const syncExternalApi = useAppState((s) => s.syncExternalApi);
   const [query, setQuery] = useState("");
   const [source, setSource] = useState("전체");
   const [editingId, setEditingId] = useState(null); // null이면 신규 등록 모드
@@ -82,20 +77,6 @@ export default function ExternalApiPage() {
     if (ok) toast.success("API 목록을 새로고침했습니다.");
     setTimeout(() => setRefreshing(false), 400);
   };
-
-  // 30초마다 이 화면이 켜져 있는 클라이언트 시계 기준으로 각 API의 갱신 주기가 지났는지 확인해서,
-  // 지난 항목만 개별적으로 새로고침한다. (이 페이지가 열려있는 동안에만 동작한다.)
-  useEffect(() => {
-    const id = setInterval(() => {
-      const now = new Date();
-      useAppState.getState().externalApis.forEach((a) => {
-        const isDue = now.getTime() - new Date(a.fetchedAt).getTime() >= a.refreshIntervalMinutes * 60 * 1000;
-        if (isDue) syncExternalApi(a.id, a.title);
-      });
-    }, REFRESH_CHECK_INTERVAL_MS);
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   if (user?.role !== "admin") return <Navigate to="/chat" replace />;
 

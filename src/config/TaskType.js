@@ -33,5 +33,4 @@ export const TaskType = {
   EXTERNAL_API_LIST: "EXTERNAL_API_LIST", // 외부 API 등록 화면 목록 조회
   EXTERNAL_API_SAVE: "EXTERNAL_API_SAVE", // "추가"/"저장" 버튼: 등록 또는 수정
   EXTERNAL_API_DELETE: "EXTERNAL_API_DELETE", // 목록 행의 삭제 버튼
-  EXTERNAL_API_SYNC: "EXTERNAL_API_SYNC", // 개별 갱신 주기가 지난 API를 실제로 다시 수집
 };

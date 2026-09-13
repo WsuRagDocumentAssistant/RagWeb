@@ -33,6 +33,15 @@ export interface MessageImage {
   documentTitle?: string;
 }
 
+// 이미지가 아닌 첨부 파일 — 문서 등록(임베딩)과 무관하게 이 질문 하나에만 참고자료로 실어 보낸다.
+// content는 MERGE_RESULTS에도 그대로 다시 실어 보내야 해서(이미지의 attachmentUrl과 동일한 이유) 메시지에 보관한다.
+export interface AttachedFile {
+  name: string;
+  mimeType: string;
+  size: number;
+  content: string; // base64 (data URL 접두어 없음)
+}
+
 export interface Message {
   id: string;
   role: MessageRole;
@@ -47,6 +56,7 @@ export interface Message {
   preferred?: boolean;
   mergerProvider?: AIProvider;
   attachmentUrl?: string; // 채팅에 첨부한 이미지 미리보기 (data URL) — 문서 등록/임베딩과는 무관
+  attachedFile?: AttachedFile; // 채팅에 첨부한 이미지 아닌 파일 — 최대 1개
 }
 
 export interface ChatSession {
@@ -147,7 +157,7 @@ interface ChatSlice {
   selectedDocumentIds: string[]; // "검색 문서 선택"으로 고른 문서 — 채팅 검색 범위를 좁히는 용도
   fetchSessions: () => Promise<void>;
   fetchSessionMessages: (id: string) => Promise<void>;
-  sendMessage: (text: string, attachmentUrl?: string) => Promise<void>;
+  sendMessage: (text: string, attachmentUrl?: string, attachedFile?: AttachedFile) => Promise<void>;
   toggleProvider: (p: AIProvider) => void;
   setSelectedDocumentIds: (ids: string[]) => void;
   mergeTurn: (turnId: string, messageIds: string[], mergerProvider: AIProvider) => Promise<void>;
@@ -241,7 +251,6 @@ interface ExternalApiSlice {
   fetchExternalApis: () => Promise<boolean>;
   saveExternalApi: (api: Partial<ExternalApi> & { title: string; url: string; source: string; apiKey: string; refreshIntervalMinutes: number }) => Promise<void>;
   deleteExternalApi: (id: string) => Promise<void>;
-  syncExternalApi: (id: string, title: string) => Promise<void>;
 }
 
 type AppStore = ChatSlice &
@@ -402,7 +411,7 @@ export const useAppState = create<AppStore>((set, get) => ({
     }
   },
 
-  sendMessage: async (text, attachmentUrl) => {
+  sendMessage: async (text, attachmentUrl, attachedFile) => {
     let { activeSessionId, sessions, selectedProviders } = get();
 
     if (!activeSessionId || !sessions.some((s) => s.id === activeSessionId)) {
@@ -417,7 +426,7 @@ export const useAppState = create<AppStore>((set, get) => ({
     const fileIds = get().selectedDocumentIds;
     const providers = selectedProviders.length > 0 ? selectedProviders : (["gpt"] as AIProvider[]);
     const turnId = genId("turn");
-    const userMsg: Message = { id: genId("u"), role: "user", content: text, createdAt: Date.now(), turnId, attachmentUrl };
+    const userMsg: Message = { id: genId("u"), role: "user", content: text, createdAt: Date.now(), turnId, attachmentUrl, attachedFile };
     const asstMsgs: Message[] = providers.map((provider) => ({
       id: genId("a"),
       role: "assistant",
@@ -453,6 +462,7 @@ export const useAppState = create<AppStore>((set, get) => ({
         sessionId: activeSession?.backendSessionId ?? undefined,
         fileIds: fileIds.length > 0 ? fileIds : undefined,
         image: attachmentUrl,
+        file: attachedFile && { name: attachedFile.name, mimeType: attachedFile.mimeType, content: attachedFile.content },
       });
       const answers = data.answers as { provider: string | null; content: string; sources?: MessageSource[] }[] | undefined;
       const rawImages = data.images as MessageImage[] | undefined;
@@ -578,9 +588,14 @@ export const useAppState = create<AppStore>((set, get) => ({
         answers: turnAssistants.map((m) => ({ provider: m.provider as string, content: m.content, sources: m.sources })),
         provider: mergerProvider,
         sessionId: session.backendSessionId ?? undefined,
-        // 이 턴의 원래 질문에 첨부됐던 이미지 — 병합 모델도 개별 답변들이 참고했던 것과 같은
-        // 이미지를 보고 병합할 수 있도록 텍스트 답변과 동일하게 실어 보낸다.
+        // 이 턴의 원래 질문에 첨부됐던 이미지·파일 — 병합 모델도 개별 답변들이 참고했던 것과 같은
+        // 것을 보고 병합할 수 있도록 텍스트 답변과 동일하게 실어 보낸다.
         image: userMsg?.attachmentUrl,
+        file: userMsg?.attachedFile && {
+          name: userMsg.attachedFile.name,
+          mimeType: userMsg.attachedFile.mimeType,
+          content: userMsg.attachedFile.content,
+        },
       });
       const sources: MessageSource[] = (data.sources as MessageSource[] | undefined) ?? combineSourcesFromAnswers();
       set((s) => ({
@@ -1186,16 +1201,4 @@ export const useAppState = create<AppStore>((set, get) => ({
     }
   },
 
-  syncExternalApi: async (id, title) => {
-    try {
-      const data = (await externalApiService.syncApi(id)) as { fetchedAt: string };
-      set((s) => ({
-        externalApis: s.externalApis.map((a) => (a.id === id ? { ...a, fetchedAt: data.fetchedAt } : a)),
-      }));
-      toast.success(`${title} 데이터를 새로고침했습니다.`);
-      get().pushNotification(`${title} 데이터를 새로고침했습니다.`, { type: "success", link: "/external-api" });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : `${title} 데이터 새로고침에 실패했습니다.`);
-    }
-  },
 }));

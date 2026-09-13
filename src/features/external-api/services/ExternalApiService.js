@@ -20,12 +20,3 @@ export async function saveApi(api) {
 export async function deleteApi(id) {
   return postTask("EXTERNAL_API", "DELETE", { token: getToken(), payload: { id } });
 }
-
-/**
- * 갱신 주기가 지난 API의 데이터를 실제로 다시 수집하도록 서버에 요청한다.
- * @param {string} id
- * @returns {Promise<{ fetchedAt: string }>}
- */
-export async function syncApi(id) {
-  return postTask("EXTERNAL_API", "SYNC", { token: getToken(), payload: { id } });
-}

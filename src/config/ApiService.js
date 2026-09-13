@@ -40,7 +40,6 @@ export const API_ENDPOINTS = {
     LIST: TaskType.EXTERNAL_API_LIST,
     SAVE: TaskType.EXTERNAL_API_SAVE,
     DELETE: TaskType.EXTERNAL_API_DELETE,
-    SYNC: TaskType.EXTERNAL_API_SYNC,
   },
 };
 

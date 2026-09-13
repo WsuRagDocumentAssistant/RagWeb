@@ -3,7 +3,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
-import { Check, Copy, Loader2, X } from "lucide-react";
+import { Check, Copy, File as FileIcon, Loader2, X } from "lucide-react";
+import { formatBytes } from "../utils/format";
 import "../styles/MessageBubble.css";
 
 // AI 답변에 <u>/<mark>처럼 강조용 원본 HTML 태그가 섞여 오는 경우가 있어 렌더링해줘야 하지만,
@@ -42,6 +43,24 @@ export default function MessageBubble({ message, isSelected, onSelect }) {
     }
   };
 
+  // 첨부 파일은 서버에 별도 URL로 남지 않으므로, 보낼 때 실었던 base64를 그대로 Blob으로 되돌려서 내려받는다.
+  const handleDownloadAttachedFile = (e, file) => {
+    e.stopPropagation();
+    try {
+      const bytes = atob(file.content);
+      const buffer = new Uint8Array(bytes.length);
+      for (let i = 0; i < bytes.length; i++) buffer[i] = bytes.charCodeAt(i);
+      const url = URL.createObjectURL(new Blob([buffer], { type: file.mimeType || "application/octet-stream" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = file.name;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      /* 다운로드 실패 시 조용히 무시 */
+    }
+  };
+
   return (
     <>
     <div className={`bubble-row ${isUser ? "flex-row-reverse" : ""}`}>
@@ -69,6 +88,20 @@ export default function MessageBubble({ message, isSelected, onSelect }) {
                   onClick={(e) => { e.stopPropagation(); setZoomedImage({ url: message.attachmentUrl, name: "첨부 이미지" }); }}
                 >
                   <img src={message.attachmentUrl} alt="첨부 이미지" className="bubble-attachment" />
+                </button>
+              )}
+              {message.attachedFile && (
+                <button
+                  type="button"
+                  className="bubble-attached-file"
+                  onClick={(e) => handleDownloadAttachedFile(e, message.attachedFile)}
+                  title="다운로드"
+                >
+                  <span className="bubble-attached-file-icon">
+                    <FileIcon size={16} />
+                  </span>
+                  <span className="bubble-attached-file-name">{message.attachedFile.name}</span>
+                  <span className="bubble-attached-file-size">{formatBytes(message.attachedFile.size)}</span>
                 </button>
               )}
               <div className="markdown-body">

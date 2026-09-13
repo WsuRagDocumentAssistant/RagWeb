@@ -25,6 +25,7 @@ export default function ChatPage() {
   const dragCounter = useRef(0);
   const [selectedMessageId, setSelectedMessageId] = useState(null);
   const [pendingImage, setPendingImage] = useState(null); // { file, previewUrl } — 문서 등록이 아닌 채팅 첨부용
+  const [pendingFile, setPendingFile] = useState(null); // { file } — 이미지가 아닌, 이 질문에만 첨부되는 참고 파일
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(
     () => localStorage.getItem(RIGHT_SIDEBAR_COLLAPSED_KEY) === "1",
   );
@@ -109,10 +110,11 @@ export default function ChatPage() {
 
         <ChatInput
           onSend={sendMessage}
-          onUpload={uploadFile}
           isLoading={chatLoading}
           pendingImage={pendingImage}
           setPendingImage={setPendingImage}
+          pendingFile={pendingFile}
+          setPendingFile={setPendingFile}
         />
       </div>
 

@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { ArrowUp, FileSearch, Loader2, Paperclip, Plus, X } from "lucide-react";
+import { toast } from "sonner";
+import { ArrowUp, File as FileIcon, FileSearch, Loader2, Paperclip, Plus, X } from "lucide-react";
 import { useAppState } from "@/core/AppState";
+import { formatBytes } from "@/shared";
 import DocumentPickerModal from "./DocumentPickerModal";
 import "../styles/ChatInput.css";
 
@@ -12,7 +14,20 @@ const MODEL_LABEL = {
 
 const CHECKABLE_PROVIDERS = ["claude", "gemini", "gpt"];
 
-export default function ChatInput({ onSend, onUpload, isLoading, pendingImage, setPendingImage }) {
+// 이미지·파일 첨부는 인라인 base64로 요청에 실리므로, 요청 본문이 지나치게 커지지 않도록
+// 전송 전에 클라이언트에서 먼저 상한을 건다(서버에는 별도 상한이 없음).
+const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024; // 10MB
+
+function readAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("파일 읽기 실패"));
+    reader.readAsDataURL(file);
+  });
+}
+
+export default function ChatInput({ onSend, isLoading, pendingImage, setPendingImage, pendingFile, setPendingFile }) {
   const [text, setText] = useState("");
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -42,18 +57,25 @@ export default function ChatInput({ onSend, onUpload, isLoading, pendingImage, s
     });
   };
 
-  const handleSend = () => {
+  const removePendingFile = () => setPendingFile(null);
+
+  const handleSend = async () => {
     const trimmed = text.trim();
-    if ((!trimmed && !pendingImage) || isLoading) return;
-    if (pendingImage) {
-      const image = pendingImage;
-      const reader = new FileReader();
-      reader.onload = () => onSend(trimmed, reader.result);
-      reader.readAsDataURL(image.file);
-      removePendingImage();
-    } else {
-      onSend(trimmed);
-    }
+    if ((!trimmed && !pendingImage && !pendingFile) || isLoading) return;
+
+    const imageDataUrl = pendingImage ? await readAsDataUrl(pendingImage.file) : undefined;
+    const fileAttachment = pendingFile
+      ? {
+          name: pendingFile.file.name,
+          mimeType: pendingFile.file.type || "application/octet-stream",
+          size: pendingFile.file.size,
+          content: (await readAsDataUrl(pendingFile.file)).split(",")[1] ?? "",
+        }
+      : undefined;
+
+    onSend(trimmed, imageDataUrl, fileAttachment);
+    removePendingImage();
+    removePendingFile();
     setText("");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
   };
@@ -72,6 +94,10 @@ export default function ChatInput({ onSend, onUpload, isLoading, pendingImage, s
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    if (file.size > MAX_ATTACHMENT_SIZE) {
+      toast.error(`첨부 파일은 ${formatBytes(MAX_ATTACHMENT_SIZE)}까지만 가능합니다. (${file.name})`);
+      return;
+    }
     // 이미지는 문서 등록(임베딩)이 아니라 채팅 메시지에 붙는 첨부 미리보기로만 사용한다.
     if (file.type.startsWith("image/")) {
       setPendingImage((prev) => {
@@ -80,20 +106,36 @@ export default function ChatInput({ onSend, onUpload, isLoading, pendingImage, s
       });
       return;
     }
-    onUpload(file);
+    // 이미지가 아닌 파일도 문서 등록(임베딩)이 아니라, 이 질문에만 첨부되는 참고 자료로 다룬다.
+    setPendingFile({ file });
   };
 
-  const canSend = (text.trim().length > 0 || !!pendingImage) && !isLoading;
+  const canSend = (text.trim().length > 0 || !!pendingImage || !!pendingFile) && !isLoading;
 
   return (
     <div className="chat-input-wrap">
-      {pendingImage && (
-        <div className="chat-pending-image">
-          <img src={pendingImage.previewUrl} alt="첨부 이미지 미리보기" />
-          <span className="chat-pending-image-name">{pendingImage.file.name}</span>
-          <button className="chat-pending-image-remove" onClick={removePendingImage} title="첨부 취소">
-            <X size={13} />
-          </button>
+      {(pendingImage || pendingFile) && (
+        <div className="chat-pending-row">
+          {pendingImage && (
+            <div className="chat-pending-card chat-pending-card-image">
+              <img src={pendingImage.previewUrl} alt="첨부 이미지 미리보기" />
+              <button className="chat-pending-card-remove" onClick={removePendingImage} title="첨부 취소">
+                <X size={12} />
+              </button>
+            </div>
+          )}
+          {pendingFile && (
+            <div className="chat-pending-card chat-pending-card-file">
+              <span className="chat-pending-card-file-icon">
+                <FileIcon size={18} />
+              </span>
+              <span className="chat-pending-card-file-name" title={pendingFile.file.name}>{pendingFile.file.name}</span>
+              <span className="chat-pending-card-file-size">{formatBytes(pendingFile.file.size)}</span>
+              <button className="chat-pending-card-remove" onClick={removePendingFile} title="첨부 취소">
+                <X size={12} />
+              </button>
+            </div>
+          )}
         </div>
       )}
       {selectedDocumentIds.length > 0 && (

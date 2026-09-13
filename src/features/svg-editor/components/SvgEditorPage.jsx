@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { FolderOpen, Download, Type, Trash2, X } from "lucide-react";
+import { FolderOpen, Download, Loader2, Type, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   readSvgFile,
@@ -42,6 +42,7 @@ export default function SvgEditorPage() {
   const location = useLocation();
   const [loaded, setLoaded] = useState(false);
   const [fileName, setFileName] = useState("edited.svg");
+  const [converting, setConverting] = useState(false); // PNG/JPG 등을 SVG로 벡터화하는 동안(서버 호출)
   const [selection, setSelection] = useState(null); // { content, fontSize } — 상단 패널에 표시되는 선택된 텍스트 속성
 
   const hostRef = useRef(null);
@@ -366,6 +367,7 @@ export default function SvgEditorPage() {
 
       if (isImage) {
         const svgName = file.name.replace(/\.[^.]+$/, ".svg");
+        setConverting(true);
         toast.loading("이미지를 벡터로 변환 중입니다...", { id: "svg-convert" });
         vectorizeImage({ file })
           .then((data) => {
@@ -375,13 +377,15 @@ export default function SvgEditorPage() {
           .catch(() => {
             // 벡터화 서버가 아직 없거나 실패하면, 원본 이미지를 그대로 감싼 SVG로 대체한다
             // (실제 선/도형 벡터화는 아니고 텍스트 편집 등 나머지 기능은 그대로 쓸 수 있음).
-            convertImageToSvg(file)
+            // finally가 실제 완료를 기다리도록 이 체인을 그대로 반환한다.
+            return convertImageToSvg(file)
               .then((svgText) => {
                 loadSvgText(svgText, svgName);
                 toast.success("이미지를 SVG로 열었습니다. (벡터 변환 서버 미연결 — 원본 이미지 그대로)", { id: "svg-convert" });
               })
               .catch((err) => toast.error(`변환 실패: ${err.message}`, { id: "svg-convert" }));
-          });
+          })
+          .finally(() => setConverting(false));
         return;
       }
 
@@ -423,7 +427,7 @@ export default function SvgEditorPage() {
     <div className="svged-page">
       <div className="svged-topbar">
         <div className="svged-toolbar-row">
-          <button className="svged-btn" onClick={handleOpenFile}>
+          <button className="svged-btn" onClick={handleOpenFile} disabled={converting}>
             <FolderOpen size={14} />
             파일 열기
           </button>
@@ -479,11 +483,18 @@ export default function SvgEditorPage() {
         </p>
       </div>
 
+      {converting && (
+        <div className="svged-converting">
+          <Loader2 size={22} className="animate-spin" />
+          <p>이미지를 벡터(SVG)로 변환하는 중입니다...</p>
+        </div>
+      )}
+
       <div ref={canvasWrapRef} className="svged-canvas-wrap" style={{ display: loaded ? "block" : "none" }}>
         <div ref={hostRef} className="svged-host" />
       </div>
 
-      {!loaded && (
+      {!loaded && !converting && (
         <div className="svged-empty">
           <p>이미지를 열면 여기에서 텍스트를 클릭해 바로 수정할 수 있습니다.</p>
         </div>

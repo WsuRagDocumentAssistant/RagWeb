@@ -7,6 +7,9 @@
   width: 100%;
   padding-right: 28px !important;
 }
+.combo-box-input-field[readonly] {
+  cursor: pointer;
+}
 
 .combo-box-input-toggle {
   position: absolute;

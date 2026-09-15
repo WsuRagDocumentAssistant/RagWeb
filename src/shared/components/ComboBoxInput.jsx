@@ -3,11 +3,12 @@ import { ChevronDown } from "lucide-react";
 import "../styles/ComboBoxInput.css";
 
 /**
- * 목록에서 고르거나, 목록에 없는 값을 자유롭게 입력해 새 카테고리로 추가할 수 있는 입력창.
+ * 목록에서 고르거나(allowCustom=false면 이것만 가능), 목록에 없는 값을 자유롭게 입력해 새
+ * 카테고리로 추가할 수 있는(allowCustom=true, 기본값) 입력창.
  * 네이티브 datalist는 브라우저가 팝업 색을 강제로 정해버려 앱 테마와 어긋나므로,
  * 앱 테마 토큰을 그대로 쓰는 커스텀 드롭다운으로 직접 그린다.
  */
-export default function ComboBoxInput({ value, onChange, options = [], placeholder }) {
+export default function ComboBoxInput({ value, onChange, options = [], placeholder, allowCustom = true }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
 
@@ -21,10 +22,11 @@ export default function ComboBoxInput({ value, onChange, options = [], placehold
   }, [open]);
 
   const filtered = useMemo(() => {
+    if (!allowCustom) return options; // 직접 입력이 없으니 타이핑으로 좁혀볼 텍스트도 없다 — 전체 목록 그대로
     const q = (value ?? "").trim().toLowerCase();
     if (!q) return options;
     return options.filter((opt) => opt.toLowerCase().includes(q));
-  }, [options, value]);
+  }, [options, value, allowCustom]);
 
   const handleSelect = (opt) => {
     onChange(opt);
@@ -37,11 +39,17 @@ export default function ComboBoxInput({ value, onChange, options = [], placehold
         type="text"
         className="combo-box-input-field"
         value={value ?? ""}
-        onChange={(e) => {
-          onChange(e.target.value);
-          setOpen(true);
-        }}
+        onChange={
+          allowCustom
+            ? (e) => {
+                onChange(e.target.value);
+                setOpen(true);
+              }
+            : undefined
+        }
+        readOnly={!allowCustom}
         onFocus={() => setOpen(true)}
+        onClick={() => setOpen(true)}
         placeholder={placeholder}
         autoComplete="off"
       />

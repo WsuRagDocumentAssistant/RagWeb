@@ -58,7 +58,8 @@ function MetadataFields({ values, onChange }) {
           value={values.workCategory}
           onChange={handleWorkCategoryChange}
           options={WORK_CATEGORIES}
-          placeholder="업무구분 선택 또는 입력"
+          placeholder="업무구분 선택"
+          allowCustom={false}
         />
       </label>
 
@@ -69,7 +70,8 @@ function MetadataFields({ values, onChange }) {
             value={values.task}
             onChange={handleTaskChange}
             options={taskOptions}
-            placeholder="수행업무 선택 또는 입력"
+            placeholder="수행업무 선택"
+            allowCustom={false}
           />
         </label>
       ) : (
@@ -79,7 +81,8 @@ function MetadataFields({ values, onChange }) {
             value={values.department}
             onChange={(v) => onChange("department", v)}
             options={directDepartmentOptions}
-            placeholder="수행부서 선택 또는 입력"
+            placeholder="수행부서 선택"
+            allowCustom={false}
           />
         </label>
       )}
@@ -92,6 +95,7 @@ function MetadataFields({ values, onChange }) {
             onChange={(v) => onChange("department", v)}
             options={ALL_DEPARTMENTS}
             placeholder="수행업무를 고르면 자동으로 채워집니다"
+            allowCustom={false}
           />
         </label>
       )}
@@ -102,7 +106,8 @@ function MetadataFields({ values, onChange }) {
           value={values.reportType}
           onChange={(v) => onChange("reportType", v)}
           options={REPORT_TYPES}
-          placeholder="보고서명 선택 또는 입력"
+          placeholder="보고서명 선택"
+          allowCustom={false}
         />
       </label>
 
@@ -296,7 +301,7 @@ export default function FileManagementPage() {
               <MetadataFields values={shared} onChange={updateShared} />
               <p className="fm-meta-hint">
                 위 정보는 선택한 문서 전체에 적용됩니다. 문서마다 다르게 넣으려면 왼쪽에서 <strong>문서를 클릭</strong>하세요.
-                목록에 없는 값은 직접 입력해서 새 항목으로 추가할 수 있습니다.
+                목록에 정해진 값만 고를 수 있습니다.
               </p>
             </>
           ) : (

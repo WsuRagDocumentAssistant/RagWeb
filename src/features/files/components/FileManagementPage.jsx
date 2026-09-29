@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
+import { toast } from "sonner";
 import { UploadCloud, FileText, Trash2 } from "lucide-react";
 import { useAppState } from "@/core/AppState";
 import {
@@ -14,6 +15,7 @@ import {
   SortableHeaderCell,
   useSortableRows,
 } from "@/shared";
+import { DOCUMENT_ACCEPT, DOCUMENT_REJECT_MESSAGE, documentRejectDescription, isAllowedDocument } from "../documentRules";
 import "../styles/FileManagementPage.css";
 
 const genQueueId = () => `q-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -145,8 +147,13 @@ export default function FileManagementPage() {
   if (user?.role !== "admin") return <Navigate to="/chat" replace />;
 
   const addFilesToQueue = (fileList) => {
-    const items = Array.from(fileList).map((file) => ({ id: genQueueId(), file, override: null }));
-    setQueue((q) => [...q, ...items]);
+    const files = Array.from(fileList);
+    const rejected = files.filter((file) => !isAllowedDocument(file));
+    if (rejected.length > 0) {
+      toast.error(DOCUMENT_REJECT_MESSAGE, { description: documentRejectDescription(rejected) });
+    }
+    const items = files.filter(isAllowedDocument).map((file) => ({ id: genQueueId(), file, override: null }));
+    if (items.length > 0) setQueue((q) => [...q, ...items]);
   };
 
   const handleFileChange = (e) => {
@@ -231,7 +238,14 @@ export default function FileManagementPage() {
         <p>문서를 등록하면 챗봇이 그 내용을 찾아 답변합니다.</p>
       </div>
 
-      <input ref={fileInputRef} type="file" multiple style={{ display: "none" }} onChange={handleFileChange} />
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept={DOCUMENT_ACCEPT}
+        style={{ display: "none" }}
+        onChange={handleFileChange}
+      />
 
       <div className="fm-register-grid">
         <div className="fm-upload-col">

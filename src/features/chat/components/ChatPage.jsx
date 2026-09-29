@@ -4,6 +4,7 @@ import { Loader2, UploadCloud } from "lucide-react";
 import { useAppState } from "@/core/AppState";
 import { formatBytes } from "@/shared";
 import { ALLOWED_IMAGE_TYPES, MAX_ATTACHMENT_SIZE } from "../attachmentRules";
+import { DOCUMENT_REJECT_MESSAGE, documentRejectDescription, isAllowedDocument } from "@/features/files/documentRules";
 import ChatInput from "./ChatInput";
 import ChatMessages from "./ChatMessages";
 import RightSidebar from "./RightSidebar";
@@ -90,7 +91,13 @@ export default function ChatPage() {
         });
       }
     }
-    files.filter((f) => f !== imageFile).forEach((file) => uploadFile(file));
+    // 이미지가 아닌 파일은 문서 등록으로 간다 — 문서 등록 화면과 같은 형식 제한을 지킨다.
+    const documents = files.filter((f) => f !== imageFile);
+    const rejected = documents.filter((f) => !isAllowedDocument(f));
+    if (rejected.length > 0) {
+      toast.error(DOCUMENT_REJECT_MESSAGE, { description: documentRejectDescription(rejected) });
+    }
+    documents.filter(isAllowedDocument).forEach((file) => uploadFile(file));
   };
 
   return (

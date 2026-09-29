@@ -994,13 +994,11 @@ export const useAppState = create<AppStore>((set, get) => ({
   authError: null,
 
   initializeAuth: () => {
-    const token = localStorage.getItem("auth_token");
-    const raw = localStorage.getItem("auth_user");
-    if (token && raw) {
-      try {
-        set({ token, user: JSON.parse(raw) as AuthUser, authInitialized: true });
-        return;
-      } catch { /* ignore */ }
+    const token = getToken();
+    const user = getStoredUser() as AuthUser | null;
+    if (token && user) {
+      set({ token, user, authInitialized: true });
+      return;
     }
     set({ authInitialized: true });
   },
@@ -1009,8 +1007,7 @@ export const useAppState = create<AppStore>((set, get) => ({
     set({ authLoading: true, authError: null });
     try {
       const data = await authService.login(email, password) as { access_token: string; user: AuthUser };
-      localStorage.setItem("auth_token", data.access_token);
-      localStorage.setItem("auth_user", JSON.stringify(data.user));
+      saveAuth(data.access_token, data.user);
       set({ user: data.user, token: data.access_token, authLoading: false });
     } catch (err) {
       // 서버 연결 실패 시에도 화면을 계속 확인할 수 있도록 더미 계정으로 로그인 허용
@@ -1026,8 +1023,7 @@ export const useAppState = create<AppStore>((set, get) => ({
           role: directoryEntry?.role ?? (account.role as UserRole),
         };
         const token = `dummy-token-${account.id}`;
-        localStorage.setItem("auth_token", token);
-        localStorage.setItem("auth_user", JSON.stringify(user));
+        saveAuth(token, user);
         set({ user, token, authLoading: false, authError: null });
         return;
       }
@@ -1050,8 +1046,7 @@ export const useAppState = create<AppStore>((set, get) => ({
     set({ authLoading: true, authError: null });
     try {
       const data = await authService.ssoLogin(ssoToken) as { access_token: string; user: AuthUser };
-      localStorage.setItem("auth_token", data.access_token);
-      localStorage.setItem("auth_user", JSON.stringify(data.user));
+      saveAuth(data.access_token, data.user);
       set({ user: data.user, token: data.access_token, authLoading: false });
     } catch (err) {
       set({ authLoading: false, authError: err instanceof Error ? err.message : "SSO 로그인 실패" });

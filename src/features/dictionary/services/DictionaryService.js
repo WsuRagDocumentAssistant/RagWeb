@@ -1,6 +1,6 @@
 import { postTask } from "@/config/ApiService";
 
-const getToken = () => localStorage.getItem("auth_token");
+import { getToken } from "@/config/authStorage";
 
 /**
  * @param {string} [search]

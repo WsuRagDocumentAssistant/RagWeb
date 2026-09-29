@@ -1,6 +1,6 @@
 import { postTask } from "@/config/ApiService";
 
-const getToken = () => localStorage.getItem("auth_token");
+import { getToken } from "@/config/authStorage";
 
 /** @returns {Promise<{ apis: any[] }>} */
 export async function listApis() {

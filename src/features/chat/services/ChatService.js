@@ -1,6 +1,6 @@
 import { postTask } from "@/config/ApiService";
 
-const getToken = () => localStorage.getItem("auth_token");
+import { getToken } from "@/config/authStorage";
 
 /**
  * 로컬에서 들고 있는 base64 data URL(`data:image/png;base64,....`)을 요청에 실을 모양

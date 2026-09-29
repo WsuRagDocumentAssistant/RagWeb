@@ -1,6 +1,6 @@
 import { postTask } from "@/config/ApiService";
 
-const getToken = () => localStorage.getItem("auth_token");
+import { getToken } from "@/config/authStorage";
 
 /**
  * 문서 하나에 속한 페이지 이미지 목록을 가져온다.

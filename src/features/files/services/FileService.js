@@ -1,6 +1,6 @@
 import { getTaskType, getTaskUrl, postTask } from "@/config/ApiService";
 
-const getToken = () => localStorage.getItem("auth_token");
+import { getToken } from "@/config/authStorage";
 
 /** @param {File} file @returns {Promise<string>} */
 function readFileAsBase64(file) {

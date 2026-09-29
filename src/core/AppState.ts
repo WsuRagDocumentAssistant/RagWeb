@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { toast } from "sonner";
 import { resolveServerUrl } from "@/config/ApiService";
+import { clearAuth, getStoredUser, getToken, saveAuth } from "@/config/authStorage";
 import * as chatService from "@/features/chat/services/ChatService";
 import * as fileService from "@/features/files/services/FileService";
 import * as authService from "@/features/auth/services/AuthService";
@@ -1056,8 +1057,7 @@ export const useAppState = create<AppStore>((set, get) => ({
   logout: () => {
     const token = get().token;
     authService.logout(token ?? undefined).catch(() => {});
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("auth_user");
+    clearAuth();
     set({ user: null, token: null, authError: null });
   },
 

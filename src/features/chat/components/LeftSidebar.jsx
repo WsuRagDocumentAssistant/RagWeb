@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Plus, Trash2, MessageSquare, FileText, Globe, BookOpen, Upload, Image, ShieldCheck, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Plus, Trash2, MessageSquare, FileText, Globe, BookOpen, Upload, Image, ShieldCheck, Lightbulb, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAppState } from "@/core/AppState";
 import "../styles/LeftSidebar.css";
 
@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { path: "/image-editor", label: "이미지 편집기", icon: Image },
   { path: "/dictionary", label: "검색어 관리", icon: BookOpen },
   { path: "/admin", label: "권한 관리", icon: ShieldCheck, adminOnly: true },
+  { path: "/feature-requests", label: "기능 개선 요청", icon: Lightbulb },
 ];
 
 export default function LeftSidebar() {

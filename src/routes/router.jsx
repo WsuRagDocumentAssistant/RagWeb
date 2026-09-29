@@ -9,6 +9,7 @@ import { ExternalApiPage } from "@/features/external-api";
 import { SvgEditorPage } from "@/features/svg-editor";
 import { DictionaryPage } from "@/features/dictionary";
 import { AdminUsersPage } from "@/features/admin";
+import { FeatureRequestPage } from "@/features/feature-request";
 
 export const router = createBrowserRouter([
   {
@@ -28,6 +29,7 @@ export const router = createBrowserRouter([
           { path: "image-editor", element: <SvgEditorPage /> },
           { path: "dictionary", element: <DictionaryPage /> },
           { path: "admin", element: <AdminUsersPage /> },
+          { path: "feature-requests", element: <FeatureRequestPage /> },
         ],
       },
       { path: "*", element: <Navigate to="/chat" replace /> },

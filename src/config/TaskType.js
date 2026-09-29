@@ -34,4 +34,10 @@ export const TaskType = {
   EXTERNAL_API_LIST: "EXTERNAL_API_LIST", // 외부 API 등록 화면 목록 조회
   EXTERNAL_API_SAVE: "EXTERNAL_API_SAVE", // "추가"/"저장" 버튼: 등록 또는 수정
   EXTERNAL_API_DELETE: "EXTERNAL_API_DELETE", // 목록 행의 삭제 버튼
+
+  // FEATURE_REQUEST (기능 개선 요청 게시판)
+  FEATURE_REQUEST_LIST: "FEATURE_REQUEST_LIST", // 목록 조회 — 비밀글은 작성자·관리자에게만 내용 포함
+  FEATURE_REQUEST_SAVE: "FEATURE_REQUEST_SAVE", // 작성/수정 (작성자 본인)
+  FEATURE_REQUEST_DELETE: "FEATURE_REQUEST_DELETE", // 삭제 (작성자 본인 또는 관리자)
+  FEATURE_REQUEST_REPLY: "FEATURE_REQUEST_REPLY", // 처리 상태 변경 + 답변 (관리자 전용)
 };

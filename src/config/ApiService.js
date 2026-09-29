@@ -42,6 +42,12 @@ export const API_ENDPOINTS = {
     SAVE: TaskType.EXTERNAL_API_SAVE,
     DELETE: TaskType.EXTERNAL_API_DELETE,
   },
+  FEATURE_REQUEST: {
+    LIST: TaskType.FEATURE_REQUEST_LIST,
+    SAVE: TaskType.FEATURE_REQUEST_SAVE,
+    DELETE: TaskType.FEATURE_REQUEST_DELETE,
+    REPLY: TaskType.FEATURE_REQUEST_REPLY,
+  },
 };
 
 /** @returns {string} Gateway의 단일 통신 엔드포인트 URL */

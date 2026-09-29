@@ -89,18 +89,8 @@ export default function ChatMessages({ messages, isLoadingHistory, selectedMessa
     );
   }
 
-  if (messages.length === 0) {
-    return (
-      <div className="messages-empty">
-        <span className="messages-empty-icon">🤖</span>
-        <h2 className="messages-empty-title">AI RAG Assistant</h2>
-        <p className="messages-empty-desc">
-          파일을 업로드하고 AI에게 질문해보세요.<br />
-          <span>+ 버튼</span>을 누르거나 파일을 이 화면에 드래그해서 추가할 수 있습니다.
-        </p>
-      </div>
-    );
-  }
+  // 첫 메시지를 보내기 전에는 채팅 영역을 비워둔다(입력창이 아래에 붙어 있도록 자리만 차지).
+  if (messages.length === 0) return <div className="messages-scroll" />;
 
   return (
     <div className="messages-scroll">

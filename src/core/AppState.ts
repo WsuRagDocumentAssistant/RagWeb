@@ -164,7 +164,7 @@ interface ChatSlice {
   setSelectedDocumentIds: (ids: string[]) => void;
   mergeTurn: (turnId: string, messageIds: string[], mergerProvider: AIProvider) => Promise<void>;
   choosePreference: (turnId: string, keepMessageId: string) => void;
-  createSession: () => void;
+  startNewChat: () => void;
   selectSession: (id: string) => void;
   deleteSession: (id: string) => void;
   setChatError: (e: string | null) => void;
@@ -356,12 +356,12 @@ const persistNotifications = (notifications: AppNotification[]) => {
   localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(notifications));
 };
 
-const storedSessions = loadSessions();
-const initialSessions = storedSessions.length > 0 ? storedSessions : [makeSession()];
+// 예전 버전은 "새 채팅"을 누를 때마다 빈 대화방을 만들어 저장했다 — 메시지를 한 번도 안 보낸 빈 방은 버린다.
+const initialSessions = loadSessions().filter((s) => s.messages.length > 0 || s.backendSessionId);
 const initialActiveSessionId = (() => {
   const stored = localStorage.getItem(ACTIVE_SESSION_KEY);
   if (stored && initialSessions.some((s) => s.id === stored)) return stored;
-  return initialSessions[0]?.id ?? null;
+  return null;
 })();
 
 // 서버가 20턴마다 백그라운드로 대화를 압축하는 동안 SESSION_COMPACT_STATUS를 2~3초 간격으로 물어본다.
@@ -723,11 +723,11 @@ export const useAppState = create<AppStore>((set, get) => ({
     }
   },
 
-  createSession: () => {
-    const session = makeSession();
-    set((s) => ({ sessions: [session, ...s.sessions], activeSessionId: session.id }));
-    persistSessions(get().sessions);
-    persistActiveSessionId(session.id);
+  // 빈 대화방을 미리 만들지 않고 "새 채팅" 상태(activeSessionId: null)로만 전환한다 —
+  // 실제 대화방은 첫 메시지를 보낼 때 sendMessage가 만들어 사이드바에 추가한다.
+  startNewChat: () => {
+    set({ activeSessionId: null });
+    persistActiveSessionId(null);
   },
 
   selectSession: (id) => {

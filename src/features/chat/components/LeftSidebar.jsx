@@ -20,7 +20,7 @@ const NAV_ITEMS = [
 export default function LeftSidebar() {
   const sessions = useAppState((s) => s.sessions);
   const activeSessionId = useAppState((s) => s.activeSessionId);
-  const createSession = useAppState((s) => s.createSession);
+  const startNewChat = useAppState((s) => s.startNewChat);
   const selectSession = useAppState((s) => s.selectSession);
   const deleteSession = useAppState((s) => s.deleteSession);
   const user = useAppState((s) => s.user);
@@ -49,7 +49,7 @@ export default function LeftSidebar() {
   };
 
   const handleNewChat = () => {
-    createSession();
+    startNewChat();
     navigate("/chat");
     closeSidebar();
   };
@@ -77,7 +77,7 @@ export default function LeftSidebar() {
 
         <div className="sidebar-nav-buttons">
           <button
-            className={["sidebar-nav-btn", isChatPage && "active"].filter(Boolean).join(" ")}
+            className={["sidebar-nav-btn", isChatPage && !activeSessionId && "active"].filter(Boolean).join(" ")}
             onClick={handleNewChat}
             title="새 채팅"
           >

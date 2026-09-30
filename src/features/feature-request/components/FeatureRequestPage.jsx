@@ -105,8 +105,9 @@ function DetailModal({ request, isAdmin, isMine, onClose, onEdit, onDelete, onRe
 
   const handleReply = async () => {
     setReplying(true);
-    await onReply({ id: request.id, status, answer: answer.trim() });
+    const ok = await onReply({ id: request.id, status, answer: answer.trim() });
     setReplying(false);
+    if (ok) onClose();
   };
 
   return (
@@ -278,8 +279,11 @@ export default function FeatureRequestPage() {
       const { request: saved } = await featureRequestService.replyRequest(reply);
       setRequests((prev) => prev.map((r) => (r.id === saved.id ? saved : r)));
       toast.success("답변을 저장했습니다.");
+      return true;
     } catch (err) {
+      // 실패하면 모달을 닫지 않아 입력한 답변이 그대로 남는다.
       toast.error(err instanceof Error ? err.message : "답변을 저장하지 못했습니다.");
+      return false;
     }
   };
 

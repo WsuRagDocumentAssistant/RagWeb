@@ -114,8 +114,9 @@ export interface AuthUser {
 
 export interface DirectoryUser {
   id: number;
-  email: string;
+  email: string; // login_id — 학번/교번
   name: string;
+  department?: string | null; // 소속
   role: UserRole;
 }
 

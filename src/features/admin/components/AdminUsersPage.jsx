@@ -36,15 +36,18 @@ export default function AdminUsersPage() {
 
       <div className="admin-users-table">
         <div className="admin-users-table-head">
-          <SortableHeaderCell label="계정" sortKey="name" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+          <SortableHeaderCell label="교번" sortKey="email" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+          <SortableHeaderCell label="이름" sortKey="name" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+          <SortableHeaderCell label="소속" sortKey="department" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
           <SortableHeaderCell label="역할" sortKey="role" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="admin-users-col-role" />
         </div>
 
         {rows.map((u) => (
           <div key={u.id} className="admin-users-row">
-            <span className="admin-users-account">
-              <span className="admin-users-name">{u.name}</span>
-              <span className="admin-users-email">{u.email}</span>
+            <span className="admin-users-id" title={u.email}>{u.email}</span>
+            <span className="admin-users-name" title={u.name}>{u.name}</span>
+            <span className={`admin-users-dept ${u.department ? "" : "muted"}`} title={u.department ?? ""}>
+              {u.department || "-"}
             </span>
             <select
               className="admin-users-role-select"

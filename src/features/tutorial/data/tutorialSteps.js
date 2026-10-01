@@ -215,17 +215,17 @@ export const TUTORIAL_STEPS = [
   {
     id: "nav-admin",
     route: "/chat",
-    target: '.sidebar-nav-btn[title="권한 관리"]',
-    title: "권한 관리 (관리자)",
-    description: "계정별 역할(관리자/일반 사용자)을 관리하는 화면으로 이동합니다.",
+    target: '.sidebar-nav-btn[title="설정 관리"]',
+    title: "설정 관리 (관리자)",
+    description: "계정별 역할(관리자/일반 사용자) 관리와 학교 구성원 검색 화면으로 이동합니다.",
     adminOnly: true,
   },
   {
     id: "admin-page",
     route: "/admin",
     target: ".admin-users-page",
-    title: "권한 관리 화면",
-    description: "각 계정의 역할을 바꿔서 관리자 전용 화면 접근 권한을 부여하거나 회수할 수 있습니다.",
+    title: "설정 관리 화면",
+    description: "계정을 검색해 역할을 바꾸고, 학교 구성원을 찾아 가입 여부와 역할을 확인할 수 있습니다.",
     adminOnly: true,
   },
   {

@@ -116,7 +116,8 @@ export interface DirectoryUser {
   id: number;
   email: string; // login_id — 학번/교번
   name: string;
-  department?: string | null; // 소속
+  department?: string | null; // 소속 — 학교 DB 뷰에서 채움 (연결이 없으면 null)
+  status?: string | null; // 구분 (학생/교원/직원) — 학교 DB 뷰에서 채움
   role: UserRole;
 }
 

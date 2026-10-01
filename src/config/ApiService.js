@@ -1,9 +1,11 @@
 import { TaskType } from "./TaskType";
+import { TaskSocket } from "./TaskSocket";
 
 export const SERVER_URL = "https://rag.wsu.ac.kr";
 
-// RAG_Router(Gateway)는 단일 엔드포인트만 가진다. 실제 분기는 task_type으로 이루어진다.
-const TASK_ENDPOINT = "/api/task";
+// RAG_Router(Gateway)와는 WebSocket 연결 하나로 통신한다. 실제 분기는 task_type으로 이루어진다.
+const TASK_SOCKET_URL = `${SERVER_URL.replace(/^http/, "ws")}/api/ws`;
+const taskSocket = new TaskSocket(TASK_SOCKET_URL);
 
 // 기능별 호출부는 여기서 자신의 task_type을 조회해서 쓴다.
 export const API_ENDPOINTS = {
@@ -14,6 +16,7 @@ export const API_ENDPOINTS = {
     SSO_LOGIN: TaskType.SSO_LOGIN,
     LIST: TaskType.USER_LIST,
     SET_ROLE: TaskType.USER_SET_ROLE,
+    SCHOOL_SEARCH: TaskType.SCHOOL_USER_SEARCH,
   },
   RAG: {
     CHAT: TaskType.USER_QUERY,
@@ -50,11 +53,6 @@ export const API_ENDPOINTS = {
   },
 };
 
-/** @returns {string} Gateway의 단일 통신 엔드포인트 URL */
-export function getTaskUrl() {
-  return `${SERVER_URL}${TASK_ENDPOINT}`;
-}
-
 /**
  * FILE_DOWNLOAD/FILE_IMAGE_LIST 등이 내려주는 "/api/documents/...", "/api/images/..." 같은
  * (게이트웨이 기준) 상대 경로를 절대 URL로 만든다. 이미 http(s)/blob/data URL이면 그대로 둔다.
@@ -80,32 +78,25 @@ export function getTaskType(serverType, endpointKey) {
 }
 
 /**
- * Gateway에 { task_type, session_id, payload } 봉투로 요청하고,
- * { task_type, status, result, error_message } 응답에서 result만 반환한다.
- * status가 error/timeout이거나 HTTP 오류면 error_message로 throw한다.
+ * Gateway WebSocket으로 { task_type, session_id, payload, token } 메시지를 보내고,
+ * { id, task_type, status, result, error_message } 응답에서 result만 반환한다.
+ * status가 error/timeout이거나 연결이 끊기면 error_message로 throw한다.
+ * 토큰은 헤더 대신 메시지에 싣는다(브라우저 WebSocket은 헤더를 실을 수 없음).
  * @param {keyof typeof API_ENDPOINTS} serverType
  * @param {string} endpointKey
- * @param {{ sessionId?: string|null, payload?: Record<string, any>, token?: string }} [options]
+ * @param {{ sessionId?: string|null, payload?: Record<string, any>, token?: string, onProgress?: (percent: number) => void }} [options]
+ *   onProgress는 큰 요청(파일 업로드)의 전송 진행률
  * @returns {Promise<any>}
  */
 export async function postTask(serverType, endpointKey, options = {}) {
-  const { sessionId, payload, token } = options;
-  const task_type = getTaskType(serverType, endpointKey);
-
-  const res = await fetch(getTaskUrl(), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  const { sessionId, payload, token, onProgress } = options;
+  return taskSocket.request(
+    {
+      task_type: getTaskType(serverType, endpointKey),
+      session_id: sessionId ?? null,
+      payload: payload ?? {},
+      token: token ?? null,
     },
-    body: JSON.stringify({ task_type, session_id: sessionId ?? null, payload: payload ?? {} }),
-  });
-
-  const body = await res.json().catch(() => ({}));
-
-  if (!res.ok || body.status === "error" || body.status === "timeout") {
-    throw new Error(body.error_message ?? `요청 실패 (${res.status})`);
-  }
-
-  return body.result;
+    { onProgress },
+  );
 }

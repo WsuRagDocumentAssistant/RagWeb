@@ -13,7 +13,7 @@ const NAV_ITEMS = [
   { path: "/files", label: "문서 등록 (비정형)", icon: Upload, adminOnly: true },
   { path: "/image-editor", label: "이미지 편집기", icon: Image },
   { path: "/dictionary", label: "검색어 관리", icon: BookOpen },
-  { path: "/admin", label: "권한 관리", icon: ShieldCheck, adminOnly: true },
+  { path: "/admin", label: "설정 관리", icon: ShieldCheck, adminOnly: true },
   { path: "/feature-requests", label: "기능 개선 요청", icon: Lightbulb },
 ];
 

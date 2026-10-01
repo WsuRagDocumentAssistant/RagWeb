@@ -1,4 +1,4 @@
-import { getTaskType, getTaskUrl, postTask } from "@/config/ApiService";
+import { postTask } from "@/config/ApiService";
 
 import { getToken } from "@/config/authStorage";
 
@@ -13,51 +13,20 @@ function readFileAsBase64(file) {
 }
 
 /**
- * 업로드 진행률(onProgress)을 받아야 해서 fetch 대신 XHR로 같은 task_type 봉투를 보낸다.
+ * 파일을 base64로 실어 WebSocket 메시지 하나로 보낸다. 진행률(onProgress)은 소켓이 실제로 내보낸 양이다.
  * 색인이 끝날 때까지 기다리지 않고 접수 즉시(1초 안) 응답한다 — 결과는 jobId로 JOB_STATUS를 폴링해서 받는다.
  * @param {File} file
  * @param {(progress: number) => void} [onProgress]
  * @param {{ workCategory?: string, task?: string, department?: string, reportType?: string, productionYear?: string }} [metadata]
  * @returns {Promise<{ jobId: string, status: "processing" }>}
  */
-export function uploadFile(file, onProgress, metadata) {
-  return readFileAsBase64(file).then(
-    (content) =>
-      new Promise((resolve, reject) => {
-        const token = getToken();
-        const body = JSON.stringify({
-          task_type: getTaskType("RAG", "UPLOAD_FILE"),
-          session_id: null,
-          payload: { name: file.name, mimeType: file.type, size: file.size, content, ...metadata },
-        });
-
-        const xhr = new XMLHttpRequest();
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) onProgress?.(Math.round((e.loaded / e.total) * 100));
-        };
-        xhr.onload = () => {
-          let res;
-          try {
-            res = JSON.parse(xhr.responseText);
-          } catch {
-            reject(new Error("응답 파싱 실패"));
-            return;
-          }
-          if (xhr.status >= 200 && xhr.status < 300 && res.status !== "error" && res.status !== "timeout") {
-            resolve(res.result);
-          } else {
-            reject(new Error(res.error_message ?? `업로드 실패 (${xhr.status})`));
-          }
-        };
-        xhr.onerror = () => reject(new Error("네트워크 오류"));
-        xhr.ontimeout = () => reject(new Error("요청 시간 초과"));
-        xhr.open("POST", getTaskUrl());
-        xhr.timeout = 60000;
-        xhr.setRequestHeader("Content-Type", "application/json");
-        if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-        xhr.send(body);
-      }),
-  );
+export async function uploadFile(file, onProgress, metadata) {
+  const content = await readFileAsBase64(file);
+  return postTask("RAG", "UPLOAD_FILE", {
+    token: getToken(),
+    payload: { name: file.name, mimeType: file.type, size: file.size, content, ...metadata },
+    onProgress,
+  });
 }
 
 /**

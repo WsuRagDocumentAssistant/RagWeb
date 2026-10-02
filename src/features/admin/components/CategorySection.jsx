@@ -1,11 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, X } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useAppState } from "@/core/AppState";
 import { CATEGORY_KINDS } from "@/features/files/categories";
 
 const emptyDraft = () => ({ parent: "", value: "", pair: "" });
 
-/** 카테고리 하나(업무구분 / 수행업무 / 수행부서 / 보고서명): 제목 + "+ 추가" + 스크롤 표 */
+/**
+ * 카테고리 하나(업무구분 / 수행업무 / 수행부서 / 보고서명): 제목 + "+ 추가" + 스크롤 표.
+ * "+ 추가"를 누르면 그 자리(제목 줄 오른쪽)에 추가될 카테고리 정보 입력칸과 "취소"가 열린다. Enter 로 저장.
+ */
 function CategoryTable({ kind, label, parentLabel, pairLabel, rows, workCategories }) {
   const addDocumentCategory = useAppState((s) => s.addDocumentCategory);
   const removeDocumentCategory = useAppState((s) => s.removeDocumentCategory);
@@ -37,9 +40,54 @@ function CategoryTable({ kind, label, parentLabel, pairLabel, rows, workCategori
         <span className="admin-cat-title">
           {label} <span className="admin-cat-count">{rows.length}</span>
         </span>
-        <button type="button" className="admin-pill-btn" onClick={() => setDraft(draft ? null : emptyDraft())}>
-          {draft ? <X size={12} /> : <Plus size={12} />} {draft ? "닫기" : "추가"}
-        </button>
+        {draft ? (
+          <form
+            className="admin-cat-add"
+            onSubmit={save}
+            onKeyDown={(e) => e.key === "Escape" && setDraft(null)}
+          >
+            {parentLabel && (
+              <select
+                className="admin-pill-input"
+                value={draft.parent}
+                onChange={(e) => setDraft({ ...draft, parent: e.target.value })}
+                required
+              >
+                <option value="">{parentLabel} 선택</option>
+                {workCategories.map((w) => (
+                  <option key={w} value={w}>{w}</option>
+                ))}
+              </select>
+            )}
+            <input
+              autoFocus
+              className="admin-pill-input"
+              value={draft.value}
+              onChange={(e) => setDraft({ ...draft, value: e.target.value })}
+              placeholder={`추가될 ${label}`}
+              disabled={saving}
+              required
+            />
+            {pairLabel && (
+              <input
+                className="admin-pill-input"
+                value={draft.pair}
+                onChange={(e) => setDraft({ ...draft, pair: e.target.value })}
+                placeholder="짝 수행부서 (선택)"
+                disabled={saving}
+              />
+            )}
+            {/* Enter 로 저장한다. 버튼은 화면에 안 보이지만 폼 제출을 위해 둔다. */}
+            <button type="submit" hidden aria-hidden="true" />
+            <button type="button" className="admin-pill-btn" onClick={() => setDraft(null)}>
+              취소
+            </button>
+          </form>
+        ) : (
+          <button type="button" className="admin-pill-btn" onClick={() => setDraft(emptyDraft())}>
+            <Plus size={12} /> 추가
+          </button>
+        )}
       </div>
 
       <div className="admin-users-table admin-scroll-table admin-cat-table">
@@ -49,36 +97,6 @@ function CategoryTable({ kind, label, parentLabel, pairLabel, rows, workCategori
           {pairLabel && <span>{pairLabel}</span>}
           <span />
         </div>
-
-        {draft && (
-          <form className={`admin-users-row admin-cat-draft ${gridClass}`} onSubmit={save}>
-            {parentLabel && (
-              <select value={draft.parent} onChange={(e) => setDraft({ ...draft, parent: e.target.value })} required>
-                <option value="">업무구분 선택</option>
-                {workCategories.map((w) => (
-                  <option key={w} value={w}>{w}</option>
-                ))}
-              </select>
-            )}
-            <input
-              autoFocus
-              value={draft.value}
-              onChange={(e) => setDraft({ ...draft, value: e.target.value })}
-              placeholder={`새 ${label}`}
-              required
-            />
-            {pairLabel && (
-              <input
-                value={draft.pair}
-                onChange={(e) => setDraft({ ...draft, pair: e.target.value })}
-                placeholder="짝 수행부서 (선택)"
-              />
-            )}
-            <button type="submit" className="admin-pill-btn primary" disabled={saving}>
-              {saving ? "저장 중" : "저장"}
-            </button>
-          </form>
-        )}
 
         {rows.map((row) => (
           <div key={row.id} className={`admin-users-row ${gridClass}`}>
@@ -92,7 +110,7 @@ function CategoryTable({ kind, label, parentLabel, pairLabel, rows, workCategori
             </button>
           </div>
         ))}
-        {rows.length === 0 && !draft && <div className="admin-users-empty">등록된 {label}이(가) 없습니다.</div>}
+        {rows.length === 0 && <div className="admin-users-empty">등록된 {label}이(가) 없습니다.</div>}
       </div>
     </div>
   );

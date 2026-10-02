@@ -307,21 +307,37 @@
 .admin-users-row.admin-cat-grid.cols-3 { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr) minmax(0, 1.2fr) 72px; }
 .admin-users-row.admin-cat-grid { padding-top: 10px; padding-bottom: 10px; }
 
-.admin-cat-draft { background-color: var(--color-bg); }
-.admin-cat-draft input,
-.admin-cat-draft select {
+/* "+ 추가"를 누르면 제목 줄 오른쪽에 열리는 입력칸 (추가될 카테고리 정보 + 취소) */
+.admin-cat-head { gap: 12px; }
+.admin-cat-add {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
   min-width: 0;
-  height: 32px;
-  padding: 0 10px;
-  border-radius: 8px;
+}
+.admin-pill-input {
+  min-width: 0;
+  width: 200px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
   border: 1px solid var(--color-border);
   background-color: var(--color-surface);
   color: var(--color-text);
   font-size: 12px;
   outline: none;
 }
-.admin-cat-draft input:focus,
-.admin-cat-draft select:focus { border-color: #4f46e5; }
+select.admin-pill-input { width: 150px; cursor: pointer; }
+.admin-pill-input:focus { border-color: #4f46e5; }
+
+@media (max-width: 720px) {
+  .admin-cat-head { flex-wrap: wrap; }
+  .admin-cat-add { width: 100%; }
+  .admin-pill-input,
+  select.admin-pill-input { flex: 1 1 140px; width: auto; }
+}
 
 .admin-pill-btn {
   display: flex;

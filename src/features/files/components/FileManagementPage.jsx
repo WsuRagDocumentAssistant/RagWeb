@@ -1,22 +1,12 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { toast } from "sonner";
 import { UploadCloud, FileText, Trash2 } from "lucide-react";
 import { useAppState } from "@/core/AppState";
 import { PERMISSIONS, hasPermission } from "@/config/permissions";
-import {
-  WORK_CATEGORIES,
-  TASK_DEPARTMENT_PAIRS,
-  TASK_BASED_WORK_CATEGORIES,
-  DEPARTMENTS_BY_WORK_CATEGORY,
-  ALL_DEPARTMENTS,
-  REPORT_TYPES,
-  formatBytes,
-  ComboBoxInput,
-  SortableHeaderCell,
-  useSortableRows,
-} from "@/shared";
+import { formatBytes, ComboBoxInput, SortableHeaderCell, useSortableRows } from "@/shared";
 import { DOCUMENT_ACCEPT, DOCUMENT_REJECT_MESSAGE, documentRejectDescription, isAllowedDocument } from "../documentRules";
+import { toCategoryOptions } from "../categories";
 import "../styles/FileManagementPage.css";
 
 const genQueueId = () => `q-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -36,10 +26,23 @@ const STATUS_LABEL = {
   error: "오류",
 };
 
+// 입력 카테고리는 서버(설정 관리 > 문서 카테고리 관리)에서 받는다. 못 받았으면 기본값으로 대신한다.
+function useCategoryOptions() {
+  const rows = useAppState((s) => s.documentCategories);
+  const fetchDocumentCategories = useAppState((s) => s.fetchDocumentCategories);
+  useEffect(() => {
+    fetchDocumentCategories();
+  }, [fetchDocumentCategories]);
+  return useMemo(() => toCategoryOptions(rows), [rows]);
+}
+
 function MetadataFields({ values, onChange }) {
-  const isTaskBased = TASK_BASED_WORK_CATEGORIES.includes(values.workCategory);
-  const taskOptions = (TASK_DEPARTMENT_PAIRS[values.workCategory] ?? []).map((p) => p.task);
-  const directDepartmentOptions = DEPARTMENTS_BY_WORK_CATEGORY[values.workCategory] ?? ALL_DEPARTMENTS;
+  const {
+    workCategories, taskPairs, taskBasedWorkCategories, departmentsByWorkCategory, allDepartments, reportTypes,
+  } = useCategoryOptions();
+  const isTaskBased = taskBasedWorkCategories.includes(values.workCategory);
+  const taskOptions = (taskPairs[values.workCategory] ?? []).map((p) => p.task);
+  const directDepartmentOptions = departmentsByWorkCategory[values.workCategory] ?? allDepartments;
 
   const handleWorkCategoryChange = (v) => {
     onChange("workCategory", v);
@@ -49,8 +52,8 @@ function MetadataFields({ values, onChange }) {
 
   const handleTaskChange = (v) => {
     onChange("task", v);
-    const match = (TASK_DEPARTMENT_PAIRS[values.workCategory] ?? []).find((p) => p.task === v);
-    if (match) onChange("department", match.department);
+    const match = (taskPairs[values.workCategory] ?? []).find((p) => p.task === v);
+    if (match?.department) onChange("department", match.department);
   };
 
   return (
@@ -60,7 +63,7 @@ function MetadataFields({ values, onChange }) {
         <ComboBoxInput
           value={values.workCategory}
           onChange={handleWorkCategoryChange}
-          options={WORK_CATEGORIES}
+          options={workCategories}
           placeholder="업무구분 선택"
           allowCustom={false}
         />
@@ -96,7 +99,7 @@ function MetadataFields({ values, onChange }) {
           <ComboBoxInput
             value={values.department}
             onChange={(v) => onChange("department", v)}
-            options={ALL_DEPARTMENTS}
+            options={allDepartments}
             placeholder="수행업무를 고르면 자동으로 채워집니다"
             allowCustom={false}
           />
@@ -108,7 +111,7 @@ function MetadataFields({ values, onChange }) {
         <ComboBoxInput
           value={values.reportType}
           onChange={(v) => onChange("reportType", v)}
-          options={REPORT_TYPES}
+          options={reportTypes}
           placeholder="보고서명 선택"
           allowCustom={false}
         />

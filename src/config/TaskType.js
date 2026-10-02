@@ -38,6 +38,11 @@ export const TaskType = {
   EXTERNAL_API_SAVE: "EXTERNAL_API_SAVE", // "추가"/"저장" 버튼: 등록 또는 수정
   EXTERNAL_API_DELETE: "EXTERNAL_API_DELETE", // 목록 행의 삭제 버튼
 
+  // DOCUMENT_CATEGORY (문서 등록 입력 카테고리 — 설정 관리 > 문서 카테고리 관리)
+  DOCUMENT_CATEGORY_LIST: "DOCUMENT_CATEGORY_LIST", // 문서 등록 화면·설정 관리 화면의 카테고리 목록
+  DOCUMENT_CATEGORY_SAVE: "DOCUMENT_CATEGORY_SAVE", // "+ 추가" — payload {kind, value, parent?, pair?} (관리자 전용)
+  DOCUMENT_CATEGORY_DELETE: "DOCUMENT_CATEGORY_DELETE", // 행 삭제 — payload {id} (관리자 전용)
+
   // NOTIFICATION (상단 종 아이콘 알림 — 서버 저장)
   NOTIFICATION_LIST: "NOTIFICATION_LIST", // 내 알림 최신순 (주기적으로 다시 조회)
   NOTIFICATION_READ: "NOTIFICATION_READ", // 읽음 처리 — payload {ids?} (없으면 전부)

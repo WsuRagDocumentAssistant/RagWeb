@@ -216,3 +216,161 @@
   font-size: 12px;
   color: var(--color-muted);
 }
+
+/* ── 접고 펼치는 구역 (계정 권한 관리 / 문서 카테고리 관리) ─────────── */
+.admin-collapse { display: flex; flex-direction: column; gap: 10px; }
+.admin-collapse-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  padding: 4px 2px;
+  border: none;
+  background: none;
+  color: var(--color-text);
+  cursor: pointer;
+}
+.admin-collapse-head h2 { font-size: 15px; font-weight: 700; }
+.admin-collapse-head:hover { color: #4f46e5; }
+.admin-collapse-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-left: 26px;
+}
+
+/* ── 도구 줄: 소속 필터 · 검색어 · 동기화(동그라미) ─────────────── */
+.admin-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.admin-filter {
+  height: 34px;
+  max-width: 220px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  font-size: 12px;
+  outline: none;
+  cursor: pointer;
+}
+.admin-filter:focus { border-color: #4f46e5; }
+.admin-toolbar .admin-search input { border-radius: 999px; }
+.admin-round-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+.admin-round-btn:hover:not(:disabled) { border-color: #4f46e5; color: #4f46e5; }
+.admin-round-btn:disabled { opacity: 0.6; cursor: default; }
+
+/* ── 많아지면 표 안에서 스크롤 (머리글은 고정) ───────────────────── */
+.admin-scroll-table {
+  max-height: 480px;
+  overflow-y: auto;
+}
+.admin-scroll-table .admin-users-table-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* ── 문서 카테고리 표 ─────────────────────────────────────────── */
+.admin-cat { display: flex; flex-direction: column; gap: 6px; }
+.admin-cat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.admin-cat-title { font-size: 13px; font-weight: 600; color: var(--color-text); }
+.admin-cat-count { font-weight: 400; color: var(--color-muted); }
+.admin-cat-table { max-height: 260px; }
+
+.admin-users-table-head.admin-cat-grid,
+.admin-users-row.admin-cat-grid { grid-template-columns: minmax(0, 1fr) 72px; }
+.admin-users-table-head.admin-cat-grid.cols-2,
+.admin-users-row.admin-cat-grid.cols-2 { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr) 72px; }
+.admin-users-table-head.admin-cat-grid.cols-3,
+.admin-users-row.admin-cat-grid.cols-3 { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr) minmax(0, 1.2fr) 72px; }
+.admin-users-row.admin-cat-grid { padding-top: 10px; padding-bottom: 10px; }
+
+.admin-cat-draft { background-color: var(--color-bg); }
+.admin-cat-draft input,
+.admin-cat-draft select {
+  min-width: 0;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  font-size: 12px;
+  outline: none;
+}
+.admin-cat-draft input:focus,
+.admin-cat-draft select:focus { border-color: #4f46e5; }
+
+.admin-pill-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.admin-pill-btn:hover:not(:disabled) { border-color: #4f46e5; color: #4f46e5; }
+.admin-pill-btn.primary { border-color: #4f46e5; background-color: #4f46e5; color: #fff; }
+.admin-pill-btn:disabled { opacity: 0.6; cursor: default; }
+
+.admin-icon-btn {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+.admin-icon-btn:hover { color: #dc2626; background-color: var(--color-bg); }
+
+@media (max-width: 720px) {
+  .admin-collapse-body { padding-left: 0; }
+  .admin-users-table-head.admin-cat-grid.cols-3,
+  .admin-users-row.admin-cat-grid.cols-3 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 40px; }
+  .admin-users-table-head.admin-cat-grid.cols-3 > :nth-child(3),
+  .admin-users-row.admin-cat-grid.cols-3 > :nth-child(3) { display: none; }
+}
+.admin-cat-cell {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--color-text);
+}
+.admin-cat-cell.muted { color: var(--color-muted); }

@@ -10,6 +10,7 @@ import * as adminService from "@/features/admin/services/AdminService";
 import * as externalApiService from "@/features/external-api/services/ExternalApiService";
 import * as documentImageService from "@/features/documents/services/DocumentImageService";
 import * as notificationService from "@/layout/services/NotificationService";
+import * as categoryService from "@/features/files/categories";
 import { DUMMY_ACCOUNTS } from "@/shared";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
@@ -253,6 +254,23 @@ interface DictionarySlice {
   saveDictEntries: () => Promise<void>;
 }
 
+// 문서 등록 입력 카테고리 (서버 document_categories 행)
+export interface DocumentCategory {
+  id: string;
+  kind: "work_category" | "task" | "department" | "report_type";
+  parent: string; // 수행업무·수행부서는 업무구분, 나머지는 ""
+  value: string;
+  pair?: string | null; // 수행업무의 짝 수행부서
+}
+
+interface CategorySlice {
+  documentCategories: DocumentCategory[] | null; // null = 아직 못 받음(실패 포함) — 화면은 기본값으로 대신한다
+  categoryError: string | null;
+  fetchDocumentCategories: () => Promise<void>;
+  addDocumentCategory: (category: Omit<DocumentCategory, "id">) => Promise<boolean>;
+  removeDocumentCategory: (id: string) => Promise<void>;
+}
+
 interface NotificationSlice {
   notifications: AppNotification[];
   fetchNotifications: () => Promise<void>;
@@ -277,6 +295,7 @@ type AppStore = ChatSlice &
   DictionarySlice &
   PromptSlice &
   NotificationSlice &
+  CategorySlice &
   ExternalApiSlice;
 
 // ─── 헬퍼 ─────────────────────────────────────────────────────────────────────
@@ -1239,6 +1258,44 @@ export const useAppState = create<AppStore>((set, get) => ({
   markAllNotificationsRead: () => {
     set((s) => ({ notifications: s.notifications.map((n) => ({ ...n, read: true })) }));
     notificationService.markRead().catch(() => {});
+  },
+
+  // ── 문서 카테고리 ─────────────────────────────────────────────────────────
+  documentCategories: null,
+  categoryError: null,
+
+  fetchDocumentCategories: async () => {
+    try {
+      const data = (await categoryService.listCategories()) as { categories: DocumentCategory[] };
+      set({ documentCategories: data.categories ?? [], categoryError: null });
+    } catch (err) {
+      // 받아둔 목록이 있으면 그대로 둔다. 처음부터 못 받았으면 null 이라 화면이 기본값을 쓴다.
+      set({ categoryError: err instanceof Error ? err.message : "문서 카테고리를 불러오지 못했습니다." });
+    }
+  },
+
+  addDocumentCategory: async (category) => {
+    try {
+      const data = (await categoryService.saveCategory(category)) as { category: DocumentCategory };
+      const saved = data.category;
+      set((s) => ({
+        documentCategories: [...(s.documentCategories ?? []).filter((c) => c.id !== saved.id), saved],
+      }));
+      return true;
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "카테고리를 추가하지 못했습니다.");
+      return false;
+    }
+  },
+
+  removeDocumentCategory: async (id) => {
+    try {
+      await categoryService.deleteCategory(id);
+      // 업무구분을 지우면 서버가 그 아래 수행업무·수행부서도 지운다 — 목록을 다시 받아 맞춘다.
+      await get().fetchDocumentCategories();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "카테고리를 지우지 못했습니다.");
+    }
   },
 
   // ── 외부 API 등록 (정형) ───────────────────────────────────────────────────

@@ -38,6 +38,11 @@ export const TaskType = {
   EXTERNAL_API_SAVE: "EXTERNAL_API_SAVE", // "추가"/"저장" 버튼: 등록 또는 수정
   EXTERNAL_API_DELETE: "EXTERNAL_API_DELETE", // 목록 행의 삭제 버튼
 
+  // NOTIFICATION (상단 종 아이콘 알림 — 서버 저장)
+  NOTIFICATION_LIST: "NOTIFICATION_LIST", // 내 알림 최신순 (주기적으로 다시 조회)
+  NOTIFICATION_READ: "NOTIFICATION_READ", // 읽음 처리 — payload {ids?} (없으면 전부)
+  NOTIFICATION_CREATE: "NOTIFICATION_CREATE", // 화면 작업 결과 알림 남기기 — payload {message, type, link}
+
   // FEATURE_REQUEST (기능 개선 요청 게시판)
   FEATURE_REQUEST_LIST: "FEATURE_REQUEST_LIST", // 목록 조회 — 비밀글은 작성자·관리자에게만 내용 포함
   FEATURE_REQUEST_SAVE: "FEATURE_REQUEST_SAVE", // 작성/수정 (작성자 본인)

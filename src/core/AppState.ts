@@ -9,6 +9,7 @@ import * as dictionaryService from "@/features/dictionary/services/DictionarySer
 import * as adminService from "@/features/admin/services/AdminService";
 import * as externalApiService from "@/features/external-api/services/ExternalApiService";
 import * as documentImageService from "@/features/documents/services/DocumentImageService";
+import * as notificationService from "@/layout/services/NotificationService";
 import { DUMMY_ACCOUNTS } from "@/shared";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
@@ -254,6 +255,7 @@ interface DictionarySlice {
 
 interface NotificationSlice {
   notifications: AppNotification[];
+  fetchNotifications: () => Promise<void>;
   pushNotification: (message: string, opts?: { type?: NotificationType; link?: string }) => void;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
@@ -288,8 +290,9 @@ const PROMPT_TEXT_KEY = "system_prompt";
 const PROMPT_WEIGHT_KEY = "prompt_weight";
 const DEFAULT_PROMPT_WEIGHT = 50;
 const THEME_KEY = "app_theme";
-const NOTIFICATIONS_KEY = "app_notifications";
-const NOTIFICATIONS_LIMIT = 30;
+// 알림은 서버에 저장한다(NotificationService). 예전 버전이 브라우저에 남긴 목록은 지운다.
+localStorage.removeItem("app_notifications");
+const NOTIFICATIONS_LIMIT = 50;
 
 const initialTheme: ThemeMode = localStorage.getItem(THEME_KEY) === "dark" ? "dark" : "light";
 document.documentElement.setAttribute("data-theme", initialTheme);
@@ -353,19 +356,6 @@ const loadUserDirectory = (): DirectoryUser[] => {
 
 const persistUserDirectory = (directory: DirectoryUser[]) => {
   localStorage.setItem(USER_DIRECTORY_KEY, JSON.stringify(directory));
-};
-
-const loadNotifications = (): AppNotification[] => {
-  try {
-    const raw = localStorage.getItem(NOTIFICATIONS_KEY);
-    return raw ? (JSON.parse(raw) as AppNotification[]) : [];
-  } catch {
-    return [];
-  }
-};
-
-const persistNotifications = (notifications: AppNotification[]) => {
-  localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(notifications));
 };
 
 // 예전 버전은 "새 채팅"을 누를 때마다 빈 대화방을 만들어 저장했다 — 메시지를 한 번도 안 보낸 빈 방은 버린다.
@@ -828,7 +818,7 @@ export const useAppState = create<AppStore>((set, get) => ({
             files: s.files.map((f) => (f.id === tempId ? { ...f, id: fileId, status: fileStatus, chunks } : f)),
           }));
           toast.success(`${file.name} 업로드 완료`, { id: toastId });
-          get().pushNotification(`${file.name} 업로드가 완료되었습니다.`, { type: "success", link: "/documents" });
+          get().fetchNotifications(); // 완료 알림은 서버(file_upload_job)가 남긴다
           return;
         }
         // error 또는 unknown(서버 재시작 등으로 진행 상황을 잃은 경우) — 둘 다 실패로 안내한다.
@@ -840,6 +830,7 @@ export const useAppState = create<AppStore>((set, get) => ({
           files: s.files.map((f) => (f.id === tempId ? { ...f, status: "error", errorMessage: msg } : f)),
         }));
         toast.error(msg, { id: toastId });
+        get().fetchNotifications(); // 실패 알림도 서버가 남긴다
       }, JOB_POLL_MS);
     };
 
@@ -873,7 +864,7 @@ export const useAppState = create<AppStore>((set, get) => ({
         ),
       }));
       toast.success(`${file.name} 업로드 완료`, { id: toastId });
-      get().pushNotification(`${file.name} 업로드가 완료되었습니다.`, { type: "success", link: "/documents" });
+      get().fetchNotifications();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "업로드 실패";
       try {
@@ -884,7 +875,7 @@ export const useAppState = create<AppStore>((set, get) => ({
         set({ files, fileLoading: false, uploadProgress: 0, fileError: uploaded ? null : msg });
         if (uploaded) {
           toast.success(`${file.name} 업로드 완료`, { id: toastId });
-          get().pushNotification(`${file.name} 업로드가 완료되었습니다.`, { type: "success", link: "/documents" });
+          get().fetchNotifications();
         } else {
           toast.error(`${file.name} 업로드에 실패했습니다.`, { id: toastId });
         }
@@ -1074,6 +1065,7 @@ export const useAppState = create<AppStore>((set, get) => ({
     const token = get().token;
     authService.logout(token ?? undefined).catch(() => {});
     clearAuth();
+    set({ notifications: [] });
     set({ user: null, token: null, authError: null });
   },
 
@@ -1205,11 +1197,23 @@ export const useAppState = create<AppStore>((set, get) => ({
     set({ systemPrompt: "", promptWeight: DEFAULT_PROMPT_WEIGHT });
   },
 
-  // ── Notification ──────────────────────────────────────────────────────────
-  notifications: loadNotifications(),
+  // ── Notification (서버 저장) ────────────────────────────────────────────────
+  notifications: [],
+
+  fetchNotifications: async () => {
+    if (!get().token) return;
+    try {
+      const data = (await notificationService.listNotifications()) as { notifications: AppNotification[] };
+      set({ notifications: data.notifications ?? [] });
+    } catch {
+      // 서버 연결 실패 시 지금 보이는 목록을 그대로 둔다 — 다음 조회에서 다시 맞춘다.
+    }
+  },
 
   pushNotification: (message, opts) => {
-    const notification: AppNotification = {
+    // 서버에 남기고, 돌아온 행으로 목록 맨 위에 넣는다. 서버가 실패해도 이번 화면에서는 보이게
+    // 임시 항목으로 넣어 둔다(다음 조회 때 서버 목록으로 바뀐다).
+    const local: AppNotification = {
       id: genId("notif"),
       message,
       type: opts?.type ?? "info",
@@ -1217,27 +1221,24 @@ export const useAppState = create<AppStore>((set, get) => ({
       createdAt: Date.now(),
       read: false,
     };
-    set((s) => {
-      const notifications = [notification, ...s.notifications].slice(0, NOTIFICATIONS_LIMIT);
-      persistNotifications(notifications);
-      return { notifications };
-    });
+    const prepend = (n: AppNotification) =>
+      set((s) => ({ notifications: [n, ...s.notifications].slice(0, NOTIFICATIONS_LIMIT) }));
+    notificationService
+      .createNotification(message, opts)
+      .then((data) => prepend((data as { notification: AppNotification }).notification))
+      .catch(() => prepend(local));
   },
 
   markNotificationRead: (id) => {
-    set((s) => {
-      const notifications = s.notifications.map((n) => (n.id === id ? { ...n, read: true } : n));
-      persistNotifications(notifications);
-      return { notifications };
-    });
+    const target = get().notifications.find((n) => n.id === id);
+    if (!target || target.read) return;
+    set((s) => ({ notifications: s.notifications.map((n) => (n.id === id ? { ...n, read: true } : n)) }));
+    if (!id.startsWith("notif")) notificationService.markRead([id]).catch(() => {}); // 임시 항목은 서버에 없다
   },
 
   markAllNotificationsRead: () => {
-    set((s) => {
-      const notifications = s.notifications.map((n) => ({ ...n, read: true }));
-      persistNotifications(notifications);
-      return { notifications };
-    });
+    set((s) => ({ notifications: s.notifications.map((n) => ({ ...n, read: true })) }));
+    notificationService.markRead().catch(() => {});
   },
 
   // ── 외부 API 등록 (정형) ───────────────────────────────────────────────────

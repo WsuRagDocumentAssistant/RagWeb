@@ -11,15 +11,34 @@ const TYPE_ICON = {
   info: Info,
 };
 
+// 서버 알림을 다시 읽는 주기. 다른 사람이 남긴 알림(기능 개선 요청 답변)이나 화면을 닫은 사이
+// 끝난 문서 색인 알림도 이 주기 안에 뜬다.
+const POLL_MS = 30_000;
+
 export default function FileNotifications() {
   const navigate = useNavigate();
+  const token = useAppState((s) => s.token);
   const notifications = useAppState((s) => s.notifications);
+  const fetchNotifications = useAppState((s) => s.fetchNotifications);
   const markNotificationRead = useAppState((s) => s.markNotificationRead);
   const markAllNotificationsRead = useAppState((s) => s.markAllNotificationsRead);
   const [open, setOpen] = useState(false);
   const panelRef = useRef(null);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
+
+  // 로그인해 있는 동안 주기적으로 서버 목록을 받는다. 계정이 바뀌면(토큰) 처음부터 다시.
+  useEffect(() => {
+    if (!token) return;
+    fetchNotifications();
+    const timer = setInterval(fetchNotifications, POLL_MS);
+    return () => clearInterval(timer);
+  }, [token, fetchNotifications]);
+
+  // 패널을 열 때도 한 번 — 30초를 기다리지 않고 최신 목록을 보여준다.
+  useEffect(() => {
+    if (open) fetchNotifications();
+  }, [open, fetchNotifications]);
 
   useEffect(() => {
     if (!open) return;

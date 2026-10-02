@@ -23,7 +23,7 @@ export async function listCategories() {
   return postTask("CATEGORY", "LIST", { token: getToken() });
 }
 
-/** @param {{ kind: string, value: string, parent?: string, pair?: string }} category */
+/** @param {{ kind: string, value: string, parent?: string, pair?: string | null }} category */
 export async function saveCategory(category) {
   return postTask("CATEGORY", "SAVE", { token: getToken(), payload: category });
 }

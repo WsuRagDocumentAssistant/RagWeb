@@ -273,7 +273,9 @@ interface CategorySlice {
 
 interface NotificationSlice {
   notifications: AppNotification[];
-  fetchNotifications: () => Promise<void>;
+  notificationError: string | null; // 서버 알림을 못 받은 이유 — 알림 패널에 보여준다
+  fetchNotifications: () => Promise<boolean>; // 서버 목록을 받았으면 true
+  expectNotification: (message: string, opts?: { type?: NotificationType; link?: string }) => Promise<void>;
   pushNotification: (message: string, opts?: { type?: NotificationType; link?: string }) => void;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
@@ -837,7 +839,7 @@ export const useAppState = create<AppStore>((set, get) => ({
             files: s.files.map((f) => (f.id === tempId ? { ...f, id: fileId, status: fileStatus, chunks } : f)),
           }));
           toast.success(`${file.name} 업로드 완료`, { id: toastId });
-          get().fetchNotifications(); // 완료 알림은 서버(file_upload_job)가 남긴다
+          get().expectNotification(`${file.name} 업로드가 완료되었습니다.`, { type: "success", link: "/documents" });
           return;
         }
         // error 또는 unknown(서버 재시작 등으로 진행 상황을 잃은 경우) — 둘 다 실패로 안내한다.
@@ -849,7 +851,10 @@ export const useAppState = create<AppStore>((set, get) => ({
           files: s.files.map((f) => (f.id === tempId ? { ...f, status: "error", errorMessage: msg } : f)),
         }));
         toast.error(msg, { id: toastId });
-        get().fetchNotifications(); // 실패 알림도 서버가 남긴다
+        get().expectNotification(data.status === "error" ? `${file.name} 색인에 실패했습니다: ${msg}` : msg, {
+          type: "error",
+          link: "/documents",
+        });
       }, JOB_POLL_MS);
     };
 
@@ -883,7 +888,7 @@ export const useAppState = create<AppStore>((set, get) => ({
         ),
       }));
       toast.success(`${file.name} 업로드 완료`, { id: toastId });
-      get().fetchNotifications();
+      get().expectNotification(`${file.name} 업로드가 완료되었습니다.`, { type: "success", link: "/documents" });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "업로드 실패";
       try {
@@ -894,7 +899,7 @@ export const useAppState = create<AppStore>((set, get) => ({
         set({ files, fileLoading: false, uploadProgress: 0, fileError: uploaded ? null : msg });
         if (uploaded) {
           toast.success(`${file.name} 업로드 완료`, { id: toastId });
-          get().fetchNotifications();
+          get().expectNotification(`${file.name} 업로드가 완료되었습니다.`, { type: "success", link: "/documents" });
         } else {
           toast.error(`${file.name} 업로드에 실패했습니다.`, { id: toastId });
         }
@@ -1218,15 +1223,32 @@ export const useAppState = create<AppStore>((set, get) => ({
 
   // ── Notification (서버 저장) ────────────────────────────────────────────────
   notifications: [],
+  notificationError: null,
 
   fetchNotifications: async () => {
-    if (!get().token) return;
+    if (!get().token) return false;
     try {
       const data = (await notificationService.listNotifications()) as { notifications: AppNotification[] };
-      set({ notifications: data.notifications ?? [] });
-    } catch {
-      // 서버 연결 실패 시 지금 보이는 목록을 그대로 둔다 — 다음 조회에서 다시 맞춘다.
+      // 서버에 저장하지 못해 이 화면에만 있는 임시 알림(id "notif-…")은 서버 목록에 없으므로 지우지 않고 남긴다.
+      set((s) => ({
+        notifications: [...s.notifications.filter((n) => n.id.startsWith("notif")), ...(data.notifications ?? [])]
+          .sort((a, b) => b.createdAt - a.createdAt)
+          .slice(0, NOTIFICATIONS_LIMIT),
+        notificationError: null,
+      }));
+      return true;
+    } catch (err) {
+      // 지금 보이는 목록은 그대로 두고, 이유를 패널에 보여준다(예: 서버에 알림 테이블이 없음).
+      set({ notificationError: err instanceof Error ? err.message : "알림을 불러오지 못했습니다." });
+      return false;
     }
+  },
+
+  // 서버가 남겼어야 할 알림(문서 색인 완료·실패)을 확인한다. 서버 목록을 못 받았거나 거기에 없으면
+  // 이 화면에서 직접 남긴다 — 서버 알림이 안 되는 동안에도 알림이 사라지지 않게.
+  expectNotification: async (message, opts) => {
+    const ok = await get().fetchNotifications();
+    if (!ok || !get().notifications.some((n) => n.message === message)) get().pushNotification(message, opts);
   },
 
   pushNotification: (message, opts) => {

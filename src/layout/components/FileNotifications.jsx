@@ -20,6 +20,7 @@ export default function FileNotifications() {
   const token = useAppState((s) => s.token);
   const notifications = useAppState((s) => s.notifications);
   const fetchNotifications = useAppState((s) => s.fetchNotifications);
+  const notificationError = useAppState((s) => s.notificationError);
   const markNotificationRead = useAppState((s) => s.markNotificationRead);
   const markAllNotificationsRead = useAppState((s) => s.markAllNotificationsRead);
   const [open, setOpen] = useState(false);
@@ -72,6 +73,11 @@ export default function FileNotifications() {
               </button>
             )}
           </div>
+          {notificationError && (
+            <p className="file-notifications-error" title={notificationError}>
+              서버 알림을 불러오지 못했습니다 — {notificationError}
+            </p>
+          )}
           {notifications.length === 0 ? (
             <p className="file-notifications-empty">알림이 없습니다.</p>
           ) : (

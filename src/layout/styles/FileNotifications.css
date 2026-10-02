@@ -128,3 +128,12 @@
   background-color: #4f46e5;
   margin-top: 5px;
 }
+
+.file-notifications-error {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-danger-soft);
+  color: #dc2626;
+  font-size: 11px;
+  line-height: 1.4;
+}

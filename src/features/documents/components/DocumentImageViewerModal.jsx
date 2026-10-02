@@ -249,14 +249,17 @@ export default function DocumentImageViewerModal({ file, onClose }) {
                         onChange={(e) => update({ minorTitle: e.target.value })}
                       />
                     </label>
+                    <label>
+                      <span>이미지 부연 설명</span>
+                      <textarea
+                        className="div-viewer-textarea"
+                        rows={2}
+                        placeholder="이미지에 대한 부연 설명을 입력하세요."
+                        value={draft.note ?? ""}
+                        onChange={(e) => update({ note: e.target.value })}
+                      />
+                    </label>
                   </div>
-                  <textarea
-                    className="div-viewer-textarea"
-                    rows={2}
-                    placeholder="이미지에 대한 부연 설명을 입력하세요."
-                    value={draft.note ?? ""}
-                    onChange={(e) => update({ note: e.target.value })}
-                  />
                 </div>
 
                 <div className="div-viewer-section">

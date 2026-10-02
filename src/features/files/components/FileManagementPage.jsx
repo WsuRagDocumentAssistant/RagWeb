@@ -3,6 +3,7 @@ import { Navigate } from "react-router-dom";
 import { toast } from "sonner";
 import { UploadCloud, FileText, Trash2 } from "lucide-react";
 import { useAppState } from "@/core/AppState";
+import { PERMISSIONS, hasPermission } from "@/config/permissions";
 import {
   WORK_CATEGORIES,
   TASK_DEPARTMENT_PAIRS,
@@ -144,7 +145,8 @@ export default function FileManagementPage() {
 
   useEffect(() => { fetchFiles(); }, []);
 
-  if (user?.role !== "admin") return <Navigate to="/chat" replace />;
+  // 관리자 또는 "문서 정보 입력" 권한을 받은 계정만
+  if (!hasPermission(user, PERMISSIONS.DOCUMENT_INPUT)) return <Navigate to="/chat" replace />;
 
   const addFilesToQueue = (fileList) => {
     const files = Array.from(fileList);

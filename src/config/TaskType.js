@@ -7,7 +7,9 @@ export const TaskType = {
   SSO_LOGIN: "SSO_LOGIN",
   USER_LIST: "USER_LIST", // 권한 관리 화면의 계정 목록 조회
   USER_SET_ROLE: "USER_SET_ROLE", // 권한 관리 화면의 역할(관리자/일반사용자) 변경
-  SCHOOL_USER_SEARCH: "SCHOOL_USER_SEARCH", // 설정 관리 > 사용자 검색: 학교 DB 뷰에서 구성원 검색 (관리자 전용)
+  SCHOOL_USER_SEARCH: "SCHOOL_USER_SEARCH", // 설정 관리 > 사용자 검색: 학교 사용자 사본에서 구성원 검색 (관리자 전용)
+  SCHOOL_USER_SYNC: "SCHOOL_USER_SYNC", // 설정 관리 > 사용자 검색의 "지금 동기화": 학교 DB 뷰 -> 사본 (관리자 전용)
+  USER_SET_PERMISSION: "USER_SET_PERMISSION", // 설정 관리: 역할과 별개인 권한(문서 정보 입력 등) 주기/회수
 
   // RAG
   USER_QUERY: "USER_QUERY",

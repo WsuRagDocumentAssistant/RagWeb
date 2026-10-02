@@ -117,6 +117,7 @@ export interface AuthUser {
   email: string; // login_id
   name?: string;
   role: UserRole;
+  permissions?: string[]; // 역할과 별개로 받은 권한 (config/permissions.js) — 예전에 저장된 로그인 정보에는 없다
 }
 
 export interface DirectoryUser {
@@ -126,6 +127,7 @@ export interface DirectoryUser {
   department?: string | null; // 소속 — 학교 DB 뷰에서 채움 (연결이 없으면 null)
   status?: string | null; // 구분 (학생/교원/직원) — 학교 DB 뷰에서 채움
   role: UserRole;
+  permissions?: string[]; // 역할과 별개로 받은 권한 (config/permissions.js)
 }
 
 export interface DictionaryEntry {
@@ -215,6 +217,7 @@ interface PermissionSlice {
   userDirectory: DirectoryUser[];
   fetchUserDirectory: () => Promise<void>;
   setUserRole: (email: string, role: UserRole) => Promise<void>;
+  setUserPermission: (email: string, permission: string, enabled: boolean) => Promise<void>;
 }
 
 export type ThemeMode = "light" | "dark";
@@ -1101,6 +1104,27 @@ export const useAppState = create<AppStore>((set, get) => ({
     try {
       await adminService.setUserRole(email, role);
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : "권한 변경에 실패했습니다.");
+    }
+  },
+
+  setUserPermission: async (email, permission, enabled) => {
+    // 역할 변경과 같이 먼저 반영하고, 서버가 거절하면 되돌린다.
+    const apply = (on: boolean) =>
+      set((s) => {
+        const userDirectory = s.userDirectory.map((u) => {
+          if (u.email !== email) return u;
+          const others = (u.permissions ?? []).filter((p) => p !== permission);
+          return { ...u, permissions: on ? [...others, permission] : others };
+        });
+        persistUserDirectory(userDirectory);
+        return { userDirectory };
+      });
+    apply(enabled);
+    try {
+      await adminService.setUserPermission(email, permission, enabled);
+    } catch (err) {
+      apply(!enabled);
       toast.error(err instanceof Error ? err.message : "권한 변경에 실패했습니다.");
     }
   },

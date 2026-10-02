@@ -79,8 +79,11 @@ export default function TutorialImageViewerDemo() {
                 <label><span>대제목</span><input readOnly value={meta.majorTitle} /></label>
                 <label><span>중제목</span><input readOnly value={meta.midTitle} /></label>
                 <label><span>소제목</span><input readOnly value={meta.minorTitle} /></label>
+                <label>
+                  <span>이미지 부연 설명</span>
+                  <textarea className="div-viewer-textarea" rows={2} readOnly value={meta.note} />
+                </label>
               </div>
-              <textarea className="div-viewer-textarea" rows={2} readOnly value={meta.note} />
             </div>
 
             <div className="div-viewer-section">

@@ -143,6 +143,19 @@ export default function AccountSection() {
     }
   };
 
+  // 열 때 사본 상태를 본다. 비어 있으면 소속·구분이 전부 빈칸이라, 버튼을 기다리지 않고 바로 동기화한다 —
+  // 성공하면 소속이 채워지고, 실패하면 그 이유(동기화 꺼짐·접속 실패 등)가 표 위에 남는다.
+  useEffect(() => {
+    adminService
+      .getSchoolStatus()
+      .then((status) => {
+        setCopy(status);
+        if (!status?.count) sync();
+      })
+      .catch((err) => setNotice(err instanceof Error ? err.message : "학교 사용자 정보를 확인하지 못했습니다."));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const merged = useMemo(() => {
     const accounts = userDirectory.filter((u) => u.email !== SUPER_ADMIN_EMAIL);
     const q = keyword.toLowerCase();
@@ -217,7 +230,9 @@ export default function AccountSection() {
             ? "학교 구성원을 찾는 중..."
             : `검색 결과 ${rows.length}명 (가입하지 않은 학교 구성원은 "미가입"으로 표시)`
           : `계정 ${rows.length}개 — 검색하면 학교 구성원도 함께 찾습니다.`}
-        {copy && ` · 학교 사용자 ${copy.count}명, 마지막 동기화 ${formatSyncedAt(copy.syncedAt)}`}
+        {syncing
+          ? " · 학교 DB에서 교직원 정보를 가져오는 중..."
+          : copy && ` · 학교 교직원 ${copy.count}명, 마지막 동기화 ${formatSyncedAt(copy.syncedAt)}`}
       </p>
       {notice && <p className="admin-search-error">{notice}</p>}
 

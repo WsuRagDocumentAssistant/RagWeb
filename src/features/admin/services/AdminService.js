@@ -37,6 +37,14 @@ export async function searchSchoolUsers(keyword) {
 }
 
 /**
+ * 학교 사용자 사본 상태 (인원·마지막 동기화).
+ * @returns {Promise<{ count: number, syncedAt: string | null }>}
+ */
+export async function getSchoolStatus() {
+  return postTask("USER", "SCHOOL_STATUS", { token: getToken() });
+}
+
+/**
  * 타이머를 기다리지 않고 학교 DB 뷰를 사본으로 바로 복사한다.
  * @returns {Promise<{ count: number, syncedAt: string | null }>}
  */

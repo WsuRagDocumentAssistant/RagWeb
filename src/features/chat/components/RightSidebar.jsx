@@ -1,8 +1,11 @@
-import React from "react";
-import { FileText, PanelRightClose, PanelRightOpen } from "lucide-react";
+import React, { useState } from "react";
+import { FileText, Globe, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { SourceViewerModal, openSource, sourceKey, sourceLabel } from "@/shared/components/SourceNotes";
 import "../styles/RightSidebar.css";
 
 export default function RightSidebar({ message, collapsed, onToggleCollapsed }) {
+  const [viewingSource, setViewingSource] = useState(null);
+
   return (
     <aside className={["right-sidebar", collapsed && "collapsed"].filter(Boolean).join(" ")}>
       <div className="right-sidebar-header">
@@ -23,15 +26,30 @@ export default function RightSidebar({ message, collapsed, onToggleCollapsed }) 
           <p className="right-sidebar-empty">이 답변에는 참고한 출처가 없습니다.</p>
         ) : (
           <div className="right-sidebar-list">
-            {message.sources.map((source) => (
-              <div key={source.id} className="right-sidebar-item">
-                <FileText size={16} className="right-sidebar-item-icon" />
-                <span className="right-sidebar-item-name">{source.name}</span>
-              </div>
-            ))}
+            {message.sources.map((source) => {
+              const Icon = source.kind === "external" ? Globe : FileText;
+              return (
+                <button
+                  type="button"
+                  key={source.mark ? sourceKey(source) : source.id}
+                  className="right-sidebar-item"
+                  title={source.text || source.name}
+                  onClick={() => openSource(source, setViewingSource)}
+                >
+                  <Icon size={16} className="right-sidebar-item-icon" />
+                  <span className="right-sidebar-item-name">
+                    {source.mark && `${sourceLabel(source)} `}
+                    {source.name}
+                    {source.heading && <span className="right-sidebar-item-heading">{source.heading}</span>}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         )
       )}
+
+      {viewingSource && <SourceViewerModal source={viewingSource} onClose={() => setViewingSource(null)} />}
     </aside>
   );
 }

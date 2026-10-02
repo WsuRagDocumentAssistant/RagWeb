@@ -64,6 +64,17 @@
   border-radius: 10px;
   border: 1px solid var(--color-border);
   background-color: var(--color-bg);
+  text-align: left;
+  cursor: pointer;
+}
+.right-sidebar-item:hover { border-color: #4f46e5; }
+
+.right-sidebar-item-heading {
+  display: block;
+  font-weight: 400;
+  color: var(--color-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .right-sidebar-item-icon {

@@ -17,9 +17,16 @@ export type AIProvider = "claude" | "gpt" | "gemini" | "local";
 export type MessageRole = "user" | "assistant";
 export type EmbeddingFileStatus = "uploading" | "processing" | "ready" | "error";
 
+// 답변 출처(각주). mark 는 답변 본문 문장 끝의 [a] / [1] 표시와 같다 — 예전 대화 기록에는 없다.
 export interface MessageSource {
-  id: string;
+  id: string; // 등록 문서는 문서 id(뷰어가 원본을 연다), 외부 데이터는 링크
   name: string;
+  mark?: string; // 등록 문서 a, b, ... / 외부 데이터 1, 2, ...
+  kind?: "internal" | "external";
+  heading?: string; // 등록 문서는 단락 위치(breadcrumb), 외부 데이터는 제공처
+  text?: string; // 툴팁에 띄울 근거 문장
+  content?: string; // 뷰어에 띄울 원문 단락 (등록 문서만)
+  url?: string | null; // 외부 링크 (외부 데이터만)
 }
 
 // 사용자가 "그림을 찾아달라"고 한 질의에 대해 서버가 문서에서 찾아 돌려주는 이미지.
@@ -605,10 +612,14 @@ export const useAppState = create<AppStore>((set, get) => ({
 
     // 병합에 쓰인 원본 답변들의 출처를 id 기준으로 합쳐서, 서버가 sources를 안 줘도 최소한
     // "이 답변들이 참고했던 문서"는 그대로 보이게 한다.
+    // 같은 질의의 답변들이라 각주 표시(mark)가 같으면 같은 출처다. 같은 문서의 다른 단락은 mark 가
+    // 달라서 id 로 합치면 각주가 사라진다 — mark 가 없는 예전 기록만 id 로 합친다.
     const combineSourcesFromAnswers = (): MessageSource[] => {
-      const byId = new Map<string, MessageSource>();
-      turnAssistants.forEach((m) => (m.sources ?? []).forEach((src) => byId.set(src.id, src)));
-      return Array.from(byId.values());
+      const byKey = new Map<string, MessageSource>();
+      turnAssistants.forEach((m) =>
+        (m.sources ?? []).forEach((src) => byKey.set(src.mark ? `${src.kind}-${src.mark}` : src.id, src)),
+      );
+      return Array.from(byKey.values());
     };
 
     const mergedMsg: Message = {

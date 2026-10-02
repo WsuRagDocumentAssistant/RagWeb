@@ -1,10 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import { Check, Copy, File as FileIcon, Loader2, X } from "lucide-react";
 import { formatBytes } from "../utils/format";
+import {
+  CitationMark, SourceNotes, SourceViewerModal, citationKey, linkCitations, openSource, sourceKey,
+} from "./SourceNotes";
 import "../styles/MessageBubble.css";
 
 // AI 답변에 <u>/<mark>처럼 강조용 원본 HTML 태그가 섞여 오는 경우가 있어 렌더링해줘야 하지만,
@@ -17,7 +20,30 @@ const sanitizeSchema = {
 export default function MessageBubble({ message, isSelected, onSelect }) {
   const [copied, setCopied] = useState(false);
   const [zoomedImage, setZoomedImage] = useState(null);
+  const [viewingSource, setViewingSource] = useState(null);
   const isUser = message.role === "user";
+
+  // 본문의 [a] / [1] 표시를 각주 링크로 바꾼다. 각주 목록에는 실제로 인용된 출처만 싣고,
+  // 인용 표시가 하나도 없으면(그림 답변·예전 대화) 받은 출처를 전부 보여준다.
+  const { content, notes, byKey } = useMemo(() => {
+    const sources = message.sources ?? [];
+    const { content: linked, cited } = linkCitations(message.content ?? "", sources);
+    const keyed = new Map(sources.filter((s) => s.mark).map((s) => [sourceKey(s), s]));
+    const citedSources = sources.filter((s) => s.mark && cited.has(sourceKey(s)));
+    return { content: linked, notes: citedSources.length ? citedSources : sources, byKey: keyed };
+  }, [message.content, message.sources]);
+
+  const markdownComponents = useMemo(() => ({
+    a: ({ href, children, node, ...props }) => {
+      const source = byKey.get(citationKey(href));
+      if (source) return <CitationMark source={source} onOpen={(s) => openSource(s, setViewingSource)} />;
+      return (
+        <a href={href} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} {...props}>
+          {children}
+        </a>
+      );
+    },
+  }), [byKey]);
   const hasError = !!message.error;
   const isClickable = !isUser && !message.isStreaming && !hasError && !!onSelect;
   const canCopy = !message.isStreaming && !hasError && !!message.content;
@@ -108,10 +134,12 @@ export default function MessageBubble({ message, isSelected, onSelect }) {
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
+                  components={markdownComponents}
                 >
-                  {message.content}
+                  {content}
                 </ReactMarkdown>
               </div>
+              {!isUser && !message.isStreaming && <SourceNotes sources={notes} onOpen={setViewingSource} />}
               {message.images && message.images.length > 0 && (
                 <div className="bubble-images">
                   {message.images.map((img) => (
@@ -164,6 +192,7 @@ export default function MessageBubble({ message, isSelected, onSelect }) {
         )}
       </div>
     )}
+    {viewingSource && <SourceViewerModal source={viewingSource} onClose={() => setViewingSource(null)} />}
     </>
   );
 }

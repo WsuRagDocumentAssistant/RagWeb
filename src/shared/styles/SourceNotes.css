@@ -1,0 +1,176 @@
+/* ── 본문 위첨자 표시 ─────────────────────────────── */
+.cite-mark {
+  position: relative;
+  margin-left: 1px;
+  font-size: 10px;
+  line-height: 1;
+}
+.cite-mark > button {
+  padding: 1px 4px;
+  border: none;
+  border-radius: 4px;
+  font-size: inherit;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+.cite-internal > button,
+.source-note-mark.cite-internal { background-color: #e0e7ff; color: #4338ca; }
+.cite-external > button,
+.source-note-mark.cite-external { background-color: #dcfce7; color: #15803d; }
+[data-theme="dark"] .cite-internal > button,
+[data-theme="dark"] .source-note-mark.cite-internal { background-color: #312e81; color: #c7d2fe; }
+[data-theme="dark"] .cite-external > button,
+[data-theme="dark"] .source-note-mark.cite-external { background-color: #14532d; color: #bbf7d0; }
+
+.cite-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  width: max-content;
+  max-width: 320px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  text-align: left;
+  white-space: normal;
+}
+.cite-mark:hover .cite-tooltip,
+.cite-mark:focus-within .cite-tooltip { display: block; }
+.cite-tooltip-name { display: block; font-weight: 700; }
+.cite-tooltip-heading { font-weight: 400; color: var(--color-muted); }
+.cite-tooltip-text { display: block; margin-top: 4px; }
+
+/* ── 말풍선 아래 각주 목록 ────────────────────────── */
+.source-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--color-border);
+  list-style: none;
+  white-space: normal;
+}
+.source-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  padding: 3px 4px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--color-text);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.source-note:hover { background-color: var(--color-bg); }
+.source-note-mark {
+  flex-shrink: 0;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.source-note-icon { flex-shrink: 0; color: var(--color-muted); }
+.source-note-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.source-note-heading {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-muted);
+}
+
+/* ── 등록 문서 뷰어 ───────────────────────────────── */
+.source-viewer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background-color: rgba(0, 0, 0, 0.45);
+}
+.source-viewer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(640px, 100%);
+  max-height: 80vh;
+  padding: 18px;
+  border-radius: 14px;
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  white-space: normal;
+}
+.source-viewer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.source-viewer-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+.source-viewer-close {
+  border: none;
+  background: none;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+.source-viewer-heading { font-size: 12px; color: var(--color-muted); }
+.source-viewer-quote {
+  padding: 8px 10px;
+  border-left: 3px solid #4f46e5;
+  border-radius: 4px;
+  background-color: var(--color-accent-soft);
+  font-size: 13px;
+}
+.source-viewer-body {
+  overflow-y: auto;
+  padding: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+.source-viewer-actions { display: flex; justify-content: flex-end; }
+.source-viewer-actions button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 8px;
+  background-color: #4f46e5;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}

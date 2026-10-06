@@ -150,11 +150,67 @@ function findCited(sections, source) {
   return heading ? sections.findIndex((s) => bare(s.breadcrumb || s.heading) === heading) : -1;
 }
 
-/** 단락 본문. 표가 마크다운이라 마크다운으로 그린다. 문서가 길어 다시 그리지 않게 memo. */
-const SectionBody = memo(function SectionBody({ content }) {
+/**
+ * 강조할 원문. 검색에 걸린 조각들(quotes)이 가장 정확하고, 옛 기록(quotes 없음)은 툴팁용 조각(text,
+ * 300자로 잘림)으로 대신한다. 비교용 글자열(bare)로 돌려준다.
+ */
+function citedTexts(source) {
+  const heading = bare(source.heading);
+  const raw = source.quotes?.length ? source.quotes : [source.text];
+  return raw
+    .map((text) => {
+      const b = bare(text);
+      return heading && b.startsWith(heading) ? b.slice(heading.length) : b;
+    })
+    .filter(Boolean);
+}
+
+const MIN_BLOCK = 6; // 이보다 짧은 줄(표 머리 "구분|내용" 등)은 우연히 겹치기 쉬워 강조하지 않는다
+const STEP = 15; // 블록이 조각 경계에 걸쳐 있을 때를 위해 조각을 이 간격으로 잘라 본다
+
+/** 블록(문단·목록·표의 행) 글자가 인용 조각과 겹치는지 */
+function overlaps(block, quotes) {
+  if (block.length < MIN_BLOCK) return false;
+  return quotes.some((quote) => {
+    if (quote.includes(block) || block.includes(quote)) return true;
+    for (let i = 0; i + PROBE <= quote.length; i += STEP) {
+      if (block.includes(quote.slice(i, i + PROBE))) return true;
+    }
+    return false;
+  });
+}
+
+/** 마크다운 트리(hast) 노드의 글자 */
+const nodeText = (node) =>
+  node?.type === "text" ? node.value : (node?.children ?? []).map(nodeText).join("");
+
+const CITE_BLOCKS = ["p", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote"];
+
+/** 인용 조각과 겹치는 블록에 doc-viewer-cite 를 붙이는 렌더러들 */
+function citeComponents(quotes) {
+  return Object.fromEntries(
+    CITE_BLOCKS.map((Tag) => [
+      Tag,
+      // eslint-disable-next-line no-unused-vars
+      ({ node, className, ...props }) => {
+        const hit = overlaps(bare(nodeText(node)), quotes);
+        return <Tag className={[className, hit && "doc-viewer-cite"].filter(Boolean).join(" ") || undefined} {...props} />;
+      },
+    ]),
+  );
+}
+
+/**
+ * 단락 본문. 표가 마크다운이라 마크다운으로 그린다. 문서가 길어 다시 그리지 않게 memo.
+ * quotes 를 주면(인용된 단락) 그 조각과 겹치는 문단·표의 행만 강조한다.
+ */
+const SectionBody = memo(function SectionBody({ content, quotes }) {
+  const components = useMemo(() => (quotes?.length ? citeComponents(quotes) : undefined), [quotes]);
   return (
     <div className="markdown-body doc-viewer-content">
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+        {content}
+      </ReactMarkdown>
     </div>
   );
 });
@@ -189,9 +245,16 @@ export function SourceViewerModal({ source, onClose }) {
 
   const sections = doc?.sections ?? [];
   const cited = useMemo(() => findCited(sections, source), [sections, source]);
+  const quotes = useMemo(() => citedTexts(source), [source]);
+  // 인용된 단락 안에서 강조된 줄이 하나도 없으면 단락 전체를 강조한다(조각이 표 경계 등에서 안 맞을 때)
+  const [blockHit, setBlockHit] = useState(true);
 
   useEffect(() => {
-    citedRef.current?.scrollIntoView({ block: "center" });
+    const section = citedRef.current;
+    if (!section) return;
+    const first = section.querySelector(".doc-viewer-cite");
+    setBlockHit(!!first);
+    (first ?? section).scrollIntoView({ block: "center" });
   }, [cited, doc]);
 
   const download = () => {
@@ -249,12 +312,12 @@ export function SourceViewerModal({ source, onClose }) {
                 <section
                   key={i}
                   ref={i === cited ? citedRef : undefined}
-                  className={`doc-viewer-section${i === cited ? " is-cited" : ""}`}
+                  className={`doc-viewer-section${i === cited ? (blockHit ? " is-cited" : " is-cited is-cited-all") : ""}`}
                 >
                   {(section.breadcrumb || section.heading) && (
                     <h4 className="doc-viewer-heading">{section.breadcrumb || section.heading}</h4>
                   )}
-                  <SectionBody content={section.content} />
+                  <SectionBody content={section.content} quotes={i === cited ? quotes : undefined} />
                 </section>
               ))}
             </div>

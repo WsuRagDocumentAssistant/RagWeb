@@ -233,10 +233,16 @@
   border-left: 3px solid transparent;
   border-radius: 6px;
 }
-.doc-viewer-section.is-cited {
-  border-left-color: #4f46e5;
-  background-color: var(--color-accent-soft);
+.doc-viewer-section.is-cited { border-left-color: #4f46e5; }
+/* 인용 조각과 겹치는 줄을 못 찾았을 때만 단락 전체를 칠한다 */
+.doc-viewer-section.is-cited-all { background-color: var(--color-accent-soft); }
+/* 인용된 문단·목록·표의 행 */
+.doc-viewer-cite {
+  border-radius: 4px;
+  background-color: rgba(250, 204, 21, 0.35);
+  box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.35);
 }
+tr.doc-viewer-cite > td { background-color: rgba(250, 204, 21, 0.35); }
 .doc-viewer-heading {
   margin-bottom: 6px;
   font-size: 12px;

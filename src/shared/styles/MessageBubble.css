@@ -320,3 +320,14 @@
 }
 .bubble-user .markdown-body th { background-color: rgba(255, 255, 255, 0.12); }
 .bubble-user .markdown-body hr { border-top-color: rgba(255, 255, 255, 0.35); }
+
+/* 답변을 기다리는 동안의 진행 단계 (서버 스트리밍 stage) */
+.bubble-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.bubble-progress-text {
+  font-size: 12px;
+  color: var(--color-muted);
+}

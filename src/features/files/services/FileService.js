@@ -62,3 +62,14 @@ export async function deleteFile(fileId) {
 export async function downloadFile(fileId) {
   return postTask("RAG", "DOWNLOAD_FILE", { token: getToken(), payload: { fileId } });
 }
+
+/**
+ * 문서 뷰어용 본문. 색인할 때와 같은 단락으로 나눈 원본 문서 전체를 순서대로 받는다.
+ * 원본이 없거나 뷰어로 열 수 없는 형식이면 sections가 비고 reason에 이유가 온다.
+ * @param {string} fileId
+ * @returns {Promise<{ id: string, name: string, url: string | null, reason: string | null,
+ *   sections: { heading: string, breadcrumb: string, content: string }[] }>}
+ */
+export async function getFileContent(fileId) {
+  return postTask("RAG", "FILE_CONTENT", { token: getToken(), payload: { fileId } });
+}

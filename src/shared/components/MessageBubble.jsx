@@ -102,7 +102,10 @@ export default function MessageBubble({ message, isSelected, onSelect }) {
           onClick={isClickable ? () => onSelect(message.id) : undefined}
         >
           {message.isStreaming && message.content === "" ? (
-            <Loader2 size={16} className="animate-spin text-[#9b9bff]" />
+            <span className="bubble-progress">
+              <Loader2 size={16} className="animate-spin text-[#9b9bff]" />
+              {message.progress && <span className="bubble-progress-text">{message.progress}</span>}
+            </span>
           ) : hasError ? (
             <span style={{ color: "#f87171" }}>{message.error}</span>
           ) : (

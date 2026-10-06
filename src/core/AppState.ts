@@ -58,6 +58,7 @@ export interface Message {
   content: string;
   createdAt: number;
   isStreaming?: boolean;
+  progress?: string; // 답변을 기다리는 동안 서버가 알려주는 진행 단계 (예: "관련 문서를 찾는 중")
   error?: string;
   sources?: MessageSource[];
   images?: MessageImage[]; // 그림 검색 질의일 때만 채워짐 (최대 2장)
@@ -68,6 +69,12 @@ export interface Message {
   attachmentUrl?: string; // 채팅에 첨부한 이미지 미리보기 (data URL) — 문서 등록/임베딩과는 무관
   attachedFile?: AttachedFile; // 채팅에 첨부한 이미지 아닌 파일 — 최대 1개
 }
+
+// 질의 중 서버가 WebSocket으로 보내는 중간 메시지 (RagSystem streaming.py)
+type ChatStreamEvent =
+  | { type: "stage"; stage: string; message: string }
+  | { type: "sources"; sources: MessageSource[] }
+  | { type: "delta"; provider: string; text: string };
 
 export interface ChatSession {
   id: string;
@@ -517,6 +524,31 @@ export const useAppState = create<AppStore>((set, get) => ({
     }));
     persistSessions(get().sessions);
 
+    // 답변이 끝나기 전에 서버가 보내는 중간 메시지를 말풍선에 바로 반영한다. 진행 단계는 모든 말풍선에,
+    // 답변 조각은 그 모델의 말풍선에만 이어 붙인다. 최종 응답이 오면 아래에서 완성된 답으로 덮어쓴다 —
+    // 조각을 몇 개 놓쳤어도 최종 답은 온전하다.
+    const onStream = (event: ChatStreamEvent) => {
+      set((s) => ({
+        sessions: s.sessions.map((sess) =>
+          sess.id !== sessionId
+            ? sess
+            : {
+                ...sess,
+                messages: sess.messages.map((m) => {
+                  const asstMsg = asstMsgs.find((a) => a.id === m.id);
+                  if (!asstMsg || !m.isStreaming) return m;
+                  if (event.type === "stage") return { ...m, progress: event.message };
+                  if (event.type === "sources") return { ...m, sources: event.sources };
+                  if (event.type === "delta" && event.provider === asstMsg.provider) {
+                    return { ...m, content: m.content + event.text };
+                  }
+                  return m;
+                }),
+              },
+        ),
+      }));
+    };
+
     // 모델을 여러 개 비교하는 경우에도 provider를 배열로 실어 요청 한 번만 보낸다 — 서버가 모델별로
     // 나눠 호출하고 그 결과를 answers 배열로 묶어 돌려준다.
     try {
@@ -528,6 +560,7 @@ export const useAppState = create<AppStore>((set, get) => ({
         fileIds: fileIds.length > 0 ? fileIds : undefined,
         image: attachmentUrl,
         file: attachedFile && { name: attachedFile.name, mimeType: attachedFile.mimeType, content: attachedFile.content },
+        onStream,
       });
       const answers = data.answers as { provider: string | null; content: string; sources?: MessageSource[] }[] | undefined;
       const rawImages = data.images as MessageImage[] | undefined;

@@ -2,6 +2,8 @@
 //
 // 메시지 하나가 요청 하나다. 요청마다 id를 붙여 보내고, 서버는 끝나는 순서대로 같은 id를 붙여
 // 답한다 — 오래 걸리는 질의가 뒤에 보낸 목록 조회를 막지 않는다.
+// 작업이 도는 동안 서버는 같은 id로 중간 메시지(status "stream": 생성 중인 답변 조각, 진행 단계)를
+// 여러 번 보내고, 마지막에 최종 응답(success/error/timeout)을 보낸다.
 // 연결은 첫 요청 때 열고, 끊기면 그때 기다리던 요청만 실패시킨 뒤 다음 요청에서 다시 연다.
 
 // 서버의 질의 타임아웃(600초)보다 조금 길게 — 서버가 timeout으로 먼저 답하는 게 정상 경로다.
@@ -16,7 +18,7 @@ export class TaskSocket {
     this.ws = null;
     /** @type {Promise<WebSocket> | null} */
     this.opening = null;
-    /** @type {Map<string, { resolve: (v: any) => void, reject: (e: Error) => void, timer: number }>} */
+    /** @type {Map<string, { resolve: (v: any) => void, reject: (e: Error) => void, timer: number, onStream?: (event: any) => void }>} */
     this.pending = new Map();
     this.seq = 0;
   }
@@ -50,17 +52,18 @@ export class TaskSocket {
 
   /**
    * @param {{ task_type: string, session_id: string | null, payload: Record<string, any>, token: string | null }} message
-   * @param {{ onProgress?: (percent: number) => void }} [options] 큰 메시지(파일 업로드)의 전송 진행률
+   * @param {{ onProgress?: (percent: number) => void, onStream?: (event: Record<string, any>) => void }} [options]
+   *   onProgress: 큰 메시지(파일 업로드)의 전송 진행률 / onStream: 서버가 보내는 중간 메시지(스트리밍)
    * @returns {Promise<any>} 응답의 result
    */
-  async request(message, { onProgress } = {}) {
+  async request(message, { onProgress, onStream } = {}) {
     const ws = await this.open();
     const id = String(++this.seq);
     const text = JSON.stringify({ id, ...message });
 
     return new Promise((resolve, reject) => {
       const timer = window.setTimeout(() => this.settle(id, new Error("요청 시간 초과")), REQUEST_TIMEOUT_MS);
-      this.pending.set(id, { resolve, reject, timer });
+      this.pending.set(id, { resolve, reject, timer, onStream });
 
       const queuedBefore = ws.bufferedAmount;
       ws.send(text);
@@ -83,6 +86,11 @@ export class TaskSocket {
     try {
       msg = JSON.parse(data);
     } catch {
+      return;
+    }
+    // 중간 메시지. 끝난 요청(최종 응답 뒤에 늦게 온 조각)이면 버린다.
+    if (msg.status === "stream") {
+      this.pending.get(msg.id)?.onStream?.(msg.event);
       return;
     }
     // 형식 오류 응답은 id가 null이라 짝이 없다 — 원래 요청은 타임아웃으로 정리된다.

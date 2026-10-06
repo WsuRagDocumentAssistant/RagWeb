@@ -26,7 +26,9 @@ function toImagePayload(dataUrl) {
  * turn은 이 세션의 누적 턴 정보다 — 비교 질의(provider 배열)처럼 아직 대화에 저장되지 않은 응답은
  * turn: null이고, 병합(mergeResults)이나 선택(saveAnswer)에서 실제 턴 번호가 온다.
  * turn.compacting이 true면 서버가 이 턴(20의 배수)에서 대화 압축을 막 시작한 것 — SESSION_COMPACT_STATUS로 폴링해야 한다.
- * @param {{ message: string, provider: string | string[], sessionId?: string, fileIds?: string[], image?: string, file?: { name: string, mimeType: string, content: string } }} payload
+ * @param {{ message: string, provider: string | string[], sessionId?: string, fileIds?: string[], image?: string, file?: { name: string, mimeType: string, content: string }, onStream?: (event: any) => void }} payload
+ *   onStream: 답변이 만들어지는 동안 오는 중간 메시지 — { type: "stage", stage, message } /
+ *   { type: "sources", sources } / { type: "delta", provider, text }
  * @returns {Promise<{
  *   reply: string, sessionId: string, sources?: { id: string, name: string }[],
  *   answers?: { provider: string | null, content: string, sources?: { id: string, name: string }[] }[],
@@ -34,11 +36,12 @@ function toImagePayload(dataUrl) {
  *   turn?: { count: number, compacting: boolean } | null,
  * }>}
  */
-export async function sendMessage({ message, provider, sessionId, fileIds, image, file }) {
+export async function sendMessage({ message, provider, sessionId, fileIds, image, file, onStream }) {
   return postTask("RAG", "CHAT", {
     sessionId,
     token: getToken(),
     payload: { query: message, provider, fileIds, image: toImagePayload(image), file },
+    onStream,
   });
 }
 

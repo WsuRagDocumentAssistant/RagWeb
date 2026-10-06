@@ -37,6 +37,7 @@ export const API_ENDPOINTS = {
     SAVE_FILE_IMAGE: TaskType.FILE_IMAGE_SAVE,
     UPLOAD_FILE_IMAGE: TaskType.FILE_IMAGE_UPLOAD,
     DOWNLOAD_FILE: TaskType.FILE_DOWNLOAD,
+    FILE_CONTENT: TaskType.FILE_CONTENT,
     VECTORIZE_IMAGE: TaskType.IMAGE_VECTORIZE,
   },
   DICTIONARY: {
@@ -97,12 +98,13 @@ export function getTaskType(serverType, endpointKey) {
  * 토큰은 헤더 대신 메시지에 싣는다(브라우저 WebSocket은 헤더를 실을 수 없음).
  * @param {keyof typeof API_ENDPOINTS} serverType
  * @param {string} endpointKey
- * @param {{ sessionId?: string|null, payload?: Record<string, any>, token?: string, onProgress?: (percent: number) => void }} [options]
- *   onProgress는 큰 요청(파일 업로드)의 전송 진행률
+ * @param {{ sessionId?: string|null, payload?: Record<string, any>, token?: string, onProgress?: (percent: number) => void, onStream?: (event: Record<string, any>) => void }} [options]
+ *   onProgress는 큰 요청(파일 업로드)의 전송 진행률, onStream은 작업 중 서버가 보내는 중간 메시지
+ *   (질의 답변 조각 { type: "delta", provider, text }, 진행 단계 { type: "stage", stage, message } 등)
  * @returns {Promise<any>}
  */
 export async function postTask(serverType, endpointKey, options = {}) {
-  const { sessionId, payload, token, onProgress } = options;
+  const { sessionId, payload, token, onProgress, onStream } = options;
   return taskSocket.request(
     {
       task_type: getTaskType(serverType, endpointKey),
@@ -110,6 +112,6 @@ export async function postTask(serverType, endpointKey, options = {}) {
       payload: payload ?? {},
       token: token ?? null,
     },
-    { onProgress },
+    { onProgress, onStream },
   );
 }

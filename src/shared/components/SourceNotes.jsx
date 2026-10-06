@@ -1,6 +1,5 @@
 import React, { memo, useEffect, useMemo, useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import Markdown from "./Markdown";
 import { Download, ExternalLink, FileText, Globe, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { resolveServerUrl } from "@/config/ApiService";
@@ -113,7 +112,8 @@ export function SourceNotes({ sources, onOpen }) {
 
 // 비교용 글자열: 공백과 마크다운 기호(표의 |, 구분선 -, 강조 * 등)를 모두 뺀다.
 // 단락 본문은 표가 마크다운으로 들어 있고, 인용 조각은 공백을 줄여 잘라 온 것이라 그대로는 안 맞는다.
-const bare = (text) => (text ?? "").replace(/…$/, "").replace(/[\s|*#>`_~\-–—:]+/g, "");
+// HTML 태그(<u> 등)도 뺀다 — 화면에 그려진 줄의 글자에는 태그가 없다.
+const bare = (text) => (text ?? "").replace(/…$/, "").replace(/<[^>]*>/g, "").replace(/[\s|*#>`_~\-–—:]+/g, "");
 
 const PROBE = 20; // 한 번에 찾아볼 글자 수
 /**
@@ -208,12 +208,23 @@ const SectionBody = memo(function SectionBody({ content, quotes }) {
   const components = useMemo(() => (quotes?.length ? citeComponents(quotes) : undefined), [quotes]);
   return (
     <div className="markdown-body doc-viewer-content">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
-        {content}
-      </ReactMarkdown>
+      <Markdown components={components}>{content}</Markdown>
     </div>
   );
 });
+
+/**
+ * 원본을 못 열 때(또는 불러오는 동안) 보여줄 인용 부분. 줄바꿈이 살아 있는 검색 조각(quotes)이 있으면
+ * 그것을, 옛 기록이면 서버가 준 단락 요약(content/text)을 문서 본문과 같은 마크다운으로 그린다.
+ */
+function CitedText({ source }) {
+  const text = source.quotes?.length ? source.quotes.join("\n\n") : source.content || source.text;
+  return (
+    <div className="source-viewer-body markdown-body doc-viewer-content">
+      {text ? <Markdown>{text}</Markdown> : "표시할 본문이 없습니다."}
+    </div>
+  );
+}
 
 /**
  * 등록 문서 출처 뷰어. 원본 문서 전체를 색인할 때와 같은 단락으로 화면 안에 보여주고,
@@ -267,7 +278,7 @@ export function SourceViewerModal({ source, onClose }) {
     <>
       {note && <p className="doc-viewer-note">{note}</p>}
       {source.heading && <p className="source-viewer-heading">{source.heading}</p>}
-      <div className="source-viewer-body">{source.content || source.text || "표시할 본문이 없습니다."}</div>
+      <CitedText source={source} />
     </>
   );
 
@@ -300,7 +311,7 @@ export function SourceViewerModal({ source, onClose }) {
               <Loader2 size={16} className="animate-spin" /> 문서 전체를 불러오는 중 — 인용 단락을 먼저 보여드립니다
             </p>
             {source.heading && <p className="source-viewer-heading">{source.heading}</p>}
-            <div className="source-viewer-body">{source.content || source.text || ""}</div>
+            <CitedText source={source} />
           </>
         ) : sections.length === 0 ? (
           fallback(doc.reason)

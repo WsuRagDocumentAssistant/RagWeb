@@ -1,21 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeRaw from "rehype-raw";
-import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
+import Markdown from "./Markdown";
 import { Check, Copy, File as FileIcon, Loader2, X } from "lucide-react";
 import { formatBytes } from "../utils/format";
 import {
   CitationMark, SourceNotes, SourceViewerModal, citationKey, linkCitations, openSource, sourceKey,
 } from "./SourceNotes";
 import "../styles/MessageBubble.css";
-
-// AI 답변에 <u>/<mark>처럼 강조용 원본 HTML 태그가 섞여 오는 경우가 있어 렌더링해줘야 하지만,
-// 외부 검색 결과를 인용하는 응답이라 XSS 방지를 위해 허용 태그만 화이트리스트로 통과시킨다.
-const sanitizeSchema = {
-  ...defaultSchema,
-  tagNames: [...(defaultSchema.tagNames ?? []), "u", "mark"],
-};
 
 export default function MessageBubble({ message, isSelected, onSelect }) {
   const [copied, setCopied] = useState(false);
@@ -134,13 +124,7 @@ export default function MessageBubble({ message, isSelected, onSelect }) {
                 </button>
               )}
               <div className="markdown-body">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
-                  components={markdownComponents}
-                >
-                  {content}
-                </ReactMarkdown>
+                <Markdown components={markdownComponents}>{content}</Markdown>
               </div>
               {!isUser && !message.isStreaming && <SourceNotes sources={notes} onOpen={setViewingSource} />}
               {message.images && message.images.length > 0 && (

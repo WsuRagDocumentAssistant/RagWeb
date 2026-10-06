@@ -255,3 +255,4 @@ tr.doc-viewer-cite > td { background-color: rgba(250, 204, 21, 0.35); }
   word-break: break-word;
 }
 .doc-viewer-content table { font-size: 12px; }
+.source-viewer-body.markdown-body { white-space: normal; }

@@ -209,9 +209,7 @@
 .doc-viewer-download:hover { background-color: var(--color-bg); }
 .doc-viewer-loading {
   display: flex;
-  flex: 1;
   align-items: center;
-  justify-content: center;
   gap: 8px;
   font-size: 13px;
   color: var(--color-muted);
@@ -248,12 +246,6 @@
 .doc-viewer-content {
   font-size: 13px;
   line-height: 1.75;
-  white-space: pre-wrap;
   word-break: break-word;
 }
-.doc-viewer-mark {
-  padding: 0 1px;
-  border-radius: 3px;
-  background-color: rgba(250, 204, 21, 0.45);
-  color: inherit;
-}
+.doc-viewer-content table { font-size: 12px; }

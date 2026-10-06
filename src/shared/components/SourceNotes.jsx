@@ -1,4 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { memo, useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Download, ExternalLink, FileText, Globe, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { resolveServerUrl } from "@/config/ApiService";
@@ -109,42 +111,53 @@ export function SourceNotes({ sources, onOpen }) {
   );
 }
 
-const squash = (text) => (text ?? "").replace(/\s+/g, " ").trim();
+// 비교용 글자열: 공백과 마크다운 기호(표의 |, 구분선 -, 강조 * 등)를 모두 뺀다.
+// 단락 본문은 표가 마크다운으로 들어 있고, 인용 조각은 공백을 줄여 잘라 온 것이라 그대로는 안 맞는다.
+const bare = (text) => (text ?? "").replace(/…$/, "").replace(/[\s|*#>`_~\-–—:]+/g, "");
 
-// 인용 조각(source.text)에서 찾을 때 쓸 앞부분. 서버가 길면 "…"로 잘라 보낸다.
-const quoteHead = (source) => squash(source.text || source.content).replace(/…$/, "").slice(0, 60);
+const PROBE = 20; // 한 번에 찾아볼 글자 수
+/**
+ * 인용 조각에서 찾아볼 조각들. 서버의 인용 조각(text)은 검색용이라 앞에 제목 경로가 붙어 있다
+ * ("3 장 > 3.1 ...\n본문") — 그 부분을 떼고 앞·가운데·끝에서 하나씩 뽑는다. 조각 하나가 표 경계에
+ * 걸려 안 맞아도 다른 것이 맞는다.
+ */
+function probes(source) {
+  const heading = bare(source.heading);
+  return [source.text, source.content].flatMap((raw) => {
+    let text = bare(raw);
+    if (heading && text.startsWith(heading)) text = text.slice(heading.length);
+    if (text.length <= PROBE) return text ? [text] : [];
+    const mid = Math.floor((text.length - PROBE) / 2);
+    return [text.slice(0, PROBE), text.slice(mid, mid + PROBE), text.slice(-PROBE)];
+  });
+}
 
 /**
- * 문서 단락들 중 인용된 단락의 위치. 인용 조각이 들어 있는 단락이 먼저, 없으면 제목 경로가 같은 단락.
+ * 문서 단락들 중 인용된 단락의 위치. 인용 조각이 가장 많이 들어 있는 단락, 없으면 제목 경로가 같은 단락.
  * @returns {number} 못 찾으면 -1
  */
 function findCited(sections, source) {
-  const head = quoteHead(source);
-  if (head) {
-    const byText = sections.findIndex((s) => squash(s.content).includes(head));
-    if (byText >= 0) return byText;
-  }
-  const heading = squash(source.heading);
-  return heading ? sections.findIndex((s) => squash(s.breadcrumb || s.heading) === heading) : -1;
+  const keys = probes(source);
+  let best = -1;
+  let bestHits = 0;
+  sections.forEach((section, i) => {
+    const body = bare(section.content);
+    const hits = keys.filter((key) => body.includes(key)).length;
+    if (hits > bestHits) [best, bestHits] = [i, hits];
+  });
+  if (best >= 0) return best;
+  const heading = bare(source.heading);
+  return heading ? sections.findIndex((s) => bare(s.breadcrumb || s.heading) === heading) : -1;
 }
 
-/** 단락 본문에서 인용 조각을 <mark>로 감싼다. 공백 차이는 무시하고 찾는다. */
-function Highlighted({ content, head }) {
-  const match = useMemo(() => {
-    if (!head) return null;
-    const pattern = head.split(" ").map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s+");
-    return new RegExp(pattern).exec(content);
-  }, [content, head]);
-  if (!match) return content;
-  const end = match.index + match[0].length;
+/** 단락 본문. 표가 마크다운이라 마크다운으로 그린다. 문서가 길어 다시 그리지 않게 memo. */
+const SectionBody = memo(function SectionBody({ content }) {
   return (
-    <>
-      {content.slice(0, match.index)}
-      <mark className="doc-viewer-mark">{match[0]}</mark>
-      {content.slice(end)}
-    </>
+    <div className="markdown-body doc-viewer-content">
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+    </div>
   );
-}
+});
 
 /**
  * 등록 문서 출처 뷰어. 원본 문서 전체를 색인할 때와 같은 단락으로 화면 안에 보여주고,
@@ -219,9 +232,13 @@ export function SourceViewerModal({ source, onClose }) {
         {error ? (
           fallback(`문서를 불러오지 못했습니다 — ${error}`)
         ) : !doc ? (
-          <p className="doc-viewer-loading">
-            <Loader2 size={16} className="animate-spin" /> 문서를 불러오는 중
-          </p>
+          <>
+            <p className="doc-viewer-loading">
+              <Loader2 size={16} className="animate-spin" /> 문서 전체를 불러오는 중 — 인용 단락을 먼저 보여드립니다
+            </p>
+            {source.heading && <p className="source-viewer-heading">{source.heading}</p>}
+            <div className="source-viewer-body">{source.content || source.text || ""}</div>
+          </>
         ) : sections.length === 0 ? (
           fallback(doc.reason)
         ) : (
@@ -237,9 +254,7 @@ export function SourceViewerModal({ source, onClose }) {
                   {(section.breadcrumb || section.heading) && (
                     <h4 className="doc-viewer-heading">{section.breadcrumb || section.heading}</h4>
                   )}
-                  <div className="doc-viewer-content">
-                    {i === cited ? <Highlighted content={section.content} head={quoteHead(source)} /> : section.content}
-                  </div>
+                  <SectionBody content={section.content} />
                 </section>
               ))}
             </div>

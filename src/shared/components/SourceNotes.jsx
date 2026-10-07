@@ -200,6 +200,44 @@ function citeComponents(quotes) {
   );
 }
 
+const isTableLine = (line) => line.trimStart().startsWith("|");
+const isDelimiter = (line) => /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/.test(line);
+// 칸 수. 이스케이프된 \| 는 칸 경계가 아니다.
+const cellCount = (line) => line.trim().replace(/^\|/, "").replace(/(?<!\\)\|$/, "").split(/(?<!\\)\|/).length;
+
+/**
+ * 문서 본문을 마크다운으로 그리기 전에 표를 바로잡는다.
+ *
+ * 문서 본문은 블록(문단·표)을 줄바꿈 하나로 이어 붙인 것이라(색인과 같은 내용) 마크다운으로 읽으면 두 가지가 깨진다.
+ *  - 표 바로 뒤의 문장·표가 앞 표의 행으로 빨려 들어간다 → 표 앞뒤에 빈 줄을 넣는다
+ *  - 머리 행과 구분 행(|---|)의 칸 수가 다르면 표로 인식되지 않고, 줄바꿈이 공백으로 바뀐 한 문단이 된다
+ *    → 구분 행을 머리 행 칸 수에 맞춰 다시 쓴다. 구분 행이 없으면 첫 행 뒤에 넣는다
+ * 색인 내용은 그대로 두고 화면에서만 고친다.
+ */
+export function normalizeTables(markdown) {
+  const out = [];
+  let table = [];
+  const flush = () => {
+    if (!table.length) return;
+    const [head, second, ...rest] = table;
+    const delimiter = `|${" --- |".repeat(cellCount(head))}`;
+    // 머리 행이 여럿인 표는 구분 행이 중간에도 있다(파서가 머리 행마다 넣는다). 하나만 남긴다.
+    const body = (second === undefined ? [] : [second, ...rest]).filter((line) => !isDelimiter(line));
+    if (out.length && out[out.length - 1] !== "") out.push("");
+    out.push(head, delimiter, ...body, "");
+    table = [];
+  };
+  for (const line of (markdown ?? "").split("\n")) {
+    if (isTableLine(line)) table.push(line);
+    else {
+      flush();
+      out.push(line);
+    }
+  }
+  flush();
+  return out.join("\n");
+}
+
 /**
  * 단락 본문. 표가 마크다운이라 마크다운으로 그린다. 문서가 길어 다시 그리지 않게 memo.
  * quotes 를 주면(인용된 단락) 그 조각과 겹치는 문단·표의 행만 강조한다.
@@ -208,7 +246,7 @@ const SectionBody = memo(function SectionBody({ content, quotes }) {
   const components = useMemo(() => (quotes?.length ? citeComponents(quotes) : undefined), [quotes]);
   return (
     <div className="markdown-body doc-viewer-content">
-      <Markdown components={components}>{content}</Markdown>
+      <Markdown components={components}>{normalizeTables(content)}</Markdown>
     </div>
   );
 });
@@ -221,7 +259,7 @@ function CitedText({ source }) {
   const text = source.quotes?.length ? source.quotes.join("\n\n") : source.content || source.text;
   return (
     <div className="source-viewer-body markdown-body doc-viewer-content">
-      {text ? <Markdown>{text}</Markdown> : "표시할 본문이 없습니다."}
+      {text ? <Markdown>{normalizeTables(text)}</Markdown> : "표시할 본문이 없습니다."}
     </div>
   );
 }

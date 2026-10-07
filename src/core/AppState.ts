@@ -58,7 +58,7 @@ export interface Message {
   content: string;
   createdAt: number;
   isStreaming?: boolean;
-  progress?: string; // 답변을 기다리는 동안 서버가 알려주는 진행 단계 (예: "관련 문서를 찾는 중")
+  steps?: ProgressStep[]; // 처리 과정 — 검색한 문서, 내부·외부 LLM 단계 등 (서버 streaming.step)
   error?: string;
   sources?: MessageSource[];
   images?: MessageImage[]; // 그림 검색 질의일 때만 채워짐 (최대 2장)
@@ -71,11 +71,33 @@ export interface Message {
   attachedFile?: AttachedFile; // 채팅에 첨부한 이미지 아닌 파일 — 최대 1개
 }
 
+// 처리 과정 한 줄. 같은 key 로 다시 오면 그 줄을 고친다(running → done / error)
+export interface ProgressStep {
+  key: string; // search / external / history / images / draft / refine:<provider> / answer
+  label: string;
+  status: "running" | "done" | "error";
+  detail?: string;
+  ms?: number;
+  items?: { name: string; heading?: string }[];
+}
+
 // 질의 중 서버가 WebSocket으로 보내는 중간 메시지 (RagSystem streaming.py)
 type ChatStreamEvent =
-  | { type: "stage"; stage: string; message: string }
+  | ({ type: "step" } & ProgressStep)
   | { type: "sources"; sources: MessageSource[] }
   | { type: "delta"; provider: string; text: string };
+
+/** 처리 과정 목록에 한 줄을 넣거나(새 key) 고친다(같은 key). 순서는 처음 온 순서를 지킨다. */
+function upsertStep(steps: ProgressStep[] | undefined, step: ProgressStep): ProgressStep[] {
+  const list = steps ?? [];
+  const index = list.findIndex((s) => s.key === step.key);
+  if (index < 0) return [...list, step];
+  return list.map((s, i) => (i === index ? { ...s, ...step } : s));
+}
+
+/** 답변이 실패로 끝났을 때, 아직 진행 중으로 남은 단계를 실패로 표시한다. */
+const failRunning = (steps?: ProgressStep[]) =>
+  steps?.map((s) => (s.status === "running" ? { ...s, status: "error" as const } : s));
 
 export interface ChatSession {
   id: string;
@@ -544,7 +566,10 @@ export const useAppState = create<AppStore>((set, get) => ({
                 messages: sess.messages.map((m) => {
                   const asstMsg = asstMsgs.find((a) => a.id === m.id);
                   if (!asstMsg || !m.isStreaming) return m;
-                  if (event.type === "stage") return { ...m, progress: event.message };
+                  if (event.type === "step") {
+                    const { type: _type, ...step } = event;
+                    return { ...m, steps: upsertStep(m.steps, step) };
+                  }
                   if (event.type === "sources") return { ...m, sources: event.sources };
                   if (event.type === "delta" && event.provider === asstMsg.provider) {
                     return { ...m, content: m.content + event.text };
@@ -633,7 +658,9 @@ export const useAppState = create<AppStore>((set, get) => ({
             ? {
                 ...sess,
                 messages: sess.messages.map((m) =>
-                  asstMsgs.some((a) => a.id === m.id) ? { ...m, isStreaming: false, error: errMsg } : m,
+                  asstMsgs.some((a) => a.id === m.id)
+                    ? { ...m, isStreaming: false, error: errMsg, steps: failRunning(m.steps) }
+                    : m,
                 ),
               }
             : sess,

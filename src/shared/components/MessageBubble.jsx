@@ -5,6 +5,7 @@ import { formatBytes } from "../utils/format";
 import {
   CitationMark, SourceNotes, SourceViewerModal, citationKey, citedSources, linkCitations, openSource, sourceKey,
 } from "./SourceNotes";
+import ProgressSteps, { stepsFor } from "./ProgressSteps";
 import "../styles/MessageBubble.css";
 
 export default function MessageBubble({ message, isSelected, onSelect }) {
@@ -90,11 +91,11 @@ export default function MessageBubble({ message, isSelected, onSelect }) {
           ].filter(Boolean).join(" ")}
           onClick={isClickable ? () => onSelect(message.id) : undefined}
         >
+          {!isUser && (
+            <ProgressSteps steps={stepsFor(message.steps, message.provider)} active={!!message.isStreaming} />
+          )}
           {message.isStreaming && message.content === "" ? (
-            <span className="bubble-progress">
-              <Loader2 size={16} className="animate-spin text-[#9b9bff]" />
-              {message.progress && <span className="bubble-progress-text">{message.progress}</span>}
-            </span>
+            <Loader2 size={16} className="animate-spin text-[#9b9bff]" />
           ) : hasError ? (
             <span style={{ color: "#f87171" }}>{message.error}</span>
           ) : (

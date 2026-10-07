@@ -1,0 +1,88 @@
+/* 답변의 처리 과정 (ProgressSteps) */
+.progress-steps {
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+.progress-steps-active { margin-bottom: 10px; }
+
+.progress-steps-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+  border: none;
+  background: none;
+  color: var(--color-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+.progress-steps-toggle:hover { color: var(--color-text); }
+
+.progress-step-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 6px 0 0;
+  padding: 0 0 0 2px;
+  list-style: none;
+  border-left: 1px solid var(--color-border);
+}
+
+.progress-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding-left: 8px;
+}
+.step-icon { flex-shrink: 0; margin-top: 2px; }
+.step-running { color: #9b9bff; }
+.step-done { color: #16a34a; }
+.step-error { color: #dc2626; }
+
+.progress-step-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.progress-step-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+.progress-step-label { color: var(--color-text); }
+.progress-step-running .progress-step-label { font-weight: 600; }
+.progress-step-detail { color: var(--color-muted); }
+.progress-step-time {
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-step-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.progress-step-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 220px;
+  padding: 2px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-size: 11px;
+}
+.progress-step-item-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.progress-step-more {
+  align-self: center;
+  font-size: 11px;
+}

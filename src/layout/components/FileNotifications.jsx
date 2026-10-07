@@ -25,6 +25,7 @@ export default function FileNotifications() {
   const markAllNotificationsRead = useAppState((s) => s.markAllNotificationsRead);
   const sessions = useAppState((s) => s.sessions);
   const selectSession = useAppState((s) => s.selectSession);
+  const setFocusTurn = useAppState((s) => s.setFocusTurn);
   const [open, setOpen] = useState(false);
   const panelRef = useRef(null);
 
@@ -56,13 +57,18 @@ export default function FileNotifications() {
     markNotificationRead(notif.id);
     setOpen(false);
     if (!notif.link) return;
-    // 질의 완료 알림은 "/chat?session=<서버 세션 id>" — 그 대화를 열고 채팅 화면으로 간다.
+    // 질의 완료 알림은 "/chat?session=<서버 세션 id>&turn=<차례 번호>" — 그 대화를 열고 그 차례로 간다.
     // 이 브라우저 목록에 없는 대화(다른 기기에서 한 질문 등)면 채팅 화면만 연다.
     const [path, query] = notif.link.split("?");
-    const backendId = new URLSearchParams(query ?? "").get("session");
+    const params = new URLSearchParams(query ?? "");
+    const backendId = params.get("session");
     if (backendId) {
       const target = sessions.find((s) => s.backendSessionId === backendId);
-      if (target) selectSession(target.id);
+      if (target) {
+        const turn = params.get("turn");
+        setFocusTurn(turn ? { sessionId: target.id, turn } : null);
+        selectSession(target.id);
+      }
       navigate(path);
       return;
     }

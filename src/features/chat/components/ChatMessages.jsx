@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ThumbsUp, X } from "lucide-react";
 import { MessageBubble } from "@/shared";
+import { useAppState } from "@/core/AppState";
 import "../styles/ChatMessages.css";
 
 const MODEL_LABEL = {
@@ -38,16 +39,46 @@ function groupIntoTurns(messages) {
   return turns;
 }
 
+// 차례를 가리키는 번호. 서버에서 불러온 대화는 turnId 가 곧 서버 차례 번호이고, 이 브라우저에서 한
+// 질문은 답변을 받은 뒤 turnIndex 에 서버 번호가 적힌다(AppState.sendMessage).
+const turnKey = (user) => (user?.turnIndex != null ? String(user.turnIndex) : user?.turnId);
+
 export default function ChatMessages({ messages, isLoadingHistory, selectedMessageId, onSelectMessage, onMergeTurn, onChoosePreference }) {
   const bottomRef = useRef(null);
+  const scrollRef = useRef(null);
   const turns = useMemo(() => groupIntoTurns(messages), [messages]);
+  const activeSessionId = useAppState((s) => s.activeSessionId);
+  const focusTurn = useAppState((s) => s.focusTurn);
+  const setFocusTurn = useAppState((s) => s.setFocusTurn);
+  const focusing = focusTurn?.sessionId === activeSessionId;
+  const [highlightTurn, setHighlightTurn] = useState(null);
 
   // 병합 선택 팝오버 상태: { [turnId]: { selected: string[](메시지 id), merger: string(병합 수행 모델) } }
   const [mergePicker, setMergePicker] = useState({});
 
+  // 새 메시지가 오면 맨 아래로. 알림으로 특정 차례를 열 때는 그쪽이 먼저다.
+  // focusing 은 의존성에 넣지 않는다 — 차례로 이동한 뒤 focusTurn 을 비울 때 다시 돌면 맨 아래로 되돌아간다.
   useEffect(() => {
+    if (focusing) return;
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages.length, messages.at(-1)?.content]);
+
+  // 질의 완료 알림으로 연 차례로 스크롤하고 잠깐 강조한다. 대화 내역이 다 오기 전이면 기다린다.
+  // 불러온 내역에 그 차례가 없으면(오래된 차례) 평소처럼 맨 아래로 둔다.
+  useEffect(() => {
+    if (!focusing || isLoadingHistory || messages.length === 0) return;
+    const target = scrollRef.current?.querySelector(`[data-turn="${CSS.escape(focusTurn.turn)}"]`);
+    setFocusTurn(null);
+    if (!target) {
+      bottomRef.current?.scrollIntoView();
+      return;
+    }
+    target.scrollIntoView({ block: "start" });
+    setHighlightTurn(focusTurn.turn);
+    const timer = window.setTimeout(() => setHighlightTurn(null), 2500);
+    return () => window.clearTimeout(timer);
+  }, [focusing, focusTurn, isLoadingHistory, messages.length, setFocusTurn]);
 
   const openMergePicker = (turnId, assistantIds, defaultMerger) => {
     setMergePicker((prev) => ({ ...prev, [turnId]: { selected: assistantIds, merger: defaultMerger } }));
@@ -93,7 +124,7 @@ export default function ChatMessages({ messages, isLoadingHistory, selectedMessa
   if (messages.length === 0) return <div className="messages-scroll" />;
 
   return (
-    <div className="messages-scroll">
+    <div className="messages-scroll" ref={scrollRef}>
       {turns.map((turn, i) => {
         const compareAssistants = turn.assistants.filter((m) => m.provider && m.provider !== "merged");
         const mergedMsg = turn.assistants.find((m) => m.provider === "merged");
@@ -106,7 +137,13 @@ export default function ChatMessages({ messages, isLoadingHistory, selectedMessa
         const isPickerOpen = pickerState !== undefined;
 
         return (
-          <div key={turn.user?.id ?? `turn-${i}`} className="message-turn">
+          <div
+            key={turn.user?.id ?? `turn-${i}`}
+            data-turn={turnKey(turn.user)}
+            className={["message-turn", highlightTurn && turnKey(turn.user) === highlightTurn && "message-turn-focus"]
+              .filter(Boolean)
+              .join(" ")}
+          >
             {turn.user && <MessageBubble message={turn.user} />}
 
             {isCompare ? (

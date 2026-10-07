@@ -64,6 +64,7 @@ export interface Message {
   images?: MessageImage[]; // 그림 검색 질의일 때만 채워짐 (최대 2장)
   provider?: AIProvider | "merged";
   turnId?: string;
+  turnIndex?: number; // 서버 DB 의 차례 번호(turn_index). 질의 완료 알림이 이 번호로 그 차례를 찾는다
   preferred?: boolean;
   mergerProvider?: AIProvider;
   attachmentUrl?: string; // 채팅에 첨부한 이미지 미리보기 (data URL) — 문서 등록/임베딩과는 무관
@@ -177,6 +178,9 @@ interface ChatSlice {
   chatError: string | null;
   selectedProviders: AIProvider[];
   selectedDocumentIds: string[]; // "검색 문서 선택"으로 고른 문서 — 채팅 검색 범위를 좁히는 용도
+  // 열자마자 보여줄 차례(질의 완료 알림 클릭). 채팅 화면이 그 차례로 스크롤한 뒤 비운다
+  focusTurn: { sessionId: string; turn: string } | null;
+  setFocusTurn: (focus: { sessionId: string; turn: string } | null) => void;
   fetchSessions: () => Promise<void>;
   fetchSessionMessages: (id: string) => Promise<void>;
   sendMessage: (text: string, attachmentUrl?: string, attachedFile?: AttachedFile) => Promise<void>;
@@ -438,6 +442,9 @@ export const useAppState = create<AppStore>((set, get) => ({
   chatError: null,
   selectedProviders: ["gpt"],
   selectedDocumentIds: [],
+  focusTurn: null,
+
+  setFocusTurn: (focusTurn) => set({ focusTurn }),
 
   setSelectedDocumentIds: (ids) => set({ selectedDocumentIds: ids }),
 
@@ -606,6 +613,17 @@ export const useAppState = create<AppStore>((set, get) => ({
         }),
       }));
       const turn = data.turn as { count: number; compacting: boolean } | null | undefined;
+      // 서버가 매긴 차례 번호를 이 차례 메시지에 적어 둔다. 이 브라우저에서 한 질문은 turnId 가
+      // 화면에서 만든 값이라, 알림(…&turn=번호)이 이 번호로 찾는다.
+      if (turn?.count != null) {
+        set((s) => ({
+          sessions: s.sessions.map((sess) =>
+            sess.id !== sessionId
+              ? sess
+              : { ...sess, messages: sess.messages.map((m) => (m.turnId === turnId ? { ...m, turnIndex: turn.count } : m)) },
+          ),
+        }));
+      }
       if (turn?.compacting && data.sessionId) pollSessionCompaction(data.sessionId);
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : "답변을 가져오지 못했습니다.";

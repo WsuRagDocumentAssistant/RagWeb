@@ -3,7 +3,7 @@ import Markdown from "./Markdown";
 import { Check, Copy, File as FileIcon, Loader2, X } from "lucide-react";
 import { formatBytes } from "../utils/format";
 import {
-  CitationMark, SourceNotes, SourceViewerModal, citationKey, linkCitations, openSource, sourceKey,
+  CitationMark, SourceNotes, SourceViewerModal, citationKey, citedSources, linkCitations, openSource, sourceKey,
 } from "./SourceNotes";
 import "../styles/MessageBubble.css";
 
@@ -13,14 +13,13 @@ export default function MessageBubble({ message, isSelected, onSelect }) {
   const [viewingSource, setViewingSource] = useState(null);
   const isUser = message.role === "user";
 
-  // 본문의 [a] / [1] 표시를 각주 링크로 바꾼다. 각주 목록에는 실제로 인용된 출처만 싣고,
-  // 인용 표시가 하나도 없으면(그림 답변·예전 대화) 받은 출처를 전부 보여준다.
+  // 본문의 [a] / [1] 표시를 각주 링크로 바꾼다. 각주 목록에는 실제로 인용된 출처만 싣는다 —
+  // 하나도 인용하지 않은 답변이면 각주 목록을 띄우지 않는다(citedSources).
   const { content, notes, byKey } = useMemo(() => {
     const sources = message.sources ?? [];
-    const { content: linked, cited } = linkCitations(message.content ?? "", sources);
+    const { content: linked } = linkCitations(message.content ?? "", sources);
     const keyed = new Map(sources.filter((s) => s.mark).map((s) => [sourceKey(s), s]));
-    const citedSources = sources.filter((s) => s.mark && cited.has(sourceKey(s)));
-    return { content: linked, notes: citedSources.length ? citedSources : sources, byKey: keyed };
+    return { content: linked, notes: citedSources(message.content, sources), byKey: keyed };
   }, [message.content, message.sources]);
 
   const markdownComponents = useMemo(() => ({

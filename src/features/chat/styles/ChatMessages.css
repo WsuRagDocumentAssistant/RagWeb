@@ -242,3 +242,13 @@
 }
 .merge-picker-confirm:hover { background-color: #6366f1; }
 .merge-picker-confirm:disabled { background-color: var(--color-border); color: var(--color-muted); cursor: not-allowed; }
+
+/* 질의 완료 알림으로 연 차례 — 잠깐 강조한다 */
+.message-turn-focus {
+  border-radius: 12px;
+  animation: message-turn-focus 2.5s ease-out;
+}
+@keyframes message-turn-focus {
+  0%, 40% { background-color: var(--color-accent-soft); }
+  100% { background-color: transparent; }
+}

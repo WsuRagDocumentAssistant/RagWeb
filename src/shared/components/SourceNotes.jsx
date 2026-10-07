@@ -42,6 +42,21 @@ export function linkCitations(content, sources) {
   return { content: linked, cited };
 }
 
+/**
+ * 화면에 띄울 출처. 답변 본문에 실제로 인용된([a] / [1]) 출처만 고른다 — 인용하지 않은 검색 결과를
+ * 출처라고 보여주면 답과 상관없는 문서가 근거처럼 보인다. 하나도 인용하지 않았으면 빈 목록이다.
+ *
+ * 각주 표시(mark)가 아예 없는 출처는 인용 표시가 생기기 전의 옛 대화라 그대로 보여준다.
+ * @param {string} content 답변 본문
+ * @param {{ kind?: string, mark?: string }[] | undefined} sources
+ */
+export function citedSources(content, sources) {
+  const list = sources ?? [];
+  if (!list.some((s) => s.mark)) return list;
+  const { cited } = linkCitations(content ?? "", list);
+  return list.filter((s) => s.mark && cited.has(sourceKey(s)));
+}
+
 /** ReactMarkdown 의 a 렌더러가 각주 링크인지 가려낸다. 각주면 key, 아니면 null */
 export const citationKey = (href) => (href?.startsWith(CITE_HREF) ? href.slice(CITE_HREF.length) : null);
 

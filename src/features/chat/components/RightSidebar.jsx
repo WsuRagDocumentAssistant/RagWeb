@@ -1,10 +1,12 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { FileText, Globe, PanelRightClose, PanelRightOpen } from "lucide-react";
-import { SourceViewerModal, openSource, sourceKey, sourceLabel } from "@/shared/components/SourceNotes";
+import { SourceViewerModal, citedSources, openSource, sourceKey, sourceLabel } from "@/shared/components/SourceNotes";
 import "../styles/RightSidebar.css";
 
 export default function RightSidebar({ message, collapsed, onToggleCollapsed }) {
   const [viewingSource, setViewingSource] = useState(null);
+  // 말풍선 아래 각주와 같은 기준 — 답변에 실제로 인용된 출처만
+  const sources = useMemo(() => citedSources(message?.content, message?.sources), [message?.content, message?.sources]);
 
   return (
     <aside className={["right-sidebar", collapsed && "collapsed"].filter(Boolean).join(" ")}>
@@ -22,11 +24,11 @@ export default function RightSidebar({ message, collapsed, onToggleCollapsed }) 
       {!collapsed && (
         !message ? (
           <p className="right-sidebar-empty">답변을 클릭하면 참고한 출처가 여기에 표시됩니다.</p>
-        ) : !message.sources || message.sources.length === 0 ? (
-          <p className="right-sidebar-empty">이 답변에는 참고한 출처가 없습니다.</p>
+        ) : sources.length === 0 ? (
+          <p className="right-sidebar-empty">이 답변에는 인용한 출처가 없습니다.</p>
         ) : (
           <div className="right-sidebar-list">
-            {message.sources.map((source) => {
+            {sources.map((source) => {
               const Icon = source.kind === "external" ? Globe : FileText;
               return (
                 <button

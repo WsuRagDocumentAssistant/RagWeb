@@ -174,10 +174,22 @@ function citedTexts(source) {
   const raw = source.quotes?.length ? source.quotes : [source.text];
   return raw
     .map((text) => {
-      const b = bare(text);
+      const b = bare(withoutTableHead(text ?? ""));
       return heading && b.startsWith(heading) ? b.slice(heading.length) : b;
     })
     .filter(Boolean);
+}
+
+/**
+ * 표 조각에서 머리글 행(구분선 바로 위 줄)과 구분선을 뺀다. 청커가 표를 행 단위로 자르며 조각마다
+ * 머리글을 다시 붙이므로, 그대로 두면 어느 조각을 인용해도 뷰어의 머리글 행이 강조된다.
+ * @param {string} text
+ */
+function withoutTableHead(text) {
+  const lines = text.split("\n");
+  const delimiter = lines.findIndex(isDelimiter);
+  if (delimiter < 1) return text;
+  return [...lines.slice(0, delimiter - 1), ...lines.slice(delimiter + 1)].join("\n");
 }
 
 const MIN_BLOCK = 6; // 이보다 짧은 줄(표 머리 "구분|내용" 등)은 우연히 겹치기 쉬워 강조하지 않는다

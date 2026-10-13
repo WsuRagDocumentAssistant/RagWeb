@@ -132,9 +132,26 @@ function MetadataFields({ values, onChange }) {
   );
 }
 
-export default function FileManagementPage() {
+// 등록 화면이 둘이다. 같은 업로드·색인을 쓰고, 외부 문서는 문서 정보(메타데이터) 입력란이 없다.
+// 서버는 외부 문서에 표시를 붙이고(external_documents) 목록에 scope 로 돌려준다 — 화면마다 자기 문서만 보인다.
+const PAGES = {
+  internal: {
+    title: "내부 문서 등록",
+    description: "학교 내부 문서를 등록하면 챗봇이 그 내용을 찾아 답변합니다. 업무구분·부서 등 문서 정보를 함께 입력합니다.",
+  },
+  external: {
+    title: "외부 문서 등록",
+    description: "외부에서 받은 문서(xlsx 등)를 등록하면 챗봇이 그 내용을 찾아 답변합니다. 문서 정보 입력 없이 바로 등록합니다.",
+  },
+};
+
+/** @param {{ scope?: "internal" | "external" }} props */
+export default function FileManagementPage({ scope = "internal" }) {
+  const isExternal = scope === "external";
+  const page = PAGES[scope];
   const user = useAppState((s) => s.user);
-  const files = useAppState((s) => s.files);
+  const allFiles = useAppState((s) => s.files);
+  const files = useMemo(() => allFiles.filter((f) => (f.scope ?? "internal") === scope), [allFiles, scope]);
   const fetchFiles = useAppState((s) => s.fetchFiles);
   const uploadFile = useAppState((s) => s.uploadFile);
 
@@ -148,8 +165,9 @@ export default function FileManagementPage() {
 
   useEffect(() => { fetchFiles(); }, []);
 
-  // 관리자 또는 "문서 정보 입력" 권한을 받은 계정만
-  if (!hasPermission(user, PERMISSIONS.DOCUMENT_INPUT)) return <Navigate to="/chat" replace />;
+  // 내부 문서: 관리자 또는 "문서 정보 입력" 권한을 받은 계정 / 외부 문서: 관리자만(외부 API 등록과 같다)
+  const allowed = isExternal ? user?.role === "admin" : hasPermission(user, PERMISSIONS.DOCUMENT_INPUT);
+  if (!allowed) return <Navigate to="/chat" replace />;
 
   const addFilesToQueue = (fileList) => {
     const files = Array.from(fileList);
@@ -197,6 +215,7 @@ export default function FileManagementPage() {
   const updateShared = (field, value) => setShared((s) => ({ ...s, [field]: value }));
 
   const toggleIndividual = (id) => {
+    if (isExternal) return; // 외부 문서는 입력할 정보가 없다
     if (individualId === id) {
       // 선택 해제 → 공통 정보로 복귀
       setQueue((q) => q.map((it) => (it.id === id ? { ...it, override: null } : it)));
@@ -222,7 +241,7 @@ export default function FileManagementPage() {
     const items = queue;
     clearQueue();
     for (const item of items) {
-      await uploadFile(item.file, item.override ?? shared);
+      await uploadFile(item.file, isExternal ? { scope } : { ...(item.override ?? shared), scope });
     }
   };
 
@@ -239,8 +258,8 @@ export default function FileManagementPage() {
   return (
     <div className="file-management-page">
       <div className="fm-header">
-        <h1>문서 등록 (비정형)</h1>
-        <p>문서를 등록하면 챗봇이 그 내용을 찾아 답변합니다.</p>
+        <h1>{page.title}</h1>
+        <p>{page.description}</p>
       </div>
 
       <input
@@ -279,7 +298,9 @@ export default function FileManagementPage() {
               <p className="fm-empty">추가된 파일이 없습니다.</p>
             ) : (
               <>
-                <p className="fm-queue-hint">문서를 누르면 오른쪽에서 그 문서만의 정보를 따로 입력할 수 있습니다.</p>
+                {!isExternal && (
+                  <p className="fm-queue-hint">문서를 누르면 오른쪽에서 그 문서만의 정보를 따로 입력할 수 있습니다.</p>
+                )}
                 {queue.map((item) => {
                   const isIndividual = individualId === item.id;
                   return (
@@ -311,7 +332,16 @@ export default function FileManagementPage() {
         </div>
 
         <div className="fm-meta-col">
-          {individualId === null ? (
+          {isExternal ? (
+            <>
+              <div className="fm-col-head">
+                <span>외부 문서 등록</span>
+              </div>
+              <p className="fm-meta-hint">
+                외부 문서는 업무구분·부서 같은 문서 정보 없이 등록합니다. 답변의 출처에는 <strong>외부 문서</strong>로 표시됩니다.
+              </p>
+            </>
+          ) : individualId === null ? (
             <>
               <div className="fm-col-head">
                 <span>문서 정보 입력</span>
@@ -359,11 +389,17 @@ export default function FileManagementPage() {
           <span>현재 등록 문서 <strong>{currentFiles.length}</strong>건</span>
         </div>
 
-        <div className="fm-progress-table">
+        <div className={`fm-progress-table${isExternal ? " fm-progress-table-external" : ""}`}>
           <div className="fm-progress-table-head">
             <SortableHeaderCell label="문서명" sortKey="name" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-            <SortableHeaderCell label="업무구분" sortKey="workCategory" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-            <SortableHeaderCell label="수행업무/부서" sortKey="task" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+            {isExternal ? (
+              <SortableHeaderCell label="등록일" sortKey="uploadedAt" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+            ) : (
+              <>
+                <SortableHeaderCell label="업무구분" sortKey="workCategory" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+                <SortableHeaderCell label="수행업무/부서" sortKey="task" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+              </>
+            )}
             <SortableHeaderCell label="상태" sortKey="status" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
           </div>
           {currentFiles.length === 0 ? (
@@ -372,8 +408,14 @@ export default function FileManagementPage() {
             currentFiles.map((f) => (
               <div key={f.id} className="fm-progress-row">
                 <span className="fm-progress-name" title={f.name}>{f.name}</span>
-                <span className="fm-progress-cell" title={f.workCategory}>{f.workCategory || "-"}</span>
-                <span className="fm-progress-cell" title={f.task || f.department}>{f.task || f.department || "-"}</span>
+                {isExternal ? (
+                  <span className="fm-progress-cell">{f.uploadedAt ? new Date(f.uploadedAt).toLocaleDateString() : "-"}</span>
+                ) : (
+                  <>
+                    <span className="fm-progress-cell" title={f.workCategory}>{f.workCategory || "-"}</span>
+                    <span className="fm-progress-cell" title={f.task || f.department}>{f.task || f.department || "-"}</span>
+                  </>
+                )}
                 <span className={`fm-status-pill fm-status-pill-${f.status}`}>{STATUS_LABEL[f.status]}</span>
               </div>
             ))

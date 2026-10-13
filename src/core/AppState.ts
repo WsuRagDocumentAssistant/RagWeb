@@ -115,6 +115,7 @@ export interface DocumentMetadata {
   department?: string; // 수행부서
   reportType?: string; // 보고서명
   productionYear?: string; // 생산연도
+  scope?: "internal" | "external"; // 내부 문서 등록 / 외부 문서 등록(문서 정보 없음). 서버 목록이 돌려준다
 }
 
 export interface EmbeddingFile extends DocumentMetadata {
@@ -178,6 +179,9 @@ export interface ExternalApi {
   apiKey: string;
   fetchedAt: string; // ISO 시각 — 실제로 데이터를 가져온 시점
   refreshIntervalMinutes: number; // 사용자가 설정하는 자동 갱신 주기
+  provider?: string; // 제공 기관 (예: 대학알리미)
+  baseYear?: number | null; // 기준 연도
+  description?: string; // 어떤 데이터인지 한두 문장
 }
 
 export type NotificationType = "success" | "error" | "info";

@@ -116,7 +116,7 @@ function CategoryTable({ kind, label, parentLabel, pairLabel, rows, workCategori
   );
 }
 
-/** 문서 카테고리 관리: 문서 등록(비정형) 화면의 입력 선택지 */
+/** 문서 카테고리 관리: 내부 문서 등록 화면의 입력 선택지 */
 export default function CategorySection() {
   const categories = useAppState((s) => s.documentCategories);
   const categoryError = useAppState((s) => s.categoryError);
@@ -135,7 +135,7 @@ export default function CategorySection() {
   return (
     <>
       <p className="admin-copy-status">
-        문서 등록(비정형) 화면의 입력 선택지입니다. 수행업무의 짝 수행부서는 수행업무를 고르면 자동으로 채워집니다.
+        내부 문서 등록 화면의 입력 선택지입니다. 수행업무의 짝 수행부서는 수행업무를 고르면 자동으로 채워집니다.
       </p>
       {categoryError && <p className="admin-search-error">{categoryError}</p>}
       {CATEGORY_KINDS.map((k) => (

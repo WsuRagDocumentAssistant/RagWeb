@@ -42,6 +42,7 @@ export default function RightSidebar({ message, collapsed, onToggleCollapsed }) 
                   <span className="right-sidebar-item-name">
                     {source.mark && `${sourceLabel(source)} `}
                     {source.name}
+                    {source.scope === "external" && <span className="source-note-scope">외부 문서</span>}
                     {source.heading && <span className="right-sidebar-item-heading">{source.heading}</span>}
                   </span>
                 </button>

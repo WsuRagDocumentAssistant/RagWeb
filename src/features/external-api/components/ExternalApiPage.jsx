@@ -17,7 +17,15 @@ const emptyForm = () => ({
   apiKey: "",
   fetchedAt: new Date().toISOString(),
   refreshIntervalMinutes: DEFAULT_REFRESH_INTERVAL_MINUTES,
+  // 추가 정보 — 검색 벡터와 답변 프롬프트에 함께 실린다("2025년 취업 현황" 같은 질의가 걸리게)
+  provider: "",
+  baseYear: "",
+  description: "",
 });
+
+// 표의 제목 아래 한 줄: "대학알리미 · 2025년 기준 · 학과별 취업률"
+const metaLine = (api) =>
+  [api.provider, api.baseYear ? `${api.baseYear}년 기준` : "", api.description].filter(Boolean).join(" · ");
 
 // 표에는 API 키 전체를 노출하지 않고 끝 4자리만 보여준다.
 const maskApiKey = (key) => (key ? `•••• ${key.slice(-4)}` : "-");
@@ -57,7 +65,8 @@ export default function ExternalApiPage() {
   const filteredBase = useMemo(() => {
     const q = query.trim().toLowerCase();
     return apis.filter((a) => {
-      const matchesQuery = !q || a.title.toLowerCase().includes(q) || a.url.toLowerCase().includes(q);
+      const matchesQuery =
+        !q || [a.title, a.url, a.provider, a.description].some((v) => (v ?? "").toLowerCase().includes(q));
       const matchesSource = source === "전체" || a.source === source;
       return matchesQuery && matchesSource;
     });
@@ -89,6 +98,9 @@ export default function ExternalApiPage() {
       apiKey: api.apiKey,
       fetchedAt: api.fetchedAt,
       refreshIntervalMinutes: api.refreshIntervalMinutes,
+      provider: api.provider ?? "",
+      baseYear: api.baseYear ? String(api.baseYear) : "",
+      description: api.description ?? "",
     });
   };
 
@@ -101,12 +113,19 @@ export default function ExternalApiPage() {
     e.preventDefault();
     if (!form.title.trim() || !form.url.trim() || !form.apiKey.trim() || !form.fetchedAt) return;
     if (!form.refreshIntervalMinutes || form.refreshIntervalMinutes < 1) return;
+    if (form.baseYear && !/^\d{4}$/.test(form.baseYear)) {
+      toast.error("기준 연도는 네 자리 숫자로 입력해주세요. (예: 2025)");
+      return;
+    }
     await saveExternalApi({
       ...form,
       id: editingId ?? undefined,
       title: form.title.trim(),
       url: form.url.trim(),
       apiKey: form.apiKey.trim(),
+      provider: form.provider.trim(),
+      baseYear: form.baseYear ? Number(form.baseYear) : null,
+      description: form.description.trim(),
     });
     resetForm();
   };
@@ -198,6 +217,35 @@ export default function ExternalApiPage() {
               />
             </label>
             <label className="ea-add-field">
+              <span>제공 기관</span>
+              <input
+                className="ea-add-input"
+                value={form.provider}
+                onChange={(e) => setForm((f) => ({ ...f, provider: e.target.value }))}
+                placeholder="예: 대학알리미"
+              />
+            </label>
+            <label className="ea-add-field">
+              <span>기준 연도</span>
+              <input
+                className="ea-add-input"
+                inputMode="numeric"
+                maxLength={4}
+                value={form.baseYear}
+                onChange={(e) => setForm((f) => ({ ...f, baseYear: e.target.value.replace(/\D/g, "") }))}
+                placeholder="예: 2025"
+              />
+            </label>
+            <label className="ea-add-field ea-add-field-wide">
+              <span>설명</span>
+              <input
+                className="ea-add-input"
+                value={form.description}
+                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                placeholder="예: 학과별 졸업생 취업률·유지취업률 (취업 현황)"
+              />
+            </label>
+            <label className="ea-add-field">
               <span>데이터 가져온 날짜</span>
               <input
                 className="ea-add-input"
@@ -232,7 +280,10 @@ export default function ExternalApiPage() {
           ) : (
             filtered.map((api) => (
               <div key={api.id} className="ea-table-row">
-                <span className="ea-row-title" title={api.title}>{api.title}</span>
+                <span className="ea-row-title" title={[api.title, metaLine(api)].filter(Boolean).join("\n")}>
+                  {api.title}
+                  {metaLine(api) && <small className="ea-row-sub">{metaLine(api)}</small>}
+                </span>
                 <span className="ea-row-meta" title={api.url}>{api.url}</span>
                 <span className="ea-row-apikey">{maskApiKey(api.apiKey)}</span>
                 <span className="ea-row-interval">{formatRefreshInterval(api.refreshIntervalMinutes)}</span>

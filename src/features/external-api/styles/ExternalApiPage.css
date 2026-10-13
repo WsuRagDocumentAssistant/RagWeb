@@ -243,6 +243,17 @@
   white-space: nowrap;
 }
 
+/* 제목 아래 추가 정보 한 줄 (제공 기관 · 기준 연도 · 설명) */
+.ea-row-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--color-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .ea-row-meta {
   font-size: 11px;
   color: var(--color-muted);

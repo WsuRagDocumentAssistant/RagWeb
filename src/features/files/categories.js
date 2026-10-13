@@ -1,4 +1,4 @@
-// 문서 등록(비정형) 화면의 입력 카테고리. 서버(document_categories 테이블)가 원본이고,
+// 내부 문서 등록 화면의 입력 카테고리. 서버(document_categories 테이블)가 원본이고,
 // 설정 관리 > 문서 카테고리 관리에서 추가·삭제한다.
 // shared/dummy.js 의 고정값은 서버에서 못 받아왔을 때만 대신 쓴다.
 import { postTask } from "@/config/ApiService";

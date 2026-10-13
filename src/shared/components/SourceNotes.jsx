@@ -115,6 +115,7 @@ export function SourceNotes({ sources, onOpen }) {
               {source.mark && <span className={`source-note-mark cite-${source.kind}`}>{sourceLabel(source)}</span>}
               <Icon size={13} className="source-note-icon" />
               <span className="source-note-name">{source.name}</span>
+              {source.scope === "external" && <span className="source-note-scope">외부 문서</span>}
               {source.heading && <span className="source-note-heading">{source.heading}</span>}
               {source.kind === "external" && source.url && <ExternalLink size={12} className="source-note-icon" />}
             </button>

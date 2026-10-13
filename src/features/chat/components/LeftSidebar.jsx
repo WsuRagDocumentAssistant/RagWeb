@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Plus, Trash2, MessageSquare, FileText, Globe, BookOpen, Upload, Image, ShieldCheck, Lightbulb, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Plus, Trash2, MessageSquare, FileText, FileUp, Globe, BookOpen, Upload, Image, ShieldCheck, Lightbulb, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAppState } from "@/core/AppState";
 import { PERMISSIONS, hasPermission } from "@/config/permissions";
 import "../styles/LeftSidebar.css";
@@ -12,7 +12,8 @@ const COLLAPSED_KEY = "chat_sidebar_collapsed";
 const NAV_ITEMS = [
   { path: "/documents", label: "문서 목록", icon: FileText },
   { path: "/external-api", label: "외부 API 등록 (정형)", icon: Globe, adminOnly: true },
-  { path: "/files", label: "문서 등록 (비정형)", icon: Upload, permission: PERMISSIONS.DOCUMENT_INPUT },
+  { path: "/external-files", label: "외부 문서 등록", icon: FileUp, adminOnly: true },
+  { path: "/files", label: "내부 문서 등록", icon: Upload, permission: PERMISSIONS.DOCUMENT_INPUT },
   { path: "/image-editor", label: "이미지 편집기", icon: Image },
   { path: "/dictionary", label: "검색어 관리", icon: BookOpen },
   { path: "/admin", label: "설정 관리", icon: ShieldCheck, adminOnly: true },

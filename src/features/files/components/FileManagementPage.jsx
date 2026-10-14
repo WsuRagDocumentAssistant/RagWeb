@@ -10,6 +10,24 @@ import { toCategoryOptions } from "../categories";
 import "../styles/FileManagementPage.css";
 
 const genQueueId = () => `q-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+// 등록 버튼 한 번에 같이 올린 문서 묶음. 서버가 문서마다 올린 사람과 함께 기록한다(document_uploads).
+const genBatchId = () => `b-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+/**
+ * 내부 문서 등록 화면에 보일 문서: 내가 마지막으로 등록한 묶음만. 등록 직후 올리는 중인 문서도
+ * 같은 묶음이라 바로 보인다. 다른 사람이 올린 문서와 예전 문서는 문서 목록 화면에서 본다.
+ * 순서는 마지막으로 올린 시각(lastUploadedAt) — 같은 파일을 다시 올리면 문서 등록일(uploadedAt)은 옛 값이다.
+ * 올리는 중인 문서는 그 값이 아직 없어 uploadedAt(지금)을 쓴다.
+ * @param {{ uploadedBy?: string, batchId?: string | null, uploadedAt?: number, lastUploadedAt?: number | null, id: string }[]} files
+ * @param {string | undefined} userId
+ */
+function latestBatchOf(files, userId) {
+  const mine = files.filter((f) => userId && f.uploadedBy === userId);
+  if (mine.length === 0) return [];
+  const at = (f) => f.lastUploadedAt ?? f.uploadedAt ?? 0;
+  const latest = mine.reduce((a, b) => (at(b) > at(a) ? b : a));
+  return latest.batchId ? mine.filter((f) => f.batchId === latest.batchId) : [latest];
+}
 const currentYearStr = () => String(new Date().getFullYear());
 const emptyMetadata = () => ({
   workCategory: "",
@@ -151,7 +169,10 @@ export default function FileManagementPage({ scope = "internal" }) {
   const page = PAGES[scope];
   const user = useAppState((s) => s.user);
   const allFiles = useAppState((s) => s.files);
-  const files = useMemo(() => allFiles.filter((f) => (f.scope ?? "internal") === scope), [allFiles, scope]);
+  const files = useMemo(() => {
+    const inScope = allFiles.filter((f) => (f.scope ?? "internal") === scope);
+    return isExternal ? inScope : latestBatchOf(inScope, user?.id);
+  }, [allFiles, scope, isExternal, user?.id]);
   const fetchFiles = useAppState((s) => s.fetchFiles);
   const uploadFile = useAppState((s) => s.uploadFile);
 
@@ -239,9 +260,10 @@ export default function FileManagementPage({ scope = "internal" }) {
   const handleRegister = async () => {
     if (queue.length === 0) return;
     const items = queue;
+    const batchId = genBatchId();
     clearQueue();
     for (const item of items) {
-      await uploadFile(item.file, isExternal ? { scope } : { ...(item.override ?? shared), scope });
+      await uploadFile(item.file, isExternal ? { scope, batchId } : { ...(item.override ?? shared), scope, batchId });
     }
   };
 
@@ -386,7 +408,14 @@ export default function FileManagementPage({ scope = "internal" }) {
 
       <div className="fm-progress-section">
         <div className="fm-progress-head">
-          <span>현재 등록 문서 <strong>{currentFiles.length}</strong>건</span>
+          {isExternal ? (
+            <span>현재 등록 문서 <strong>{currentFiles.length}</strong>건</span>
+          ) : (
+            <>
+              <span>내가 마지막으로 등록한 문서 <strong>{currentFiles.length}</strong>건</span>
+              <span className="fm-progress-head-sub">전체 문서는 문서 목록에서 볼 수 있습니다.</span>
+            </>
+          )}
         </div>
 
         <div className={`fm-progress-table${isExternal ? " fm-progress-table-external" : ""}`}>

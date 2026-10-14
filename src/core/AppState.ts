@@ -116,6 +116,7 @@ export interface DocumentMetadata {
   reportType?: string; // 보고서명
   productionYear?: string; // 생산연도
   scope?: "internal" | "external"; // 내부 문서 등록 / 외부 문서 등록(문서 정보 없음). 서버 목록이 돌려준다
+  batchId?: string | null; // 등록 버튼 한 번에 같이 올린 묶음 — 내부 문서 등록 화면이 내 마지막 묶음만 보인다
 }
 
 export interface EmbeddingFile extends DocumentMetadata {
@@ -125,6 +126,8 @@ export interface EmbeddingFile extends DocumentMetadata {
   mimeType: string;
   status: EmbeddingFileStatus;
   uploadedAt: number;
+  uploadedBy?: string | null; // 올린 사람 user_id (서버 document_uploads). 기록 전 문서는 비어 있다
+  lastUploadedAt?: number | null; // 마지막으로 올린 시각 — 다시 올린 문서는 uploadedAt 보다 새롭다
   errorMessage?: string;
   chunks?: number;
 }
@@ -888,6 +891,7 @@ export const useAppState = create<AppStore>((set, get) => ({
           mimeType: file.type,
           status: "uploading",
           uploadedAt: Date.now(),
+          uploadedBy: get().user?.id ?? null,
           ...metadata,
         },
         ...s.files,

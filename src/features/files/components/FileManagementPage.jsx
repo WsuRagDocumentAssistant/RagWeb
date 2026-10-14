@@ -14,7 +14,7 @@ const genQueueId = () => `q-${Date.now()}-${Math.random().toString(36).slice(2, 
 const genBatchId = () => `b-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 /**
- * 내부 문서 등록 화면에 보일 문서: 내가 마지막으로 등록한 묶음만. 등록 직후 올리는 중인 문서도
+ * 등록 화면(내부·외부)에 보일 문서: 내가 마지막으로 등록한 묶음만. 등록 직후 올리는 중인 문서도
  * 같은 묶음이라 바로 보인다. 다른 사람이 올린 문서와 예전 문서는 문서 목록 화면에서 본다.
  * 순서는 마지막으로 올린 시각(lastUploadedAt) — 같은 파일을 다시 올리면 문서 등록일(uploadedAt)은 옛 값이다.
  * 올리는 중인 문서는 그 값이 아직 없어 uploadedAt(지금)을 쓴다.
@@ -171,8 +171,8 @@ export default function FileManagementPage({ scope = "internal" }) {
   const allFiles = useAppState((s) => s.files);
   const files = useMemo(() => {
     const inScope = allFiles.filter((f) => (f.scope ?? "internal") === scope);
-    return isExternal ? inScope : latestBatchOf(inScope, user?.id);
-  }, [allFiles, scope, isExternal, user?.id]);
+    return latestBatchOf(inScope, user?.id);
+  }, [allFiles, scope, user?.id]);
   const fetchFiles = useAppState((s) => s.fetchFiles);
   const uploadFile = useAppState((s) => s.uploadFile);
 
@@ -408,14 +408,8 @@ export default function FileManagementPage({ scope = "internal" }) {
 
       <div className="fm-progress-section">
         <div className="fm-progress-head">
-          {isExternal ? (
-            <span>현재 등록 문서 <strong>{currentFiles.length}</strong>건</span>
-          ) : (
-            <>
-              <span>내가 마지막으로 등록한 문서 <strong>{currentFiles.length}</strong>건</span>
-              <span className="fm-progress-head-sub">전체 문서는 문서 목록에서 볼 수 있습니다.</span>
-            </>
-          )}
+          <span>내가 마지막으로 등록한 문서 <strong>{currentFiles.length}</strong>건</span>
+          <span className="fm-progress-head-sub">전체 문서는 문서 목록에서 볼 수 있습니다.</span>
         </div>
 
         <div className={`fm-progress-table${isExternal ? " fm-progress-table-external" : ""}`}>

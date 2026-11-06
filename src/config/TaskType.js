@@ -2,7 +2,6 @@
 export const TaskType = {
   // USER
   LOGIN: "LOGIN",
-  REGISTER: "REGISTER",
   LOGOUT: "LOGOUT",
   SSO_LOGIN: "SSO_LOGIN",
   USER_LIST: "USER_LIST", // 권한 관리 화면의 계정 목록 조회

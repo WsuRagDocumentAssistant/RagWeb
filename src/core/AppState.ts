@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { toast } from "sonner";
-import { resolveServerUrl } from "@/config/ApiService";
+import { AUTH_EXPIRED_EVENT, resolveServerUrl } from "@/config/ApiService";
 import { clearAuth, getStoredUser, getToken, saveAuth } from "@/config/authStorage";
 import * as chatService from "@/features/chat/services/ChatService";
 import * as fileService from "@/features/files/services/FileService";
@@ -11,7 +11,6 @@ import * as externalApiService from "@/features/external-api/services/ExternalAp
 import * as documentImageService from "@/features/documents/services/DocumentImageService";
 import * as notificationService from "@/layout/services/NotificationService";
 import * as categoryService from "@/features/files/categories";
-import { DUMMY_ACCOUNTS } from "@/shared";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 
@@ -179,7 +178,9 @@ export interface ExternalApi {
   title: string;
   url: string;
   source: string;
-  apiKey: string;
+  apiKey?: string; // 저장할 때만 보낸다. 목록은 키를 돌려주지 않는다(hasApiKey·apiKeyLast4 만)
+  hasApiKey?: boolean;
+  apiKeyLast4?: string;
   fetchedAt: string; // ISO 시각 — 실제로 데이터를 가져온 시점
   refreshIntervalMinutes: number; // 사용자가 설정하는 자동 갱신 주기
   provider?: string; // 제공 기관 (예: 대학알리미)
@@ -249,7 +250,6 @@ interface AuthSlice {
   authError: string | null;
   initializeAuth: () => void;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<void>;
   loginWithSSO: (ssoToken: string) => Promise<void>;
   logout: () => void;
   setAuthError: (e: string | null) => void;
@@ -325,7 +325,7 @@ interface ExternalApiSlice {
   externalApis: ExternalApi[];
   externalApiLoading: boolean;
   fetchExternalApis: () => Promise<boolean>;
-  saveExternalApi: (api: Partial<ExternalApi> & { title: string; url: string; source: string; apiKey: string; refreshIntervalMinutes: number }) => Promise<void>;
+  saveExternalApi: (api: Partial<ExternalApi> & { title: string; url: string; source: string; refreshIntervalMinutes: number }) => Promise<void>;
   deleteExternalApi: (id: string) => Promise<void>;
 }
 
@@ -419,6 +419,27 @@ const persistUserDirectory = (directory: DirectoryUser[]) => {
   localStorage.setItem(USER_DIRECTORY_KEY, JSON.stringify(directory));
 };
 
+// 계정마다 다른 데이터를 브라우저에 남긴 것. 로그아웃하거나 다른 계정으로 로그인할 때 지운다 —
+// 예전에는 남겨 둬서, 같은 브라우저로 다음 사람이 로그인하면 앞 사람의 대화가 보였다
+// (보안 점검 sensitive-data.cross-account-cache).
+const clearAccountCaches = () => {
+  for (const key of [SESSIONS_KEY, ACTIVE_SESSION_KEY, USER_DIRECTORY_KEY]) localStorage.removeItem(key);
+};
+
+// 계정이 바뀔 때 비울 화면 상태(대화·관리 화면에서 받은 목록 등).
+const EMPTY_ACCOUNT_STATE = {
+  sessions: [],
+  activeSessionId: null,
+  focusTurn: null,
+  selectedDocumentIds: [],
+  userDirectory: [],
+  externalApis: [],
+  files: [],
+  documentImages: {},
+  dictEntries: [],
+  notifications: [],
+};
+
 // 예전 버전은 "새 채팅"을 누를 때마다 빈 대화방을 만들어 저장했다 — 메시지를 한 번도 안 보낸 빈 방은 버린다.
 const initialSessions = loadSessions().filter((s) => s.messages.length > 0 || s.backendSessionId);
 const initialActiveSessionId = (() => {
@@ -483,7 +504,8 @@ export const useAppState = create<AppStore>((set, get) => ({
       const data = await chatService.listSessions() as {
         sessions: { sessionId: string; title?: string; createdAt?: number }[];
       };
-      if (data?.sessions?.length) {
+      // 빈 목록도 그대로 반영한다 — 남겨 두면 앞 계정(또는 지워진) 대화가 계속 보인다.
+      if (data?.sessions) {
         const sessions: ChatSession[] = data.sessions.map((s) => ({
           id: s.sessionId,
           backendSessionId: s.sessionId,
@@ -1125,38 +1147,14 @@ export const useAppState = create<AppStore>((set, get) => ({
     set({ authLoading: true, authError: null });
     try {
       const data = await authService.login(email, password) as { access_token: string; user: AuthUser };
+      // 이 브라우저에 남은 다른 계정의 대화·목록을 지우고 시작한다(clearAccountCaches 참고).
+      clearAccountCaches();
       saveAuth(data.access_token, data.user);
-      set({ user: data.user, token: data.access_token, authLoading: false });
+      set({ ...EMPTY_ACCOUNT_STATE, user: data.user, token: data.access_token, authLoading: false });
     } catch (err) {
-      // 서버 연결 실패 시에도 화면을 계속 확인할 수 있도록 더미 계정으로 로그인 허용
-      const account = DUMMY_ACCOUNTS.find((a) => a.email === email && a.password === password);
-      if (account) {
-        // 역할은 admin이 권한 관리 화면에서 실시간으로 바꿀 수 있으므로, 저장된 계정 정보가 아니라
-        // 현재 userDirectory(관리자 화면에서 수정한 최신 상태)에서 조회한다.
-        const directoryEntry = get().userDirectory.find((u) => u.email === email);
-        const user: AuthUser = {
-          id: String(account.id),
-          email: account.email,
-          name: account.name,
-          role: directoryEntry?.role ?? (account.role as UserRole),
-        };
-        const token = `dummy-token-${account.id}`;
-        saveAuth(token, user);
-        set({ user, token, authLoading: false, authError: null });
-        return;
-      }
+      // 예전에는 서버 연결이 안 되면 코드에 적힌 더미 계정으로 로그인시켰다 — 그 아이디·비밀번호가
+      // 화면 소스로 공개되고 서버 계정과 겹칠 수 있어 없앴다.
       set({ authLoading: false, authError: err instanceof Error ? err.message : "로그인 실패" });
-    }
-  },
-
-  register: async (email, password, name) => {
-    set({ authLoading: true, authError: null });
-    try {
-      await authService.register(email, password, name);
-      set({ authLoading: false });
-    } catch (err) {
-      set({ authLoading: false, authError: err instanceof Error ? err.message : "회원가입 실패" });
-      throw err;
     }
   },
 
@@ -1175,8 +1173,8 @@ export const useAppState = create<AppStore>((set, get) => ({
     const token = get().token;
     authService.logout(token ?? undefined).catch(() => {});
     clearAuth();
-    set({ notifications: [] });
-    set({ user: null, token: null, authError: null });
+    clearAccountCaches();
+    set({ ...EMPTY_ACCOUNT_STATE, user: null, token: null, authError: null });
   },
 
   setAuthError: (authError) => set({ authError }),
@@ -1454,3 +1452,11 @@ export const useAppState = create<AppStore>((set, get) => ({
   },
 
 }));
+
+// 서버가 토큰을 받지 않으면(만료·서버 재시작) ApiService 가 알린다. 화면에 로그인된 것처럼 남아
+// 모든 요청이 실패하는 대신 로그아웃시켜 로그인 화면으로 보낸다. 동시에 여러 요청이 실패해도 한 번만.
+window.addEventListener(AUTH_EXPIRED_EVENT, () => {
+  if (!useAppState.getState().user) return;
+  useAppState.getState().logout();
+  toast.error("로그인이 만료되었습니다. 다시 로그인해 주세요.");
+});

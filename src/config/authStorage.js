@@ -7,7 +7,21 @@ const USER_KEY = "auth_user";
 localStorage.removeItem(TOKEN_KEY);
 localStorage.removeItem(USER_KEY);
 
+// 문서 원본·그림 주소(/api/documents, /api/images)는 로그인한 사람에게만 열린다. <img>·<a> 는
+// Authorization 헤더를 못 실어서, 같은 토큰을 쿠키로도 둔다(서버 files.py 가 이 쿠키를 확인한다).
+// Path=/api 로 API 요청에만 붙고, SameSite=Strict 라 다른 사이트에서 보낸 요청에는 실리지 않는다.
+const FILE_COOKIE = "rag_file_token";
+const setFileCookie = (token) => {
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = token
+    ? `${FILE_COOKIE}=${encodeURIComponent(token)}; Path=/api; SameSite=Strict${secure}`
+    : `${FILE_COOKIE}=; Path=/api; Max-Age=0; SameSite=Strict${secure}`;
+};
+
 export const getToken = () => sessionStorage.getItem(TOKEN_KEY);
+
+// 새로고침해도 sessionStorage 의 토큰은 남지만 쿠키는 브라우저를 닫으면 없어지므로 다시 맞춘다.
+setFileCookie(getToken());
 
 export const getStoredUser = () => {
   const raw = sessionStorage.getItem(USER_KEY);
@@ -22,9 +36,11 @@ export const getStoredUser = () => {
 export const saveAuth = (token, user) => {
   sessionStorage.setItem(TOKEN_KEY, token);
   sessionStorage.setItem(USER_KEY, JSON.stringify(user));
+  setFileCookie(token);
 };
 
 export const clearAuth = () => {
   sessionStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem(USER_KEY);
+  setFileCookie(null);
 };

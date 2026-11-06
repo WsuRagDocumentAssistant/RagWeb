@@ -9,7 +9,8 @@ export async function listApis() {
 
 /**
  * id가 있으면 수정, 없으면 신규 등록.
- * @param {{ id?: string, title: string, url: string, source: string, apiKey: string, refreshIntervalMinutes: number }} api
+ * @param {{ id?: string, title: string, url: string, source: string, apiKey?: string, refreshIntervalMinutes: number }} api
+ *   apiKey 는 새로 등록하거나 바꿀 때만 보낸다(비우면 서버가 기존 키를 유지).
  * @returns {Promise<{ api: any }>}
  */
 export async function saveApi(api) {

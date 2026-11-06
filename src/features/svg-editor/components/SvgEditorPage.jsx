@@ -8,6 +8,7 @@ import {
   vectorizeImage,
   serializeSvgElement,
   downloadSvg,
+  sanitizeSvg,
 } from "../services/SvgEditorService";
 import "../styles/SvgEditorPage.css";
 
@@ -316,7 +317,13 @@ export default function SvgEditorPage() {
       const host = hostRef.current;
       if (!host) return;
       closeEditor();
-      host.innerHTML = text;
+      // 페이지에 넣기 전에 반드시 정리한다(sanitizeSvg) — 파일·문서 그림·벡터 변환 결과 모두 이 길로 온다.
+      const clean = sanitizeSvg(text);
+      if (!clean) {
+        toast.error("유효한 SVG 파일이 아닙니다.");
+        return;
+      }
+      host.innerHTML = clean;
 
       const svg = host.querySelector("svg");
       if (!svg) {

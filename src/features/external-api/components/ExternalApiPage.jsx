@@ -27,8 +27,8 @@ const emptyForm = () => ({
 const metaLine = (api) =>
   [api.provider, api.baseYear ? `${api.baseYear}년 기준` : "", api.description].filter(Boolean).join(" · ");
 
-// 표에는 API 키 전체를 노출하지 않고 끝 4자리만 보여준다.
-const maskApiKey = (key) => (key ? `•••• ${key.slice(-4)}` : "-");
+// 서버는 저장된 API 키를 돌려주지 않는다(있는지와 끝 4자리만). 표에는 그것만 보여준다.
+const maskApiKey = (api) => (api.hasApiKey ? `•••• ${api.apiKeyLast4 ?? ""}` : "-");
 
 // <input type="datetime-local">에 넣을 수 있는 "YYYY-MM-DDTHH:mm" 형식으로 변환한다.
 const toDatetimeLocalValue = (iso) => {
@@ -95,7 +95,7 @@ export default function ExternalApiPage() {
       title: api.title,
       url: api.url,
       source: api.source,
-      apiKey: api.apiKey,
+      apiKey: "", // 수정할 때는 새 키를 입력했을 때만 바꾼다(비워 두면 기존 키 유지)
       fetchedAt: api.fetchedAt,
       refreshIntervalMinutes: api.refreshIntervalMinutes,
       provider: api.provider ?? "",
@@ -111,7 +111,8 @@ export default function ExternalApiPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.title.trim() || !form.url.trim() || !form.apiKey.trim() || !form.fetchedAt) return;
+    // 새로 등록할 때만 키가 필요하다. 수정에서 비워 두면 서버가 기존 키를 그대로 둔다.
+    if (!form.title.trim() || !form.url.trim() || (!editingId && !form.apiKey.trim()) || !form.fetchedAt) return;
     if (!form.refreshIntervalMinutes || form.refreshIntervalMinutes < 1) return;
     if (form.baseYear && !/^\d{4}$/.test(form.baseYear)) {
       toast.error("기준 연도는 네 자리 숫자로 입력해주세요. (예: 2025)");
@@ -179,6 +180,9 @@ export default function ExternalApiPage() {
                 value={form.url}
                 onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
                 placeholder="API 경로 입력"
+                // url 은 등록 뒤 바꿀 수 없다(서버의 식별자). 수정 화면의 값은 인증값을 뺀 표시용이다.
+                disabled={!!editingId}
+                title={editingId ? "URL은 바꿀 수 없습니다. 바꾸려면 삭제 후 다시 등록하세요." : undefined}
                 required
               />
             </label>
@@ -199,8 +203,8 @@ export default function ExternalApiPage() {
                 autoComplete="off"
                 value={form.apiKey}
                 onChange={(e) => setForm((f) => ({ ...f, apiKey: e.target.value }))}
-                placeholder="API 키 입력"
-                required
+                placeholder={editingId ? "바꿀 때만 입력 (비우면 기존 키 유지)" : "API 키 입력"}
+                required={!editingId}
               />
             </label>
             <label className="ea-add-field">
@@ -268,7 +272,7 @@ export default function ExternalApiPage() {
         <div className="ea-table-head">
           <SortableHeaderCell label="문서 타이틀" sortKey="title" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
           <SortableHeaderCell label="URL" sortKey="url" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-          <SortableHeaderCell label="API Key" sortKey="apiKey" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+          <SortableHeaderCell label="API Key" sortKey="apiKeyLast4" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
           <SortableHeaderCell label="갱신 주기" sortKey="refreshIntervalMinutes" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
           <SortableHeaderCell label="가져온 날짜" sortKey="fetchedAt" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
           <span>관리</span>
@@ -285,7 +289,7 @@ export default function ExternalApiPage() {
                   {metaLine(api) && <small className="ea-row-sub">{metaLine(api)}</small>}
                 </span>
                 <span className="ea-row-meta" title={api.url}>{api.url}</span>
-                <span className="ea-row-apikey">{maskApiKey(api.apiKey)}</span>
+                <span className="ea-row-apikey">{maskApiKey(api)}</span>
                 <span className="ea-row-interval">{formatRefreshInterval(api.refreshIntervalMinutes)}</span>
                 <span className="ea-row-date">{formatFetchedAt(api.fetchedAt)}</span>
                 <span className="ea-row-actions">

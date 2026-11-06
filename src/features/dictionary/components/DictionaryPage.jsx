@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useAppState } from "@/core/AppState";
+import { PERMISSIONS, hasPermission } from "@/config/permissions";
 import "../styles/DictionaryPage.css";
 
 export default function DictionaryPage() {
@@ -9,6 +10,8 @@ export default function DictionaryPage() {
   const fetchDictEntries = useAppState((s) => s.fetchDictEntries);
   const updateDictEntry = useAppState((s) => s.updateDictEntry);
   const saveDictEntries = useAppState((s) => s.saveDictEntries);
+  // 검색어 사전은 모든 사용자의 검색에 쓰이므로 관리자·"문서 정보 입력" 권한만 고칠 수 있다(서버도 막는다).
+  const canEdit = hasPermission(useAppState((s) => s.user), PERMISSIONS.DOCUMENT_INPUT);
 
   const [query, setQuery] = useState("");
 
@@ -72,6 +75,7 @@ export default function DictionaryPage() {
                   className="dict-row-term"
                   value={entry.term}
                   onChange={(e) => updateDictEntry(entry.id, { term: e.target.value })}
+                  readOnly={!canEdit}
                   rows={1}
                   placeholder="기준 검색어"
                 />
@@ -79,6 +83,7 @@ export default function DictionaryPage() {
                   className="dict-row-synonyms"
                   value={entry.synonyms}
                   onChange={(e) => updateDictEntry(entry.id, { synonyms: e.target.value })}
+                  readOnly={!canEdit}
                   rows={1}
                   placeholder="같이 인식할 단어 (쉼표로 구분)"
                 />
@@ -88,11 +93,13 @@ export default function DictionaryPage() {
         </div>
       </div>
 
-      <div className="dict-save-row">
-        <button className="dict-save-btn" onClick={saveDictEntries} disabled={dictSaving}>
-          {dictSaving ? "수정 중..." : "수정"}
-        </button>
-      </div>
+      {canEdit && (
+        <div className="dict-save-row">
+          <button className="dict-save-btn" onClick={saveDictEntries} disabled={dictSaving}>
+            {dictSaving ? "수정 중..." : "수정"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

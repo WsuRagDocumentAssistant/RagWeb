@@ -11,7 +11,6 @@ const taskSocket = new TaskSocket(TASK_SOCKET_URL);
 export const API_ENDPOINTS = {
   USER: {
     LOGIN: TaskType.LOGIN,
-    REGISTER: TaskType.REGISTER,
     LOGOUT: TaskType.LOGOUT,
     SSO_LOGIN: TaskType.SSO_LOGIN,
     LIST: TaskType.USER_LIST,
@@ -105,13 +104,25 @@ export function getTaskType(serverType, endpointKey) {
  */
 export async function postTask(serverType, endpointKey, options = {}) {
   const { sessionId, payload, token, onProgress, onStream } = options;
-  return taskSocket.request(
-    {
-      task_type: getTaskType(serverType, endpointKey),
-      session_id: sessionId ?? null,
-      payload: payload ?? {},
-      token: token ?? null,
-    },
-    { onProgress, onStream },
-  );
+  try {
+    return await taskSocket.request(
+      {
+        task_type: getTaskType(serverType, endpointKey),
+        session_id: sessionId ?? null,
+        payload: payload ?? {},
+        token: token ?? null,
+      },
+      { onProgress, onStream },
+    );
+  } catch (err) {
+    // 서버가 토큰을 받지 않았다(만료·위조·서버 재시작으로 키가 바뀜) — 앱이 로그아웃시킨다(AppState).
+    if (err instanceof Error && err.message === LOGIN_REQUIRED) {
+      window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
+    }
+    throw err;
+  }
 }
+
+// 서버(RagSystem access.py)의 LOGIN_REQUIRED 와 같은 문장이어야 한다.
+export const LOGIN_REQUIRED = "로그인이 필요합니다. 다시 로그인해 주세요.";
+export const AUTH_EXPIRED_EVENT = "auth:expired";

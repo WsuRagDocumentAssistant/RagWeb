@@ -24,12 +24,10 @@ const TOOLTIP_GAP = 14;
 const VIEWPORT_MARGIN = 16;
 const RING_PAD = 6;
 
-// 튜토리얼 데모용 계정 — 로그인 스텝에서 이 계정으로 화면에 값을 채워 보여주고, 실제로 로그인까지 시켜준다.
-// 둘 다 실서버에 등록된 데모 계정(각각 admin/user 역할)이다.
-const DEMO_ACCOUNTS = {
-  admin: { email: "123456789", password: "1234" },
-  user: { email: "test@wsu.ac.kr", password: "1234" },
-};
+// 로그인 스텝에서 입력창에 채워 보여주는 예시 값(로그인에 쓰지 않는다). 예전에는 실서버 데모 계정의
+// 아이디·비밀번호를 코드에 넣고 그걸로 자동 로그인했다 — 화면 소스를 보면 누구나 그 계정(관리자 포함)을
+// 쓸 수 있어 뺐다(보안 점검 credentials.hardcoded-tutorial-login). 이제 본인 계정으로 로그인하면 이어진다.
+const SAMPLE_LOGIN = { email: "20260001", password: "samplepw" };
 
 const EMAIL_SELECTOR = 'input[placeholder="학번/교번"]';
 const PASSWORD_SELECTOR = 'input[placeholder="비밀번호"]';
@@ -68,17 +66,16 @@ export default function TutorialOverlay() {
   const finish = useTutorialState((s) => s.finish);
 
   const user = useAppState((s) => s.user);
-  const login = useAppState((s) => s.login);
-  const logout = useAppState((s) => s.logout);
   const authLoading = useAppState((s) => s.authLoading);
 
   const navigate = useNavigate();
   const location = useLocation();
 
-  const DEMO_ACCOUNT = DEMO_ACCOUNTS[role];
+  // 관리자 둘러보기를 골라도 로그인한 계정이 관리자가 아니면 관리자 화면은 건너뛴다(들어갈 수 없다).
+  const tourRole = user && user.role !== "admin" ? "user" : role;
   const steps = useMemo(
-    () => (role === "user" ? TUTORIAL_STEPS.filter((s) => !s.adminOnly) : TUTORIAL_STEPS),
-    [role],
+    () => (tourRole === "user" ? TUTORIAL_STEPS.filter((s) => !s.adminOnly) : TUTORIAL_STEPS),
+    [tourRole],
   );
   const step = active ? steps[stepIndex] ?? null : null;
 
@@ -94,14 +91,19 @@ export default function TutorialOverlay() {
     setRect(next);
   };
 
-  // 로그인 관련 스텝을 보여줄 때, 데모 계정 값을 실제 입력창에 채워서 보여준다(시각적 데모용).
+  // 로그인 관련 스텝을 보여줄 때, 예시 값을 입력창에 채워서 보여준다(시각적 데모용 — 로그인 버튼
+  // 스텝에서는 비워서 본인 계정을 입력하게 한다).
   useEffect(() => {
     if (!active || step?.route !== "/login") return;
-    if (step.id === "login-email" || step.id === "login-password" || step.id === "login-submit") {
-      fillReactInput(EMAIL_SELECTOR, DEMO_ACCOUNT.email);
+    if (step.id === "login-email" || step.id === "login-password") {
+      fillReactInput(EMAIL_SELECTOR, SAMPLE_LOGIN.email);
     }
-    if (step.id === "login-password" || step.id === "login-submit") {
-      fillReactInput(PASSWORD_SELECTOR, DEMO_ACCOUNT.password);
+    if (step.id === "login-password") {
+      fillReactInput(PASSWORD_SELECTOR, SAMPLE_LOGIN.password);
+    }
+    if (step.id === "login-submit") {
+      fillReactInput(EMAIL_SELECTOR, "");
+      fillReactInput(PASSWORD_SELECTOR, "");
     }
   }, [active, step?.id, step?.route]);
 
@@ -205,24 +207,20 @@ export default function TutorialOverlay() {
   const isLoginGateStep = step.route === "/login" && nextRoute && nextRoute !== "/login";
   const awaitingRealLogin = isLoginGateStep && !user;
 
-  // 둘러보기는 데모 계정으로 자동 로그인해서 진행한 것이므로, 끝까지 마치든 중간에
-  // 건너뛰든(건너뛰기/닫기 버튼) 그 세션을 남겨두지 않고 로그아웃시켜 로그인 화면으로
-  // 돌려보낸다 — 둘러보기는 로그아웃 상태(로그인 화면)에서만 시작할 수 있으므로, 진행
-  // 중 로그인돼 있다면 그건 항상 이 데모 로그인 때문이다.
+  // 로그인 스텝에서는 사용자가 본인 계정으로 로그인해야 이어진다(로그인되면 위 effect 가 다음 스텝으로
+  // 넘긴다). 버튼은 입력창으로 안내만 한다. 본인 계정으로 들어온 것이므로 끝나도 로그아웃하지 않는다.
   const handlePrimary = () => {
-    if (isLast) { finish(); logout(); return; }
-    if (awaitingRealLogin) { login(DEMO_ACCOUNT.email, DEMO_ACCOUNT.password); return; }
+    if (isLast) { finish(); return; }
+    if (awaitingRealLogin) { document.querySelector(EMAIL_SELECTOR)?.focus(); return; }
     goNext();
   };
 
   const handleStop = () => {
-    // 로그인 전(로그인 스텝 진행 중) 건너뛰면 로그인 화면이 그대로 남아있는데, 데모 계정으로
-    // 채워둔 입력값이 화면에 남아있지 않도록 지운다 — 아직 로그인 전이라 logout()만으로는
-    // (LoginPage 자체 state라) 지워지지 않는다.
+    // 로그인 전(로그인 스텝 진행 중) 건너뛰면 로그인 화면이 그대로 남아있는데, 예시 값으로
+    // 채워둔 입력값이 화면에 남아있지 않도록 지운다(LoginPage 자체 state라 따로 지워야 한다).
     fillReactInput(EMAIL_SELECTOR, "");
     fillReactInput(PASSWORD_SELECTOR, "");
     stop();
-    logout();
   };
 
   const ringStyle = rect
@@ -285,7 +283,7 @@ export default function TutorialOverlay() {
           <p>{step.description}</p>
           {awaitingRealLogin && (
             <p className="tutorial-hint">
-              아래 버튼을 누르면 데모 계정({DEMO_ACCOUNT.email})으로 자동 로그인합니다.
+              본인 학번/교번과 비밀번호로 로그인하면 둘러보기가 이어집니다.
             </p>
           )}
           <div className="tutorial-actions">
@@ -297,7 +295,7 @@ export default function TutorialOverlay() {
                 onClick={handlePrimary}
                 disabled={awaitingRealLogin && authLoading}
               >
-                {isLast ? "완료" : awaitingRealLogin ? (authLoading ? "로그인 중..." : "로그인하고 계속") : "다음"}
+                {isLast ? "완료" : awaitingRealLogin ? (authLoading ? "로그인 중..." : "입력창으로 이동") : "다음"}
               </button>
             </div>
           </div>

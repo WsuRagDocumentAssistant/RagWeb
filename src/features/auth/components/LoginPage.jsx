@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Navigate } from "react-router-dom";
-import { toast } from "sonner";
 import { useAppState } from "@/core/AppState";
 import { WoosongLogo } from "@/shared";
 import { useTutorialState, TutorialRoleModal } from "@/features/tutorial";
@@ -9,7 +8,6 @@ import "../styles/LoginPage.css";
 export default function LoginPage() {
   const user = useAppState((s) => s.user);
   const login = useAppState((s) => s.login);
-  const register = useAppState((s) => s.register);
   const authLoading = useAppState((s) => s.authLoading);
   const authError = useAppState((s) => s.authError);
   const startTutorial = useTutorialState((s) => s.start);
@@ -21,30 +19,16 @@ export default function LoginPage() {
     startTutorial(role);
   };
 
-  // TEMP: SSO 연동 전까지 사용하는 임시 로그인/회원가입. SSO 연동 완료 시 이 state와 폼 전체 제거.
-  const [mode, setMode] = useState("login"); // "login" | "register"
+  // 학교 계정(학번/교번 + 학교 비밀번호) 로그인. 공개 회원가입은 없앴다 — 남의 교번으로 미리 가입해
+  // 그 사람 계정을 차지할 수 있었다(보안 점검 account-linking). 계정은 학교 계정으로 처음 로그인할 때
+  // 서버가 만들고, 그 밖의 계정은 관리자가 만든다.
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
 
-  // TEMP: SSO 연동 전까지 사용하는 임시 로그인/회원가입 핸들러. SSO 연동 완료 시 제거.
-  const handleTempSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    if (mode === "login") {
-      if (!email || !password) return;
-      login(email, password);
-      return;
-    }
-    if (!email || !password || !name) return;
-    try {
-      await register(email, password, name);
-      toast.success("회원가입 완료. 로그인해주세요.");
-      setMode("login");
-      setPassword("");
-      setName("");
-    } catch {
-      // authError에 이미 반영됨
-    }
+    if (!email || !password) return;
+    login(email, password);
   };
 
   if (user) return <Navigate to="/chat" replace />;
@@ -62,29 +46,18 @@ export default function LoginPage() {
           <TutorialRoleModal onClose={() => setRoleModalOpen(false)} onSelect={handleSelectTutorialRole} />
         )}
 
-        {/* TEMP: SSO 연동 전까지 사용하는 임시 로그인/회원가입 폼. SSO 연동 완료 시 아래 전체 제거. */}
         <div className="temp-login-divider">
-          <span>{mode === "login" ? "로그인" : "임시 회원가입 (개발용)"}</span>
+          <span>로그인</span>
         </div>
-        <form className="temp-login-form" onSubmit={handleTempSubmit}>
-          {mode === "register" && (
-            <input
-              type="text"
-              className="temp-login-input"
-              placeholder="이름"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              autoComplete="name"
-            />
-          )}
+        <form className="temp-login-form" onSubmit={handleSubmit}>
           <input
             type="text"
             className="temp-login-input"
             placeholder="학번/교번"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            // 둘러보기 데모 계정 값이 브라우저에 자동완성 후보로 남지 않도록, 데모가 채우는
-            // 동안에는 autoComplete를 꺼둔다(실제 사용자가 쓸 때는 평소대로 켜져 있음).
+            // 둘러보기가 채우는 예시 값이 브라우저에 자동완성 후보로 남지 않도록, 둘러보기
+            // 중에는 autoComplete를 꺼둔다(실제 사용자가 쓸 때는 평소대로 켜져 있음).
             autoComplete={tutorialActive ? "off" : "username"}
           />
           <input
@@ -93,18 +66,11 @@ export default function LoginPage() {
             placeholder="비밀번호"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            autoComplete={tutorialActive ? "off" : mode === "login" ? "current-password" : "new-password"}
+            autoComplete={tutorialActive ? "off" : "current-password"}
           />
           {authError && <p className="temp-login-error">{authError}</p>}
           <button type="submit" className="temp-login-btn" disabled={authLoading}>
-            {authLoading ? "처리 중..." : mode === "login" ? "로그인" : "임시 회원가입"}
-          </button>
-          <button
-            type="button"
-            className="temp-login-switch"
-            onClick={() => setMode(mode === "login" ? "register" : "login")}
-          >
-            {mode === "login" ? "계정이 없나요? 회원가입" : "이미 계정이 있나요? 로그인"}
+            {authLoading ? "처리 중..." : "로그인"}
           </button>
         </form>
       </div>

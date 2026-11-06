@@ -1,6 +1,7 @@
 // 이미지 편집기(구 SVG 편집기)의 로컬 파일 IO 헬퍼 + 서버 벡터화 연동.
 // 서버 연결이 안 되면(또는 아직 미구현이면) 로컬 전용 함수(convertImageToSvg/wrapImageUrlAsSvg)로 대체한다.
 
+import DOMPurify from "dompurify";
 import { postTask } from "@/config/ApiService";
 
 import { getToken } from "@/config/authStorage";
@@ -42,6 +43,45 @@ export function readSvgFile(file) {
   });
 }
 
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+/**
+ * 그림 하나를 <image> 로 감싼 SVG 텍스트. 주소를 문자열로 이어 붙이지 않고 속성으로 넣는다 —
+ * 주소에 따옴표가 있으면 마크업을 깨고 다른 속성(onload 등)을 끼워 넣을 수 있다.
+ */
+function imageSvg(href, width, height) {
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("width", String(width));
+  svg.setAttribute("height", String(height));
+  const image = document.createElementNS(SVG_NS, "image");
+  for (const [k, v] of Object.entries({ href, x: "0", y: "0", width: String(width), height: String(height) })) {
+    image.setAttribute(k, v);
+  }
+  svg.appendChild(image);
+  return new XMLSerializer().serializeToString(svg);
+}
+
+/**
+ * 편집기에 넣기 전에 SVG 를 정리한다. 스크립트·이벤트 속성(onload 등)·foreignObject(HTML)·
+ * javascript: 주소를 모두 뺀다. 편집기는 SVG 를 페이지에 그대로 넣기 때문에, 정리하지 않으면 남이 준
+ * SVG 파일을 여는 것만으로 우리 사이트 권한(로그인 토큰 포함)으로 스크립트가 돌았다
+ * (보안 점검 xss.svg-import). 파일 열기·문서 그림·벡터 변환 결과 모두 여기를 거친다.
+ * @param {string} text
+ * @returns {string} 정리된 SVG (svg 가 아니면 빈 문자열)
+ */
+export function sanitizeSvg(text) {
+  const clean = DOMPurify.sanitize(String(text ?? ""), {
+    USE_PROFILES: { svg: true, svgFilters: true },
+    FORBID_TAGS: ["foreignObject", "script", "iframe", "object", "embed"],
+    // 주소는 http(s)·blob:(로컬 미리보기)·data:image(래스터만) 만 허용한다. 뒤의 두 갈래는 주소가 아닌
+    // 값(숫자·"red"·"#id"·상대 경로)을 통과시키는 것 — DOMPurify 가 모든 속성 값에 이 규칙을 대므로 필요하다.
+    // javascript:·data:image/svg+xml 같은 다른 스킴은 막힌다.
+    ALLOWED_URI_REGEXP: /^(?:(?:https?|blob):|data:image\/(?:png|jpe?g|gif|webp|bmp);|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+  });
+  return /^\s*<svg[\s>]/i.test(clean) ? clean : "";
+}
+
 /**
  * JPG/PNG 등 래스터 이미지를 SVG로 감싸서 편집기에서 열 수 있게 변환한다.
  * 실제 벡터화(선/도형 추출) 변환은 서버에서 처리될 예정이며, 여기서는 원본 이미지를
@@ -58,8 +98,7 @@ export function convertImageToSvg(file) {
       img.onload = () => {
         const width = img.naturalWidth || 800;
         const height = img.naturalHeight || 600;
-        const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}"><image href="${dataUrl}" x="0" y="0" width="${width}" height="${height}" /></svg>`;
-        resolve(svg);
+        resolve(imageSvg(dataUrl, width, height));
       };
       img.onerror = () => reject(new Error("이미지를 불러올 수 없습니다."));
       img.src = dataUrl;
@@ -83,8 +122,7 @@ export function wrapImageUrlAsSvg(url) {
     img.onload = () => {
       const width = img.naturalWidth || 800;
       const height = img.naturalHeight || 600;
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}"><image href="${url}" x="0" y="0" width="${width}" height="${height}" /></svg>`;
-      resolve(svg);
+      resolve(imageSvg(url, width, height));
     };
     img.onerror = () => reject(new Error("이미지를 불러올 수 없습니다."));
     img.src = url;

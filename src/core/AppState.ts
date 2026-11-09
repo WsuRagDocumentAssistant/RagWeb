@@ -126,6 +126,7 @@ export interface EmbeddingFile extends DocumentMetadata {
   status: EmbeddingFileStatus;
   uploadedAt: number;
   uploadedBy?: string | null; // 올린 사람 user_id (서버 document_uploads). 기록 전 문서는 비어 있다
+  uploaderName?: string | null; // 올린 사람 이름(없으면 교번). 문서 목록 "등록자" 열
   lastUploadedAt?: number | null; // 마지막으로 올린 시각 — 다시 올린 문서는 uploadedAt 보다 새롭다
   errorMessage?: string;
   chunks?: number;
@@ -914,6 +915,7 @@ export const useAppState = create<AppStore>((set, get) => ({
           status: "uploading",
           uploadedAt: Date.now(),
           uploadedBy: get().user?.id ?? null,
+          uploaderName: get().user?.name ?? null,
           ...metadata,
         },
         ...s.files,

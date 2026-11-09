@@ -41,6 +41,7 @@ export default function DocumentsPage() {
           <SortableHeaderCell label="파일명" sortKey="name" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
           <SortableHeaderCell label="업무구분" sortKey="workCategory" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
           <SortableHeaderCell label="생산연도" sortKey="productionYear" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+          <SortableHeaderCell label="등록자" sortKey="uploaderName" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
           <SortableHeaderCell label="청크" sortKey="chunks" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
           <span>액션</span>
         </div>
@@ -57,6 +58,7 @@ export default function DocumentsPage() {
                   {f.workCategory || "-"}
                 </span>
                 <span>{f.productionYear || "-"}</span>
+                <span className={f.uploaderName ? "" : "muted"} title={f.uploaderName || ""}>{f.uploaderName || "-"}</span>
                 <span>{f.chunks ?? "-"}</span>
                 <span className="doc-table-actions">
                   <button className="doc-table-btn" title="이미지 보기" onClick={() => setViewingFile(f)}>

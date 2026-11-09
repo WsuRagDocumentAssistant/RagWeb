@@ -73,7 +73,7 @@
 .doc-table-head,
 .doc-table-row {
   display: grid;
-  grid-template-columns: 1.5fr 1.3fr 0.9fr 0.9fr 0.5fr 1fr;
+  grid-template-columns: 1.5fr 1.3fr 0.9fr 0.8fr 0.8fr 0.5fr 1fr;
   gap: 10px;
   align-items: center;
   padding: 10px 16px;
@@ -114,6 +114,7 @@
   font-weight: 600;
 }
 .doc-table-category.muted { color: var(--color-muted); font-weight: 400; }
+.doc-table-row .muted { color: var(--color-muted); }
 
 .doc-table-actions {
   display: flex;

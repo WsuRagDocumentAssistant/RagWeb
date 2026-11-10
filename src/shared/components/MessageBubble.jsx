@@ -179,7 +179,9 @@ export default function MessageBubble({ message, isSelected, onSelect }) {
         )}
       </div>
     )}
-    {viewingSource && <SourceViewerModal source={viewingSource} onClose={() => setViewingSource(null)} />}
+    {viewingSource && (
+      <SourceViewerModal source={viewingSource} answer={message.content} onClose={() => setViewingSource(null)} />
+    )}
     </>
   );
 }

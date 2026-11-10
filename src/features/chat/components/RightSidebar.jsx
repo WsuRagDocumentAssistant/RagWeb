@@ -52,7 +52,9 @@ export default function RightSidebar({ message, collapsed, onToggleCollapsed }) 
         )
       )}
 
-      {viewingSource && <SourceViewerModal source={viewingSource} onClose={() => setViewingSource(null)} />}
+      {viewingSource && (
+        <SourceViewerModal source={viewingSource} answer={message?.content} onClose={() => setViewingSource(null)} />
+      )}
     </aside>
   );
 }

@@ -214,14 +214,14 @@ const nodeText = (node) =>
 
 const CITE_BLOCKS = ["p", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote"];
 
-/** 인용 조각과 겹치는 블록에 doc-viewer-cite 를 붙이는 렌더러들 */
-function citeComponents(quotes) {
+/** isCited(블록 글자) 가 참인 블록에 doc-viewer-cite 를 붙이는 렌더러들 */
+function citeComponents(isCited) {
   return Object.fromEntries(
     CITE_BLOCKS.map((Tag) => [
       Tag,
       // eslint-disable-next-line no-unused-vars
       ({ node, className, ...props }) => {
-        const hit = overlaps(bare(nodeText(node)), quotes);
+        const hit = isCited(bare(nodeText(node)));
         return <Tag className={[className, hit && "doc-viewer-cite"].filter(Boolean).join(" ") || undefined} {...props} />;
       },
     ]),
@@ -268,16 +268,95 @@ export function normalizeTables(markdown) {
 
 /**
  * 단락 본문. 표가 마크다운이라 마크다운으로 그린다. 문서가 길어 다시 그리지 않게 memo.
- * quotes 를 주면(인용된 단락) 그 조각과 겹치는 문단·표의 행만 강조한다.
+ * isCited 를 주면(인용된 단락) 그 판정에 맞는 문단·표의 행만 강조한다.
  */
-const SectionBody = memo(function SectionBody({ content, quotes }) {
-  const components = useMemo(() => (quotes?.length ? citeComponents(quotes) : undefined), [quotes]);
+const SectionBody = memo(function SectionBody({ content, isCited }) {
+  const components = useMemo(() => (isCited ? citeComponents(isCited) : undefined), [isCited]);
   return (
     <div className="markdown-body doc-viewer-content">
       <Markdown components={components}>{normalizeTables(content)}</Markdown>
     </div>
   );
 });
+
+// ── 답변 기준 강조 ──────────────────────────────────────────────────────────────
+// 검색 조각(quotes)은 "이 문서를 왜 골랐나"이지 "답이 어디서 나왔나"가 아니다. LLM 은 부모 본문 전체를
+// 받으므로 답이 조각 밖의 행에서 나올 수 있다. 그래서 답변에서 이 출처([a])를 단 문장을 뽑아, 그 문장의
+// 숫자·낱말이 많이 들어 있는 줄(문단·표의 행)을 강조한다. 못 찾으면 예전처럼 검색 조각으로 강조한다.
+
+const MARK = /\[([a-z]{1,2}|\d{1,3})\]/g;
+// 숫자(+단위). "190억원", "87.9%", "2026년". 단위 없는 한 자리 숫자는 너무 흔해 버린다.
+const NUMBER = /\d[\d,.]*\s*(?:%|％|억\s*원|만\s*원|천\s*원|억|원|명|건|개|년|월|일|점|회|위|배|시간|학점|팀|과목|주차)?/g;
+const WORD = /[가-힣A-Za-z][가-힣A-Za-z0-9]*/g;
+// 낱말 끝 조사. 문서에는 "대학혁신지원사업", 답변에는 "대학혁신지원사업은" 으로 나온다. 긴 것부터 뗀다.
+const PARTICLES = ["에서는", "으로는", "이라는", "에서", "으로", "부터", "까지", "이며", "이고", "에는", "에게", "라는",
+  "과", "와", "은", "는", "이", "가", "을", "를", "의", "에", "로", "도", "만"];
+const STOPWORDS = new Set(["및", "등", "총", "또한", "그리고", "있음", "있으며", "해당", "대한", "위한", "통해", "관련",
+  "경우", "문서", "내용", "기준", "다음", "같습니다", "있습니다", "입니다", "합니다", "됩니다", "따르면", "따라"]);
+const NUMBER_WEIGHT = 2; // 숫자는 낱말보다 그 줄을 훨씬 잘 가리킨다
+const CITE_RATIO = 0.5; // 최고점의 이 비율 이상인 줄만 강조
+const MIN_LINE_SCORE = 1; // 흔한 낱말 하나로 걸리는 줄은 강조하지 않는다
+
+/** 답변에서 이 출처 표시([a])가 붙은 문장(또는 줄)들 */
+function citingSentences(answer, mark) {
+  if (!answer || !mark) return [];
+  const tag = `[${mark}]`; // 표시는 영문 소문자·숫자뿐이라 그대로 찾는다
+  return answer
+    .split(/\n+|(?<=[.!?。])\s+/)
+    .filter((sentence) => sentence.includes(tag))
+    .map((sentence) => sentence.replace(MARK, " "));
+}
+
+const stripParticle = (word) => {
+  const particle = PARTICLES.find((p) => word.endsWith(p) && word.length - p.length >= 2);
+  return particle ? word.slice(0, -particle.length) : word;
+};
+
+/** 문장 -> [비교용 글자열, 가중치]. 같은 것은 한 번만 */
+function evidenceTokens(sentence) {
+  const tokens = new Map();
+  for (const raw of sentence.match(NUMBER) ?? []) {
+    const token = bare(raw).replace(/[.,]+$/, "");
+    if (token.length >= 2) tokens.set(token, NUMBER_WEIGHT);
+  }
+  for (const raw of sentence.match(WORD) ?? []) {
+    const word = stripParticle(raw);
+    if (word.length >= 2 && !STOPWORDS.has(word) && !/\d/.test(word) && !tokens.has(word)) tokens.set(word, 1);
+  }
+  return [...tokens];
+}
+
+/**
+ * 단락 본문의 줄 가운데 답변 근거로 보이는 줄들(비교용 글자열). 못 찾으면 빈 배열.
+ *
+ * 문장마다 따로 고른다 — 한 출처를 두 문장이 인용하면 두 문장 각각의 근거 줄이 다 강조돼야 하는데,
+ * 한데 모아 점수를 내면 낱말이 많은 문장의 줄만 남는다.
+ * 줄 점수 = 그 줄에 든 근거 낱말의 가중치 합. 낱말마다 "몇 줄에 나오나"로 나눈다 — 표의 모든 행에
+ * 나오는 "Agentic AI" 같은 낱말이 그 행들을 다 끌어올리지 않게. 그 문장 최고점의 절반 이상인 줄만 고른다.
+ */
+function answerLines(content, sentences) {
+  const lines = normalizeTables(content)
+    .split("\n")
+    .filter((line) => !isDelimiter(line))
+    .map(bare)
+    .filter((line) => line.length >= MIN_BLOCK);
+  const picked = new Set();
+  for (const sentence of sentences) {
+    const tokens = evidenceTokens(sentence);
+    if (!tokens.length) continue;
+    const df = new Map(tokens.map(([token]) => [token, lines.filter((line) => line.includes(token)).length]));
+    const scores = lines.map((line) =>
+      tokens.reduce((sum, [token, weight]) => (line.includes(token) ? sum + weight / df.get(token) : sum), 0),
+    );
+    const cutoff = Math.max(MIN_LINE_SCORE, Math.max(0, ...scores) * CITE_RATIO);
+    lines.forEach((line, i) => scores[i] >= cutoff && picked.add(line));
+  }
+  return [...picked];
+}
+
+/** 그린 블록(문단·표의 행)이 고른 줄인지. 문단은 여러 줄이 한 블록으로 합쳐질 수 있어 포함으로 본다 */
+const inLines = (lines) => (block) =>
+  block.length >= MIN_BLOCK && lines.some((line) => block.includes(line) || line.includes(block));
 
 /**
  * 원본을 못 열 때(또는 불러오는 동안) 보여줄 인용 부분. 줄바꿈이 살아 있는 검색 조각(quotes)이 있으면
@@ -296,7 +375,7 @@ function CitedText({ source }) {
  * 등록 문서 출처 뷰어. 원본 문서 전체를 색인할 때와 같은 단락으로 화면 안에 보여주고,
  * 인용된 단락으로 스크롤해 강조한다. 원본이 없거나 열 수 없는 형식이면 인용 단락만 보여준다.
  */
-export function SourceViewerModal({ source, onClose }) {
+export function SourceViewerModal({ source, answer, onClose }) {
   const [doc, setDoc] = useState(null);
   const [error, setError] = useState(null);
   const citedRef = useRef(null);
@@ -322,7 +401,15 @@ export function SourceViewerModal({ source, onClose }) {
 
   const sections = doc?.sections ?? [];
   const cited = useMemo(() => findCited(sections, source), [sections, source]);
-  const quotes = useMemo(() => citedTexts(source), [source]);
+  // 강조 기준: 답변에서 이 출처를 단 문장이 가리키는 줄. 그런 줄이 없으면(옛 대화, 표시 없는 답변,
+  // 숫자·낱말이 안 맞음) 검색에 걸린 조각.
+  const isCited = useMemo(() => {
+    if (cited < 0) return undefined;
+    const lines = answerLines(sections[cited].content, citingSentences(answer, source.mark));
+    if (lines.length) return inLines(lines);
+    const quotes = citedTexts(source);
+    return quotes.length ? (block) => overlaps(block, quotes) : undefined;
+  }, [sections, cited, answer, source]);
   // 인용된 단락 안에서 강조된 줄이 하나도 없으면 단락 전체를 강조한다(조각이 표 경계 등에서 안 맞을 때)
   const [blockHit, setBlockHit] = useState(true);
 
@@ -394,7 +481,7 @@ export function SourceViewerModal({ source, onClose }) {
                   {(section.breadcrumb || section.heading) && (
                     <h4 className="doc-viewer-heading">{section.breadcrumb || section.heading}</h4>
                   )}
-                  <SectionBody content={section.content} quotes={i === cited ? quotes : undefined} />
+                  <SectionBody content={section.content} isCited={i === cited ? isCited : undefined} />
                 </section>
               ))}
             </div>

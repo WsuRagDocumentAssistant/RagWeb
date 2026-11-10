@@ -284,6 +284,10 @@ const SectionBody = memo(function SectionBody({ content, isCited }) {
 // 받으므로 답이 조각 밖의 행에서 나올 수 있다. 그래서 답변에서 이 출처([a])를 단 문장을 뽑아, 그 문장의
 // 숫자·낱말이 많이 들어 있는 줄(문단·표의 행)을 강조한다. 못 찾으면 예전처럼 검색 조각으로 강조한다.
 
+// 브라우저 콘솔 로그. 강조가 왜 그 줄에 갔는지(또는 왜 안 갔는지) 따라가게 단계마다 남긴다.
+const LOG = "[출처 강조]";
+const log = (...args) => console.info(LOG, ...args);
+
 const MARK = /\[([a-z]{1,2}|\d{1,3})\]/g;
 // 숫자(+단위). "190억원", "87.9%", "2026년". 단위 없는 한 자리 숫자는 너무 흔해 버린다.
 const NUMBER = /\d[\d,.]*\s*(?:%|％|억\s*원|만\s*원|천\s*원|억|원|명|건|개|년|월|일|점|회|위|배|시간|학점|팀|과목|주차)?/g;
@@ -319,7 +323,8 @@ function evidenceTokens(sentence) {
     const token = bare(raw).replace(/[.,]+$/, "");
     if (token.length >= 2) tokens.set(token, NUMBER_WEIGHT);
   }
-  for (const raw of sentence.match(WORD) ?? []) {
+  // 숫자(+단위)를 뺀 나머지에서 낱말을 뽑는다 — "190억원입니다" 의 "억원입니다" 가 낱말로 잡히지 않게.
+  for (const raw of sentence.replace(NUMBER, " ").match(WORD) ?? []) {
     const word = stripParticle(raw);
     if (word.length >= 2 && !STOPWORDS.has(word) && !/\d/.test(word) && !tokens.has(word)) tokens.set(word, 1);
   }
@@ -340,17 +345,35 @@ function answerLines(content, sentences) {
     .filter((line) => !isDelimiter(line))
     .map(bare)
     .filter((line) => line.length >= MIN_BLOCK);
+  log("단락 줄 수", lines.length);
   const picked = new Set();
-  for (const sentence of sentences) {
+  sentences.forEach((sentence, n) => {
     const tokens = evidenceTokens(sentence);
-    if (!tokens.length) continue;
-    const df = new Map(tokens.map(([token]) => [token, lines.filter((line) => line.includes(token)).length]));
-    const scores = lines.map((line) =>
-      tokens.reduce((sum, [token, weight]) => (line.includes(token) ? sum + weight / df.get(token) : sum), 0),
-    );
-    const cutoff = Math.max(MIN_LINE_SCORE, Math.max(0, ...scores) * CITE_RATIO);
-    lines.forEach((line, i) => scores[i] >= cutoff && picked.add(line));
-  }
+    console.groupCollapsed(`${LOG} 문장 ${n + 1}: ${sentence.trim().slice(0, 60)}`);
+    try {
+      if (!tokens.length) {
+        log("근거 낱말 없음 — 이 문장은 건너뜀");
+        return;
+      }
+      const df = new Map(tokens.map(([token]) => [token, lines.filter((line) => line.includes(token)).length]));
+      log("근거 낱말", tokens.map(([token, weight]) => `${token}(가중 ${weight}, ${df.get(token)}줄)`).join(", "));
+      const scores = lines.map((line) =>
+        tokens.reduce((sum, [token, weight]) => (line.includes(token) ? sum + weight / df.get(token) : sum), 0),
+      );
+      const best = Math.max(0, ...scores);
+      const cutoff = Math.max(MIN_LINE_SCORE, best * CITE_RATIO);
+      const ranked = lines
+        .map((line, i) => ({ 점수: +scores[i].toFixed(2), 선택: scores[i] >= cutoff, 줄: line.slice(0, 80) }))
+        .filter((row) => row.점수 > 0)
+        .sort((a, b) => b.점수 - a.점수);
+      log(`최고 ${best.toFixed(2)}, 기준 ${cutoff.toFixed(2)} — 점수 있는 줄 ${ranked.length}개`);
+      if (ranked.length) console.table(ranked.slice(0, 15));
+      lines.forEach((line, i) => scores[i] >= cutoff && picked.add(line));
+    } finally {
+      console.groupEnd();
+    }
+  });
+  log("답변 기준으로 고른 줄", picked.size);
   return [...picked];
 }
 
@@ -404,12 +427,30 @@ export function SourceViewerModal({ source, answer, onClose }) {
   // 강조 기준: 답변에서 이 출처를 단 문장이 가리키는 줄. 그런 줄이 없으면(옛 대화, 표시 없는 답변,
   // 숫자·낱말이 안 맞음) 검색에 걸린 조각.
   const isCited = useMemo(() => {
-    if (cited < 0) return undefined;
-    const lines = answerLines(sections[cited].content, citingSentences(answer, source.mark));
-    if (lines.length) return inLines(lines);
-    const quotes = citedTexts(source);
-    return quotes.length ? (block) => overlaps(block, quotes) : undefined;
-  }, [sections, cited, answer, source]);
+    if (!doc) return undefined;                       // 문서를 받기 전에는 로그도 남기지 않는다
+    console.groupCollapsed(`${LOG} (${source.mark ?? "-"}) ${source.name}`);
+    try {
+      log("출처", { mark: source.mark, heading: source.heading, 검색조각: source.quotes?.length ?? 0 });
+      log("문서 단락 수", sections.length, "/ 인용 단락", cited < 0 ? "못 찾음" : `${cited + 1}번째`,
+        cited >= 0 ? sections[cited].breadcrumb || sections[cited].heading || "" : "");
+      if (cited < 0) {
+        log("결과: 강조 없음 — 인용 단락을 찾지 못함");
+        return undefined;
+      }
+      const sentences = citingSentences(answer, source.mark);
+      log(`답변에서 [${source.mark}] 를 단 문장`, sentences.length, sentences);
+      const lines = answerLines(sections[cited].content, sentences);
+      if (lines.length) {
+        log("결과: 답변 기준 강조", lines);
+        return inLines(lines);
+      }
+      const quotes = citedTexts(source);
+      log(quotes.length ? "결과: 답변 기준 실패 → 검색 조각 기준 강조" : "결과: 강조할 근거 없음", quotes);
+      return quotes.length ? (block) => overlaps(block, quotes) : undefined;
+    } finally {
+      console.groupEnd();
+    }
+  }, [doc, sections, cited, answer, source]);
   // 인용된 단락 안에서 강조된 줄이 하나도 없으면 단락 전체를 강조한다(조각이 표 경계 등에서 안 맞을 때)
   const [blockHit, setBlockHit] = useState(true);
 
@@ -417,6 +458,9 @@ export function SourceViewerModal({ source, answer, onClose }) {
     const section = citedRef.current;
     if (!section) return;
     const first = section.querySelector(".doc-viewer-cite");
+    log(first
+      ? `화면 강조 ${section.querySelectorAll(".doc-viewer-cite").length}곳`
+      : "화면에서 강조된 줄 없음 → 단락 전체 강조");
     setBlockHit(!!first);
     (first ?? section).scrollIntoView({ block: "center" });
   }, [cited, doc]);
